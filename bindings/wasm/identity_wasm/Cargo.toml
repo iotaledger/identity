@@ -73,6 +73,7 @@ lto = true
 # can be removed as soon as fix has been added to clippy
 # see https://github.com/rust-lang/rust-clippy/issues/12377
 empty_docs = "allow"
+large_enum_variant = "allow"
 
 [lints.rust]
 # required for current wasm_bindgen version

@@ -2,13 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use identity_iota::iota::rebased::migration::ControllerCap;
+use identity_iota::iota::rebased::migration::ControllerToken;
 use identity_iota::iota::rebased::migration::DelegatePermissions;
 use identity_iota::iota::rebased::migration::DelegateToken;
 use identity_iota::iota::rebased::migration::DelegationToken;
 use identity_iota::iota::rebased::migration::DelegationTokenRevocation;
 use identity_iota::iota::rebased::migration::DeleteDelegationToken;
+use iota_interaction::types::base_types::ObjectID;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
+use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
 use js_sys::Object;
+use product_common::core_client::CoreClientReadOnly;
 use product_common::transaction::transaction_builder::Transaction as _;
 use product_common::transaction::transaction_builder::TransactionBuilder;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -19,16 +23,75 @@ use wasm_bindgen::JsValue;
 use crate::error::wasm_error;
 use crate::error::Result;
 use crate::error::WasmResult;
+use crate::rebased::WasmManagedCoreClientReadOnly;
 
 use super::WasmIdentityClientReadOnly;
 use super::WasmOnChainIdentity;
 use super::WasmTransactionBuilder;
 
-#[wasm_bindgen(typescript_custom_section)]
-pub const _CONTROLLER_TOKEN_DEF: &str = r#"
-export type ControllerToken = ControllerCap | DelegationToken;
-"#;
+#[derive(Clone)]
+#[wasm_bindgen(js_name = ControllerToken)]
+pub struct WasmControllerToken(pub(crate) ControllerToken);
 
+#[wasm_bindgen(js_class = ControllerToken)]
+impl WasmControllerToken {
+  #[wasm_bindgen(js_name = fromControllerCap)]
+  pub fn from_controller_cap(cap: &WasmControllerCap) -> Self {
+    Self(ControllerToken::Controller(cap.0.clone()))
+  }
+
+  #[wasm_bindgen(js_name = fromDelegationToken)]
+  pub fn from_delegation_token(token: &WasmDelegationToken) -> Self {
+    Self(ControllerToken::Delegate(token.0.clone()))
+  }
+
+  #[wasm_bindgen]
+  pub fn id(&self) -> String {
+    self.0.id().to_string()
+  }
+
+  #[wasm_bindgen(js_name = controllerOf)]
+  pub fn controller_of(&self) -> String {
+    self.0.controller_of().to_string()
+  }
+
+  #[wasm_bindgen(js_name = toControllerCap)]
+  pub fn to_controller_cap(&self) -> Option<WasmControllerCap> {
+    if let ControllerToken::Controller(cap) = &self.0 {
+      Some(WasmControllerCap(cap.clone()))
+    } else {
+      None
+    }
+  }
+
+  #[wasm_bindgen(js_name = toDelegationToken)]
+  pub fn to_delegation_token(&self) -> Option<WasmDelegationToken> {
+    if let ControllerToken::Delegate(token) = &self.0 {
+      Some(WasmDelegationToken(token.clone()))
+    } else {
+      None
+    }
+  }
+
+  #[wasm_bindgen(js_name = getById)]
+  pub async fn get_by_id(id: &str, client: &WasmCoreClientReadOnly) -> Result<Self> {
+    let id = id.parse::<ObjectID>().map_err(|e| JsError::new(&e.to_string()))?;
+    let client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
+    client.get_object_by_id(id).await.map(WasmControllerToken).wasm_result()
+  }
+}
+
+impl From<ControllerCap> for WasmControllerToken {
+  fn from(value: ControllerCap) -> Self {
+    Self(ControllerToken::Controller(value))
+  }
+}
+
+impl From<DelegationToken> for WasmControllerToken {
+  fn from(value: DelegationToken) -> Self {
+    Self(ControllerToken::Delegate(value))
+  }
+}
 /// A token that authenticates its bearer as a controller of a specific shared object.
 #[wasm_bindgen(js_name = ControllerCap)]
 pub struct WasmControllerCap(pub(crate) ControllerCap);

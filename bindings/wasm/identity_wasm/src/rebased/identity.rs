@@ -3,11 +3,14 @@
 
 use std::rc::Rc;
 
-use identity_iota::iota::rebased::migration::ControllerToken;
+use identity_iota::iota::rebased::migration::get_identity;
 use identity_iota::iota::rebased::migration::CreateIdentity;
 use identity_iota::iota::rebased::migration::IdentityBuilder;
 use identity_iota::iota::rebased::migration::OnChainIdentity;
+use identity_iota::iota::rebased::Error as RebasedError;
 use identity_iota::iota::IotaDocument;
+use iota_interaction::types::base_types::IotaAddress;
+use iota_interaction::types::base_types::ObjectID;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
 use iota_interaction_ts::error::WasmResult as _;
@@ -29,6 +32,7 @@ use super::proposals::StringCouple;
 use super::proposals::WasmConfigChange;
 use super::proposals::WasmCreateSendProposal;
 use super::WasmControllerCap;
+use super::WasmControllerToken;
 use super::WasmDelegationToken;
 use super::WasmDelegationTokenRevocation;
 use super::WasmIdentityClient;
@@ -49,29 +53,25 @@ impl ControllerAndVotingPower {
   }
 }
 
-#[derive(Clone)]
-#[wasm_bindgen(js_name = ControllerToken)]
-pub struct WasmControllerToken(pub(crate) ControllerToken);
-
-#[wasm_bindgen(js_class = ControllerToken)]
-impl WasmControllerToken {
-  #[wasm_bindgen]
-  pub fn id(&self) -> String {
-    self.0.id().to_string()
-  }
-
-  #[wasm_bindgen(js_name = controllerOf)]
-  pub fn controller_of(&self) -> String {
-    self.0.controller_of().to_string()
-  }
-}
-
 #[wasm_bindgen(js_name = OnChainIdentity)]
 #[derive(Clone)]
 pub struct WasmOnChainIdentity(pub(crate) Rc<RwLock<OnChainIdentity>>);
 
 #[wasm_bindgen(js_class = OnChainIdentity)]
 impl WasmOnChainIdentity {
+  #[wasm_bindgen(js_name = getById)]
+  pub async fn get_by_id(id: String, client: &WasmCoreClientReadOnly) -> Result<Self> {
+    let client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
+    let id = id.parse::<ObjectID>().map_err(|e| JsError::new(&e.to_string()))?;
+
+    get_identity(&client, id)
+      .await
+      .wasm_result()?
+      .ok_or_else(|| RebasedError::ObjectLookup(format!("an OnChainIdentity with ID {id} wouldn't be found")))
+      .wasm_result()
+      .map(WasmOnChainIdentity::new)
+  }
+
   pub(crate) fn new(identity: OnChainIdentity) -> Self {
     Self(Rc::new(RwLock::new(identity)))
   }
@@ -113,6 +113,26 @@ impl WasmOnChainIdentity {
       .read()
       .await
       .get_controller_token(&client.0)
+      .await
+      .wasm_result()?
+      .map(WasmControllerToken);
+    Ok(maybe_controller_token)
+  }
+
+  #[wasm_bindgen(js_name = getControllerTokenForAddress)]
+  pub async fn get_controller_token_for_address(
+    &self,
+    address: &str,
+    client: &WasmIdentityClient,
+  ) -> Result<Option<WasmControllerToken>> {
+    let address = address
+      .parse::<IotaAddress>()
+      .map_err(|e| JsError::new(&e.to_string()))?;
+    let maybe_controller_token = self
+      .0
+      .read()
+      .await
+      .get_controller_token_for_address(address, &client.0)
       .await
       .wasm_result()?
       .map(WasmControllerToken);

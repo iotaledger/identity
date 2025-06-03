@@ -16,7 +16,7 @@ use std::ops::Deref;
 pub struct OQSVerifier;
 
 impl OQSVerifier {
-  /// Verify a JWS signature secured with the on the [`Algorithm`] defined in liboqs.
+  /// Verify a JWS signature secured with the [`Algorithm`] defined in liboqs.
   pub fn verify(input: VerificationInput, public_key: &Jwk, alg: Algorithm) -> Result<(), SignatureVerificationError> {
     
     let params: &JwkParamsAKP = public_key

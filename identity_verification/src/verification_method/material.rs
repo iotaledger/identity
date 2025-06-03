@@ -85,7 +85,7 @@ impl MethodData {
     }
   }
 
-  /// Fallible version of [`Self::composite_public_key`](Self::composite_public_key()).
+  /// Fallible version of [`Self::composite_public_key`](Self::composite_public_key).
   pub fn try_composite_public_key(&self) -> Result<&CompositeJwk> {
     self.composite_public_key().ok_or(Error::NotCompositePublicKey)
   }

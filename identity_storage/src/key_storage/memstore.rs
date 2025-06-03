@@ -1,9 +1,5 @@
-// Copyright 2020-2023 IOTA Stiftung, Fondazione Links
+// Copyright 2020-2025 IOTA Stiftung, Fondazione Links
 // SPDX-License-Identifier: Apache-2.0
-
-/*
- * Modifications Copyright 2024 Fondazione LINKS.
- */
 
 use core::fmt::Debug;
 use std::collections::HashMap;

@@ -1,8 +1,5 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
-/*
- * Modifications Copyright 2024 Fondazione LINKS.
- */
 
 mod decoded_jwt_presentation;
 mod jwt_presentation_validator;

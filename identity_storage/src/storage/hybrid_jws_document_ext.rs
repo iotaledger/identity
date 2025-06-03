@@ -174,7 +174,7 @@ pub trait JwkDocumentExtHybrid {
   where
     K: JwkStorage + JwkStoragePQ,
     I: KeyIdStorage,
-    T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync;
+    T: Clone + Serialize + DeserializeOwned + Sync;
 
   /// Create a PQ/T hybrid Verifiable Presentation.
   async fn create_presentation_jwt_hybrid<K, I, CRED, T>(

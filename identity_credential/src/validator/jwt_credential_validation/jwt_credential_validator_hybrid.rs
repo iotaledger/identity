@@ -25,7 +25,6 @@ use crate::credential::Jwt;
 use crate::validator::FailFast;
 
 /// A type for decoding and validating [`Credential`]s signed with a PQ/T signature.
-#[non_exhaustive]
 pub struct JwtCredentialValidatorHybrid<TRV, PQV>(TRV, PQV);
 
 impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> {

@@ -24,7 +24,7 @@ futures = { version = "0.3" }
 identity_ecdsa_verifier = { path = "../../identity_ecdsa_verifier", default-features = false, features = ["es256", "es256k"] }
 identity_eddsa_verifier = { path = "../../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
 js-sys = { version = "0.3.61" }
-json-proof-token = "0.4.1"
+json-proof-token = "0.4"
 proc_typescript = { version = "0.1.0", path = "./proc_typescript" }
 serde = { version = "1.0", features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"
@@ -34,7 +34,7 @@ serde_repr = { version = "0.1", default-features = false }
 tokio = { version = "1.29", default-features = false, features = ["sync"] }
 wasm-bindgen = { version = "0.2.100", features = ["serde-serialize"] }
 wasm-bindgen-futures = { version = "0.4", default-features = false }
-zkryptium = "0.4.0"
+zkryptium = "0.4"
 
 [dependencies.identity_iota]
 path = "../../identity_iota"

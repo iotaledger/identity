@@ -52,7 +52,7 @@ impl OQSVerifier {
     )
   }
 
-    /// Verify a JWS signature signed with a ctx and secured with the on the [`Algorithm`] defined in liboqs, used in hybrid signature.
+    /// Verify a JWS signature signed with a ctx and secured with the [`Algorithm`] defined in liboqs, used in hybrid signature.
     /// The ctx value is set as the Domain separator value for binding the signature to the Composite OID
     pub fn verify_hybrid_signature(input: VerificationInput, public_key: &Jwk, alg: Algorithm) -> Result<(), SignatureVerificationError> {
       

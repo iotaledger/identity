@@ -372,7 +372,7 @@ impl JwkDocumentExtHybrid for CoreDocument {
   where
     K: JwkStorage + JwkStoragePQ,
     I: KeyIdStorage,
-    T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
+    T: Clone + Serialize + DeserializeOwned + Sync,
   {
     if options.detached_payload {
       return Err(Error::EncodingError(Box::<dyn std::error::Error + Send + Sync>::from(

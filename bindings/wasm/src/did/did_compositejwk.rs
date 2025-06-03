@@ -38,7 +38,7 @@ impl WasmDIDCompositeJwk {
   }
 
   /// Returns the JSON WEB KEY (JWK) encoded inside this `did:jwk`.
-  #[wasm_bindgen]
+  #[wasm_bindgen(js_name = compositeJwk)]
   pub fn composite_jwk(&self) -> WasmCompositeJwk {
     self.0.composite_jwk().into()
   }

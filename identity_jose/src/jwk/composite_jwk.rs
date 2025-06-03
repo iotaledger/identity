@@ -28,12 +28,10 @@ impl CompositeAlgId {
 
 /// Represent a combination of a traditional public key and a post-quantum public key both in Jwk format.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CompositeJwk {
-  #[serde(rename = "algId")]
   alg_id: CompositeAlgId,
-  #[serde(rename = "traditionalPublicKey")]
   traditional_public_key: Jwk,
-  #[serde(rename = "pqPublicKey")]
   pq_public_key: Jwk,
 }
 

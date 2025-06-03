@@ -189,7 +189,7 @@ pub trait JwkDocumentExtHybrid {
     K: JwkStorage + JwkStoragePQ,
     I: KeyIdStorage,
     T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
-    CRED: ToOwned<Owned = CRED> + Serialize + DeserializeOwned + Clone + Sync;
+    CRED: Serialize + DeserializeOwned + Clone + Sync;
 }
 
 generate_method_hybrid_for_document_type!(CoreDocument, generate_method_hybrid_core_document);

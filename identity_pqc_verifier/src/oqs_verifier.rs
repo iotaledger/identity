@@ -1,6 +1,7 @@
 // Copyright 2024 Fondazione Links
 // SPDX-License-Identifier: Apache-2.0
 
+use identity_jose::jwk::CompositeAlgId;
 use identity_jose::jwk::Jwk;
 use identity_jose::jwk::JwkParamsAKP;
 use identity_jose::jws::SignatureVerificationError;
@@ -83,8 +84,8 @@ impl OQSVerifier {
         .ok_or(SignatureVerificationErrorKind::InvalidSignature)?;
 
       let ctx = match  alg {
-        Algorithm::MlDsa44 => &[0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x08, 0x01, 0x3E],
-        Algorithm::MlDsa65 => &[0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x08, 0x01, 0x47],
+        Algorithm::MlDsa44 => CompositeAlgId::IdMldsa44Ed25519.domain(),
+        Algorithm::MlDsa65 => CompositeAlgId::IdMldsa65Ed25519.domain(),
         _ => return Err(SignatureVerificationError::new(SignatureVerificationErrorKind::UnsupportedKeyType)),
       };
   

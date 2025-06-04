@@ -490,7 +490,7 @@ mod iota_document {
     where
       K: JwkStorage + JwkStoragePQ,
       I: KeyIdStorage,
-      T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
+      T: Clone + Serialize + DeserializeOwned + Sync,
     {
       self
         .core_document()

@@ -316,7 +316,7 @@ impl JwkDocumentExtHybrid for CoreDocument {
         let mut input = b"CompositeAlgorithmSignatures2025".to_vec();
 
         //Domain: id-MLDSA44-Ed25519
-        let domain = &[0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x08, 0x01, 0x3E];
+        let domain = CompositeAlgId::IdMldsa44Ed25519.domain();
         
         input.extend_from_slice(domain);
 
@@ -333,7 +333,7 @@ impl JwkDocumentExtHybrid for CoreDocument {
         let mut input = b"CompositeAlgorithmSignatures2025".to_vec();
 
         //Domain: id-MLDSA65-Ed25519
-        let domain = &[0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x08, 0x01, 0x47];
+        let domain = CompositeAlgId::IdMldsa65Ed25519.domain();
         
         input.extend_from_slice(domain);
         

@@ -6,6 +6,7 @@ use std::borrow::Cow;
 
 use crate::error::Error;
 use crate::error::Result;
+use crate::jwk::CompositeAlgId;
 use crate::jwk::Jwk;
 use crate::jws::JwsAlgorithm;
 use crate::jws::JwsHeader;
@@ -212,7 +213,7 @@ impl<'a> JwsValidationItem<'a> {
         let mut input = b"CompositeAlgorithmSignatures2025".to_vec();
 
         //Domain: id-MLDSA44-Ed25519
-        input.extend_from_slice(&[0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x08, 0x01, 0x3E]);
+        input.extend_from_slice(CompositeAlgId::IdMldsa44Ed25519.domain());
 
         //len(ctx) = 0
         input.push(0x00);
@@ -231,7 +232,7 @@ impl<'a> JwsValidationItem<'a> {
         let mut input = b"CompositeAlgorithmSignatures2025".to_vec();
 
         //Domain: id-MLDSA65-Ed25519
-        input.extend_from_slice(&[0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x08, 0x01, 0x47]);
+        input.extend_from_slice(CompositeAlgId::IdMldsa65Ed25519.domain());
         
         //len(ctx) = 0
         input.push(0x00);

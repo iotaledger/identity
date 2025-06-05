@@ -15,6 +15,8 @@ use iota_interaction_ts::bindings::WasmIotaClient;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::bindings::WasmOwnedObjectRef;
 use iota_interaction_ts::WasmPublicKey;
+use product_common::bindings::core_client::WasmManagedCoreClientReadOnly;
+use product_common::bindings::transaction::WasmTransactionBuilder;
 use product_common::transaction::transaction_builder::Transaction;
 
 use identity_iota::iota::rebased::Error;
@@ -28,14 +30,12 @@ use super::IdentityContainer;
 use super::WasmIdentityClientReadOnly;
 use super::WasmIotaAddress;
 use super::WasmObjectID;
-use super::WasmTransactionBuilder;
 
 use crate::error::Result;
 use crate::error::WasmResult;
 use crate::iota::IotaDocumentLock;
 use crate::iota::WasmIotaDID;
 use crate::iota::WasmIotaDocument;
-use crate::rebased::WasmManagedCoreClientReadOnly;
 use identity_iota::iota::IotaDocument;
 use wasm_bindgen::prelude::*;
 

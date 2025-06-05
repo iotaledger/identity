@@ -9,6 +9,7 @@ use identity_iota::iota::rebased::migration::DelegationTokenRevocation;
 use identity_iota::iota::rebased::migration::DeleteDelegationToken;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use js_sys::Object;
+use product_common::bindings::transaction::WasmTransactionBuilder;
 use product_common::transaction::transaction_builder::Transaction as _;
 use product_common::transaction::transaction_builder::TransactionBuilder;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -22,7 +23,6 @@ use crate::error::WasmResult;
 
 use super::WasmIdentityClientReadOnly;
 use super::WasmOnChainIdentity;
-use super::WasmTransactionBuilder;
 
 #[wasm_bindgen(typescript_custom_section)]
 pub const _CONTROLLER_TOKEN_DEF: &str = r#"

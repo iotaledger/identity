@@ -10,6 +10,7 @@ use identity_iota::iota::rebased::proposals::SendAction;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
 use js_sys::Object;
+use product_common::bindings::core_client::WasmManagedCoreClientReadOnly;
 use product_common::transaction::transaction_builder::Transaction;
 use tokio::sync::RwLock;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -21,9 +22,8 @@ use super::StringSet;
 use crate::error::Result;
 use crate::error::WasmResult;
 use crate::rebased::WasmControllerToken;
-use crate::rebased::WasmManagedCoreClientReadOnly;
 use crate::rebased::WasmOnChainIdentity;
-use crate::rebased::WasmTransactionBuilder;
+use product_common::bindings::transaction::WasmTransactionBuilder;
 
 #[wasm_bindgen(js_name = SendAction)]
 #[derive(Clone)]

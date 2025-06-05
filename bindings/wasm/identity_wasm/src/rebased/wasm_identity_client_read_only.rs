@@ -8,6 +8,7 @@ use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use identity_iota::iota::rebased::migration::Identity;
 use identity_iota::iota_interaction::types::base_types::ObjectID;
 use iota_interaction_ts::bindings::WasmIotaClient;
+use product_common::core_client::CoreClientReadOnly as _;
 use wasm_bindgen::prelude::*;
 
 use super::WasmObjectID;
@@ -71,6 +72,16 @@ impl WasmIdentityClientReadOnly {
     self.0.package_id().to_string()
   }
 
+  #[wasm_bindgen(js_name = packageHistory)]
+  pub fn package_history(&self) -> Vec<String> {
+    self
+      .0
+      .package_history()
+      .into_iter()
+      .map(|pkg_id| pkg_id.to_string())
+      .collect()
+  }
+
   #[wasm_bindgen(js_name = iotaClient)]
   pub fn iota_client(&self) -> WasmIotaClient {
     (*self.0).clone().into_inner()
@@ -80,22 +91,6 @@ impl WasmIdentityClientReadOnly {
   pub fn network(&self) -> String {
     self.0.network().to_string()
   }
-
-  // TODO: implement later on
-  // <
-
-  // pub async fn get_object_by_id<T>(&self, id: ObjectID) -> Result<T, Error> where T: DeserializeOwned {}
-
-  // pub async fn get_object_ref_by_id(&self, obj: ObjectID) -> Result<Option<OwnedObjectRef>, Error> {}
-
-  // pub async fn find_owned_ref_for_address<P>(
-  //   &self,
-  //   address: IotaAddress,
-  //   tag: StructTag,
-  //   predicate: P,
-  // ) -> Result<Option<ObjectRef>, Error> {}
-
-  // >
 
   #[wasm_bindgen(js_name = resolveDid)]
   pub async fn resolve_did(&self, did: &WasmIotaDID) -> Result<WasmIotaDocument, JsError> {

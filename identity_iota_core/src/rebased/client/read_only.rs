@@ -18,7 +18,6 @@ use product_common::network_name::NetworkName;
 
 use crate::iota_interaction_adapter::IotaClientAdapter;
 use crate::rebased::iota;
-use crate::rebased::iota::package::Env;
 use crate::rebased::migration::get_alias;
 use crate::rebased::migration::get_identity;
 use crate::rebased::migration::lookup;
@@ -130,10 +129,10 @@ impl IdentityClientReadOnly {
     let client = IotaClientAdapter::new(iota_client);
     let network = network_id(&client).await?;
 
-    // Use the passed pkg_id to add a new env or override the information of an existing one.
+    // Use the passed pkg_id to force it at the top of the list or create a new env.
     {
       let mut registry = iota::package::identity_package_registry_mut().await;
-      registry.insert_env(Env::new(network.as_ref()), vec![package_id]);
+      registry.insert_new_package_version(&network, package_id);
     }
 
     Self::new_internal(client, network).await

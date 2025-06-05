@@ -1,6 +1,8 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
@@ -112,6 +114,13 @@ impl PackageRegistry {
       self.aliases.insert(alias, chain_id.clone());
     }
     self.envs.insert(chain_id, history);
+  }
+
+  pub(crate) fn insert_new_package_version(&mut self, chain_id: &str, package: ObjectID) {
+    let history = self.envs.entry(chain_id.to_string()).or_default();
+    if history.last() != Some(&package) {
+      history.push(package)
+    }
   }
 }
 

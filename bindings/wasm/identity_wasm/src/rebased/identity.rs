@@ -12,6 +12,8 @@ use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
 use iota_interaction_ts::error::WasmResult as _;
 use js_sys::Object;
+use product_common::bindings::core_client::WasmManagedCoreClientReadOnly;
+use product_common::bindings::transaction::WasmTransactionBuilder;
 use product_common::transaction::transaction_builder::Transaction;
 use tokio::sync::RwLock;
 use wasm_bindgen::prelude::*;
@@ -23,7 +25,6 @@ use crate::iota::WasmIotaDocument;
 use crate::rebased::proposals::WasmCreateConfigChangeProposal;
 use crate::rebased::proposals::WasmCreateUpdateDidProposal;
 use crate::rebased::WasmDeleteDelegationToken;
-use crate::rebased::WasmManagedCoreClientReadOnly;
 
 use super::proposals::StringCouple;
 use super::proposals::WasmConfigChange;
@@ -33,7 +34,6 @@ use super::WasmDelegationToken;
 use super::WasmDelegationTokenRevocation;
 use super::WasmIdentityClient;
 use super::WasmIotaAddress;
-use super::WasmTransactionBuilder;
 
 // Helper type for `WasmIdentityBuilder::controllers`.
 // Has getters to support `Clone` for serialization
@@ -297,7 +297,7 @@ impl WasmCreateIdentity {
       .build_programmable_transaction(&managed_client)
       .await
       .wasm_result()?;
-    bcs::to_bytes(&pt).wasm_result()
+    crate::error::WasmResult::wasm_result(bcs::to_bytes(&pt))
   }
 
   #[wasm_bindgen]

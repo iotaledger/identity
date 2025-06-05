@@ -14,8 +14,6 @@ use tokio::sync::RwLockWriteGuard;
 
 use crate::rebased::Error;
 
-pub(crate) const MAINNET_CHAIN_ID: &str = "6364aad5";
-
 macro_rules! object_id {
   ($id:literal) => {
     ObjectID::from_hex_literal($id).unwrap()
@@ -137,19 +135,6 @@ where
     .ok_or_else(|| Error::InvalidConfig(format!("cannot find IdentityIota package ID for network {network}")))
 }
 
-pub(crate) async fn identity_package_history<C>(client: &C) -> Result<RwLockReadGuard<'static, [ObjectID]>, Error>
-where
-  C: CoreClientReadOnly,
-{
-  let network = client.network_name().as_ref();
-  let guard = IOTA_IDENTITY_PACKAGE_REGISTRY.read().await;
-  RwLockReadGuard::try_map(guard, |registry| registry.history(network)).map_err(|_| {
-    Error::InvalidConfig(format!(
-      "cannot find IdentityIota package history for network {network}"
-    ))
-  })
-}
-
 #[cfg(test)]
 mod tests {
   use iota_sdk::IotaClientBuilder;
@@ -177,6 +162,17 @@ mod tests {
     let iota_client = IotaClientBuilder::default().build_mainnet().await?;
     let _identity_client = IdentityClientReadOnly::new(iota_client).await?;
 
+    Ok(())
+  }
+
+  #[tokio::test]
+  async fn testnet_has_multiple_package_versions() -> anyhow::Result<()> {
+    use product_common::core_client::CoreClientReadOnly as _;
+
+    let iota_client = IotaClientBuilder::default().build_testnet().await?;
+    let identity_client = IdentityClientReadOnly::new(iota_client).await?;
+
+    assert!(identity_client.package_history().len() > 1);
     Ok(())
   }
 }

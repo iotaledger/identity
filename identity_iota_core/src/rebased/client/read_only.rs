@@ -6,6 +6,7 @@ use std::ops::Deref;
 use std::pin::Pin;
 use std::str::FromStr;
 
+use async_trait::async_trait;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt as _;
 use identity_core::common::Url;
@@ -18,7 +19,6 @@ use product_common::network_name::NetworkName;
 use crate::iota_interaction_adapter::IotaClientAdapter;
 use crate::rebased::iota;
 use crate::rebased::iota::package::Env;
-use crate::rebased::iota::package::MAINNET_CHAIN_ID;
 use crate::rebased::migration::get_alias;
 use crate::rebased::migration::get_identity;
 use crate::rebased::migration::lookup;
@@ -38,7 +38,7 @@ use iota_interaction_ts::bindings::WasmIotaClient;
 #[derive(Clone)]
 pub struct IdentityClientReadOnly {
   iota_client: IotaClientAdapter,
-  iota_identity_pkg_id: ObjectID,
+  package_history: Vec<ObjectID>,
   network: NetworkName,
   chain_id: String,
 }
@@ -54,8 +54,11 @@ impl IdentityClientReadOnly {
   /// Returns `iota_identity`'s package ID.
   /// The ID of the packages depends on the network
   /// the client is connected to.
-  pub const fn package_id(&self) -> ObjectID {
-    self.iota_identity_pkg_id
+  pub fn package_id(&self) -> ObjectID {
+    *self
+      .package_history
+      .first()
+      .expect("at least one package exists in history")
   }
 
   /// Returns the name of the network the client is
@@ -91,29 +94,26 @@ impl IdentityClientReadOnly {
 
   async fn new_internal(iota_client: IotaClientAdapter, network: NetworkName) -> Result<Self, Error> {
     let chain_id = network.as_ref().to_string();
-    let (network, iota_identity_pkg_id) = {
+    let (network, package_history) = {
       let package_registry = iota::package::identity_package_registry().await;
-      let package_id = package_registry
-        .package_id(&network)
+      let package_history = package_registry
+        .history(&network)
         .ok_or_else(|| {
         Error::InvalidConfig(format!(
           "no information for a published `iota_identity` package on network {network}; try to use `IdentityClientReadOnly::new_with_package_id`"
         ))
-      })?;
-      let network = match chain_id.as_str() {
-        // Replace Mainnet's name with "iota".
-        MAINNET_CHAIN_ID => NetworkName::try_from("iota").expect("valid network name"),
-        _ => package_registry
-          .chain_alias(&chain_id)
-          .and_then(|alias| NetworkName::try_from(alias).ok())
-          .unwrap_or(network),
-      };
+      })?
+      .to_vec();
+      let network = package_registry
+        .chain_alias(&chain_id)
+        .and_then(|alias| NetworkName::try_from(alias).ok())
+        .unwrap_or(network);
 
-      (network, package_id)
+      (network, package_history)
     };
     Ok(IdentityClientReadOnly {
       iota_client,
-      iota_identity_pkg_id,
+      package_history,
       network,
       chain_id,
     })
@@ -244,9 +244,11 @@ pub fn get_object_id_from_did(did: &IotaDID) -> Result<ObjectID, Error> {
     .map_err(|err| Error::DIDResolutionError(format!("could not parse object id from did {did}; {err}")))
 }
 
+#[cfg_attr(feature = "send-sync", async_trait)]
+#[cfg_attr(not(feature = "send-sync"), async_trait(?Send))]
 impl CoreClientReadOnly for IdentityClientReadOnly {
   fn package_id(&self) -> ObjectID {
-    self.iota_identity_pkg_id
+    self.package_id()
   }
 
   fn network_name(&self) -> &NetworkName {
@@ -255,5 +257,9 @@ impl CoreClientReadOnly for IdentityClientReadOnly {
 
   fn client_adapter(&self) -> &IotaClientAdapter {
     &self.iota_client
+  }
+
+  fn package_history(&self) -> Vec<ObjectID> {
+    self.package_history.clone()
   }
 }

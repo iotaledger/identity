@@ -6,30 +6,26 @@ use std::ops::Deref;
 use std::pin::Pin;
 use std::str::FromStr;
 
-use crate::rebased::iota;
-use crate::rebased::iota::package::Env;
-use crate::rebased::iota::package::Metadata;
-
-use crate::rebased::iota::package::MAINNET_CHAIN_ID;
-use crate::IotaDID;
-use crate::IotaDocument;
-
 use futures::stream::FuturesUnordered;
-
+use futures::StreamExt as _;
+use identity_core::common::Url;
+use identity_did::DID;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::IotaClientTrait;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
 
 use crate::iota_interaction_adapter::IotaClientAdapter;
+use crate::rebased::iota;
+use crate::rebased::iota::package::Env;
+use crate::rebased::iota::package::MAINNET_CHAIN_ID;
 use crate::rebased::migration::get_alias;
 use crate::rebased::migration::get_identity;
 use crate::rebased::migration::lookup;
 use crate::rebased::migration::Identity;
 use crate::rebased::Error;
-use futures::StreamExt as _;
-use identity_core::common::Url;
-use identity_did::DID;
+use crate::IotaDID;
+use crate::IotaDocument;
 
 #[cfg(not(target_arch = "wasm32"))]
 use iota_interaction::IotaClient;
@@ -137,7 +133,7 @@ impl IdentityClientReadOnly {
     // Use the passed pkg_id to add a new env or override the information of an existing one.
     {
       let mut registry = iota::package::identity_package_registry_mut().await;
-      registry.insert_env(Env::new(network.as_ref()), Metadata::from_package_id(package_id));
+      registry.insert_env(Env::new(network.as_ref()), vec![package_id]);
     }
 
     Self::new_internal(client, network).await
@@ -248,7 +244,6 @@ pub fn get_object_id_from_did(did: &IotaDID) -> Result<ObjectID, Error> {
     .map_err(|err| Error::DIDResolutionError(format!("could not parse object id from did {did}; {err}")))
 }
 
-#[async_trait::async_trait]
 impl CoreClientReadOnly for IdentityClientReadOnly {
   fn package_id(&self) -> ObjectID {
     self.iota_identity_pkg_id

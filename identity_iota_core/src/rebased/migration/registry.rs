@@ -17,7 +17,7 @@ use product_common::core_client::CoreClientReadOnly;
 use tokio::sync::RwLock;
 
 use crate::rebased::client::IdentityClientReadOnly;
-use crate::rebased::iota::package::identity_package_registry;
+use crate::rebased::iota::package::identity_package_id;
 
 use super::get_identity;
 use super::OnChainIdentity;
@@ -47,9 +47,9 @@ where
     return Ok(registry.parse().unwrap());
   }
 
-  let package_id = identity_package_registry()
+  let package_id = identity_package_id(client)
     .await
-    .package_id(network_id)
+    .ok()
     .ok_or_else(|| Error::Client(anyhow::anyhow!("unknown network {network_id}")))?;
   let registry_id = find_migration_registry(client, package_id).await?;
 

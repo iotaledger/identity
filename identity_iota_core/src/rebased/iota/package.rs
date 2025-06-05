@@ -1,57 +1,55 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use anyhow::Context;
 use iota_interaction::types::base_types::ObjectID;
 use product_common::core_client::CoreClientReadOnly;
 use serde::Deserialize;
-use serde::Deserializer;
 use serde::Serialize;
 use tokio::sync::RwLock;
 use tokio::sync::RwLockReadGuard;
 use tokio::sync::RwLockWriteGuard;
-use tokio::sync::TryLockError;
 
 use crate::rebased::Error;
 
 pub(crate) const MAINNET_CHAIN_ID: &str = "6364aad5";
 
-type PackageRegistryLock = RwLockReadGuard<'static, PackageRegistry>;
-type PackageRegistryLockMut = RwLockWriteGuard<'static, PackageRegistry>;
+macro_rules! object_id {
+  ($id:literal) => {
+    ObjectID::from_hex_literal($id).unwrap()
+  };
+}
 
-static IDENTITY_PACKAGE_REGISTRY: LazyLock<RwLock<PackageRegistry>> = LazyLock::new(|| {
-  let move_lock_content = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/packages/iota_identity/Move.lock"));
-  RwLock::new(PackageRegistry::from_move_lock_content(move_lock_content).expect("Move.lock exists and it's valid"))
+static IOTA_IDENTITY_PACKAGE_REGISTRY: LazyLock<RwLock<PackageRegistry>> = LazyLock::new(|| {
+  RwLock::new({
+    let mut registry = PackageRegistry::default();
+    // Add well-known networks.
+    registry.insert_env(
+      Env::new_with_alias("6364aad5", "iota"),
+      vec![object_id!(
+        "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08"
+      )],
+    );
+    registry.insert_env(
+      Env::new_with_alias("2304aa97", "testnet"),
+      vec![
+        object_id!("0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555"),
+        object_id!("0x3403da7ec4cd2ff9bdf6f34c0b8df5a2bd62c798089feb0d2ebf1c2e953296dc"),
+      ],
+    );
+    registry.insert_env(
+      Env::new_with_alias("e678123a", "devnet"),
+      vec![
+        object_id!("0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103"),
+        object_id!("0x6a976d3da90db5d27f8a0c13b3268a37e582b455cfc7bf72d6461f6e8f668823"),
+      ],
+    );
+
+    registry
+  })
 });
-
-pub(crate) async fn identity_package_registry() -> PackageRegistryLock {
-  IDENTITY_PACKAGE_REGISTRY.read().await
-}
-
-pub(crate) fn try_identity_package_registry() -> Result<PackageRegistryLock, TryLockError> {
-  IDENTITY_PACKAGE_REGISTRY.try_read()
-}
-
-pub(crate) fn blocking_identity_registry() -> PackageRegistryLock {
-  IDENTITY_PACKAGE_REGISTRY.blocking_read()
-}
-
-pub(crate) async fn identity_package_registry_mut() -> PackageRegistryLockMut {
-  IDENTITY_PACKAGE_REGISTRY.write().await
-}
-
-pub(crate) fn try_identity_package_registry_mut() -> Result<PackageRegistryLockMut, TryLockError> {
-  IDENTITY_PACKAGE_REGISTRY.try_write()
-}
-
-pub(crate) fn blocking_identity_registry_mut() -> PackageRegistryLockMut {
-  IDENTITY_PACKAGE_REGISTRY.blocking_write()
-}
 
 /// Network / Chain information.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -78,53 +76,26 @@ impl Env {
   }
 }
 
-/// A published package's metadata for a certain environment.
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) struct Metadata {
-  pub original_published_id: ObjectID,
-  pub latest_published_id: ObjectID,
-  #[serde(deserialize_with = "deserialize_u64_from_str")]
-  pub published_version: u64,
-}
-
-impl Metadata {
-  /// Create a new [Metadata] assuming a newly published package.
-  pub(crate) fn from_package_id(package: ObjectID) -> Self {
-    Self {
-      original_published_id: package,
-      latest_published_id: package,
-      published_version: 1,
-    }
-  }
-}
-
-fn deserialize_u64_from_str<'de, D>(deserializer: D) -> Result<u64, D::Error>
-where
-  D: Deserializer<'de>,
-{
-  use serde::de::Error;
-
-  String::deserialize(deserializer)?.parse().map_err(D::Error::custom)
-}
-
 #[derive(Debug, Clone, Default)]
 pub(crate) struct PackageRegistry {
   aliases: HashMap<String, String>,
-  envs: HashMap<String, Metadata>,
+  envs: HashMap<String, Vec<ObjectID>>,
 }
 
 impl PackageRegistry {
-  /// Returns the package [Metadata] for a given `chain`.
+  /// Returns the historical list of this package's versions for a given `chain`.
   /// `chain` can either be a chain identifier or its alias.
-  pub(crate) fn metadata(&self, chain: &str) -> Option<&Metadata> {
+  ///
+  /// ID at position `0` is the first ever published version of the package, `1` is
+  /// the second, and so forth until the last, which is the currently active version.
+  pub(crate) fn history(&self, chain: &str) -> Option<&[ObjectID]> {
     let from_alias = || self.aliases.get(chain).and_then(|chain_id| self.envs.get(chain_id));
-    self.envs.get(chain).or_else(from_alias)
+    self.envs.get(chain).or_else(from_alias).map(|v| v.as_slice())
   }
 
   /// Returns this package's latest version ID for a given chain.
   pub(crate) fn package_id(&self, chain: &str) -> Option<ObjectID> {
-    self.metadata(chain).map(|meta| meta.latest_published_id)
+    self.history(chain).and_then(|versions| versions.last()).copied()
   }
 
   /// Returns the alias of a given chain-id.
@@ -136,51 +107,22 @@ impl PackageRegistry {
   }
 
   /// Adds or replaces this package's metadata for a given environment.
-  pub(crate) fn insert_env(&mut self, env: Env, metadata: Metadata) {
+  pub(crate) fn insert_env(&mut self, env: Env, history: Vec<ObjectID>) {
     let Env { chain_id, alias } = env;
 
     if let Some(alias) = alias {
       self.aliases.insert(alias, chain_id.clone());
     }
-    self.envs.insert(chain_id, metadata);
+    self.envs.insert(chain_id, history);
   }
+}
 
-  /// Merges another [PackageRegistry] into this one.
-  pub(crate) fn join(&mut self, other: PackageRegistry) {
-    self.aliases.extend(other.aliases);
-    self.envs.extend(other.envs);
-  }
+pub(crate) async fn identity_package_registry() -> RwLockReadGuard<'static, PackageRegistry> {
+  IOTA_IDENTITY_PACKAGE_REGISTRY.read().await
+}
 
-  /// Creates a [PackageRegistry] from a Move.lock file.
-  pub(crate) fn from_move_lock_content(move_lock: &str) -> anyhow::Result<Self> {
-    let mut move_lock: toml::Table = move_lock.parse()?;
-
-    move_lock
-      .remove("env")
-      .context("invalid Move.lock file: missing `env` table")?
-      .as_table_mut()
-      .map(std::mem::take)
-      .context("invalid Move.lock file: `env` is not a table")?
-      .into_iter()
-      .try_fold(Self::default(), |mut registry, (alias, table)| {
-        let toml::Value::Table(mut table) = table else {
-          anyhow::bail!("invalid Move.lock file: invalid `env` table");
-        };
-        let chain_id: String = table
-          .remove("chain-id")
-          .context(format!("invalid Move.lock file: missing `chain-id` for env {alias}"))?
-          .try_into()
-          .context("invalid Move.lock file: invalid `chain-id`")?;
-
-        let env = Env::new_with_alias(chain_id, alias.clone());
-        let metadata = table
-          .try_into()
-          .context(format!("invalid Move.lock file: invalid env metadata for {alias}"))?;
-        registry.insert_env(env, metadata);
-
-        Ok(registry)
-      })
-  }
+pub(crate) async fn identity_package_registry_mut() -> RwLockWriteGuard<'static, PackageRegistry> {
+  IOTA_IDENTITY_PACKAGE_REGISTRY.write().await
 }
 
 pub(crate) async fn identity_package_id<C>(client: &C) -> Result<ObjectID, Error>
@@ -188,10 +130,24 @@ where
   C: CoreClientReadOnly,
 {
   let network = client.network_name().as_ref();
-  identity_package_registry()
+  IOTA_IDENTITY_PACKAGE_REGISTRY
+    .read()
     .await
     .package_id(network)
     .ok_or_else(|| Error::InvalidConfig(format!("cannot find IdentityIota package ID for network {network}")))
+}
+
+pub(crate) async fn identity_package_history<C>(client: &C) -> Result<RwLockReadGuard<'static, [ObjectID]>, Error>
+where
+  C: CoreClientReadOnly,
+{
+  let network = client.network_name().as_ref();
+  let guard = IOTA_IDENTITY_PACKAGE_REGISTRY.read().await;
+  RwLockReadGuard::try_map(guard, |registry| registry.history(network)).map_err(|_| {
+    Error::InvalidConfig(format!(
+      "cannot find IdentityIota package history for network {network}"
+    ))
+  })
 }
 
 #[cfg(test)]

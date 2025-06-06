@@ -49,8 +49,7 @@ where
 
   let package_id = identity_package_id(client)
     .await
-    .ok()
-    .ok_or_else(|| Error::Client(anyhow::anyhow!("unknown network {network_id}")))?;
+    .map_err(|_| Error::Client(anyhow::anyhow!("unknown network {network_id}")))?;
   let registry_id = find_migration_registry(client, package_id).await?;
 
   // Cache registry for network.

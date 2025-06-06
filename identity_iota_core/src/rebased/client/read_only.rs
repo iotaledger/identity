@@ -56,7 +56,7 @@ impl IdentityClientReadOnly {
   pub fn package_id(&self) -> ObjectID {
     *self
       .package_history
-      .first()
+      .last()
       .expect("at least one package exists in history")
   }
 
@@ -129,7 +129,7 @@ impl IdentityClientReadOnly {
     let client = IotaClientAdapter::new(iota_client);
     let network = network_id(&client).await?;
 
-    // Use the passed pkg_id to force it at the top of the list or create a new env.
+    // Use the passed pkg_id to force it at the end of the list or create a new env.
     {
       let mut registry = iota::package::identity_package_registry_mut().await;
       registry.insert_new_package_version(&network, package_id);

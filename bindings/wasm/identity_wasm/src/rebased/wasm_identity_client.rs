@@ -8,6 +8,7 @@ use anyhow::anyhow;
 use identity_iota::iota::rebased::client::IdentityClient;
 use identity_iota::iota::rebased::client::PublishDidDocument;
 use product_common::core_client::CoreClient as _;
+use product_common::core_client::CoreClientReadOnly as _;
 use product_common::transaction::TransactionOutputInternal;
 
 use iota_interaction_ts::bindings::WasmExecutionStatus;
@@ -113,6 +114,16 @@ impl WasmIdentityClient {
   #[wasm_bindgen(js_name = packageId)]
   pub fn package_id(&self) -> String {
     self.0.package_id().to_string()
+  }
+
+  #[wasm_bindgen(js_name = packageHistory)]
+  pub fn package_history(&self) -> Vec<String> {
+    self
+      .0
+      .package_history()
+      .into_iter()
+      .map(|pkg_id| pkg_id.to_string())
+      .collect()
   }
 
   #[wasm_bindgen(js_name = resolveDid)]

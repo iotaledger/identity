@@ -228,6 +228,8 @@ where
   }
 }
 
+#[cfg_attr(feature = "send-sync", async_trait)]
+#[cfg_attr(not(feature = "send-sync"), async_trait(?Send))]
 impl<S> CoreClientReadOnly for IdentityClient<S>
 where
   S: OptionalSync,
@@ -238,6 +240,10 @@ where
 
   fn package_id(&self) -> ObjectID {
     self.read_client.package_id()
+  }
+
+  fn package_history(&self) -> Vec<ObjectID> {
+    self.read_client.package_history()
   }
 
   fn network_name(&self) -> &NetworkName {

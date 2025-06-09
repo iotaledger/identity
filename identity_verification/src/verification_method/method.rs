@@ -238,28 +238,26 @@ impl VerificationMethod {
   /// Creates a new [`VerificationMethod`] from the given `did` and [`CompositeJwk`]. If `fragment` is not given
   /// the `kid` value of the given `key` will be used, if present, otherwise an error is returned.
   pub fn new_from_compositejwk<D: DID>(did: D, key: CompositeJwk, fragment: Option<&str>) -> Result<Self> {
-    let composite_fragment = key.traditional_public_key()
-    .kid()
-    .map(|s| s.to_string())
-    .or_else(|| key.pq_public_key().kid().map(|s| s.to_string()))
-    .map(|s| {
-      if let (Some(str1), Some(str2)) = (key.traditional_public_key().kid(), key.pq_public_key().kid()) {
-        format!("{}~{}", str1, str2)
+    // Lazily compute the composite fragment.
+    let composite_fragment = || {
+      let maybe_tpk_kid = key.traditional_public_key().kid();
+      let maybe_pqpk_kid = key.pq_public_key().kid();
+      if let (Some(tpk_kid), Some(pqpk_kid)) = (maybe_tpk_kid, maybe_pqpk_kid) {
+        Some(Cow::Owned(format!("{}~{}", tpk_kid, pqpk_kid)))
       } else {
-        s
+        maybe_tpk_kid.or(maybe_pqpk_kid).map(Cow::Borrowed)
       }
-    });
+    };
 
+    let fragment = {
+      let given_fragment = fragment
+        .map(Cow::Borrowed)
+        .or_else(composite_fragment)
+        .ok_or(Error::InvalidMethod("an explicit fragment or kid is required"))?;
 
-    let fragment: Cow<'_, str> = {
-      let given_fragment: &str = fragment
-        .or(composite_fragment.as_deref())
-        .ok_or(Error::InvalidMethod(
-          "an explicit fragment or kid is required",
-        ))?;
       // Make sure the fragment starts with "#"
       if given_fragment.starts_with('#') {
-        Cow::Borrowed(given_fragment)
+        given_fragment
       } else {
         Cow::Owned(format!("#{given_fragment}"))
       }

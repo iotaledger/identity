@@ -3,7 +3,7 @@
 
 use identity_jose::jwk::CompositeAlgId;
 use identity_jose::jwk::Jwk;
-use identity_jose::jwk::JwkParamsAKP;
+use identity_jose::jwk::JwkParamsAkp;
 use identity_jose::jws::SignatureVerificationError;
 use identity_jose::jws::SignatureVerificationErrorKind;
 use identity_jose::jws::VerificationInput;
@@ -20,7 +20,7 @@ impl OQSVerifier {
   /// Verify a JWS signature secured with the [`Algorithm`] defined in liboqs.
   pub fn verify(input: VerificationInput, public_key: &Jwk, alg: Algorithm) -> Result<(), SignatureVerificationError> {
     
-    let params: &JwkParamsAKP = public_key
+    let params: &JwkParamsAkp = public_key
       .try_akp_params()
       .map_err(|_| SignatureVerificationErrorKind::UnsupportedKeyType)?;
 
@@ -57,7 +57,7 @@ impl OQSVerifier {
     /// The ctx value is set as the Domain separator value for binding the signature to the Composite OID
     pub fn verify_hybrid_signature(input: VerificationInput, public_key: &Jwk, alg: Algorithm) -> Result<(), SignatureVerificationError> {
       
-      let params: &JwkParamsAKP = public_key
+      let params: &JwkParamsAkp = public_key
         .try_akp_params()
         .map_err(|_| SignatureVerificationErrorKind::UnsupportedKeyType)?;
   

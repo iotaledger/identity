@@ -17,7 +17,7 @@ use crate::jwk::JwkParamsEc;
 use crate::jwk::JwkParamsOct;
 use crate::jwk::JwkParamsOkp;
 use crate::jwk::JwkParamsRsa;
-use crate::jwk::JwkParamsAKP;
+use crate::jwk::JwkParamsAkp;
 use crate::jwk::JwkType;
 use crate::jwk::JwkUse;
 use crate::jwu::encode_b64;
@@ -341,7 +341,7 @@ impl Jwk {
   }
 
   /// Returns the [`JwkParamsAkp`] in this JWK if it is of type `Akp`.
-  pub fn try_akp_params(&self) -> Result<&JwkParamsAKP> {
+  pub fn try_akp_params(&self) -> Result<&JwkParamsAkp> {
     match self.params() {
       JwkParams::Akp(params) => Ok(params),
       _ => Err(Error::KeyError("Akp")),
@@ -349,7 +349,7 @@ impl Jwk {
   }
 
   /// Returns a mutable reference to the [`JwkParamsAkp`] in this JWK if it is of type `Akp`.
-  pub fn try_akp_params_mut(&mut self) -> Result<&mut JwkParamsAKP> {
+  pub fn try_akp_params_mut(&mut self) -> Result<&mut JwkParamsAkp> {
     match self.params_mut() {
       JwkParams::Akp(params) => Ok(params),
       _ => Err(Error::KeyError("Akp")),
@@ -404,7 +404,7 @@ impl Jwk {
       JwkParams::Okp(JwkParamsOkp { crv, x, .. }) => {
         format!(r#"{{"crv":"{crv}","kty":"{kty}","x":"{x}"}}"#)
       }
-      JwkParams::Akp(JwkParamsAKP { public, .. }) => {
+      JwkParams::Akp(JwkParamsAkp { public, .. }) => {
         format!(r#"{{"kty":"{kty}","pub":"{public}"}}"#)
       }
     }

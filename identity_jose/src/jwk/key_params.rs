@@ -4,7 +4,7 @@
 use zeroize::Zeroize;
 
 use super::BlsCurve;
-use super::JwkParamsAKP;
+use super::JwkParamsAkp;
 use crate::error::Error;
 use crate::error::Result;
 use crate::jwk::EcCurve;
@@ -29,7 +29,7 @@ pub enum JwkParams {
   /// Octet Key Pairs parameters.
   Okp(JwkParamsOkp),
   /// Algorithm Key Pair Type parameters
-  Akp(JwkParamsAKP),
+  Akp(JwkParamsAkp),
 }
 
 impl JwkParams {
@@ -40,7 +40,7 @@ impl JwkParams {
       JwkType::Rsa => Self::Rsa(JwkParamsRsa::new()),
       JwkType::Oct => Self::Oct(JwkParamsOct::new()),
       JwkType::Okp => Self::Okp(JwkParamsOkp::new()),
-      JwkType::Akp => Self::Akp(JwkParamsAKP::new())
+      JwkType::Akp => Self::Akp(JwkParamsAkp::new())
     }
   }
 

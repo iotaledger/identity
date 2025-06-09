@@ -3,7 +3,7 @@
 
 import { ml_dsa44, ml_dsa65, ml_dsa87 } from '@noble/post-quantum/ml-dsa';
 import { decodeB64, Jwk, IJwsVerifier} from "~identity_wasm";
-import { JwsAlgorithm } from "./jose";
+import { JwsAlgorithm, CompositeAlgIdDomain } from "./jose";
 
 export class PQJwsVerifier implements  IJwsVerifier{
 
@@ -23,9 +23,9 @@ export class PQJwsVerifier implements  IJwsVerifier{
 
         //Domain separator for hybrid signatures
         if (alg === JwsAlgorithm.IdMldsa44Ed25519) {
-            ctx = Uint8Array.from([6, 11, 96, 134, 72, 1, 134, 250, 107, 80, 8, 1, 62]);
+            ctx = Uint8Array.from(Buffer.from(CompositeAlgIdDomain.IdMldsa44Ed25519, 'hex'));
         } else if (alg === JwsAlgorithm.IdMldsa65Ed25519) { 
-            ctx = Uint8Array.from([6, 11, 96, 134, 72, 1, 134, 250, 107, 80, 8, 1, 71]);
+            ctx = Uint8Array.from(Buffer.from(CompositeAlgIdDomain.IdMldsa65Ed25519, 'hex'));
         }
 
         if (alg === JwsAlgorithm.MLDSA44 || alg === JwsAlgorithm.IdMldsa44Ed25519) {

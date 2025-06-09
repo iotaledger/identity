@@ -7,6 +7,7 @@ use crate::jwk::Jwk;
 
 /// Algorithms used to generate hybrid signatures.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[non_exhaustive]
 pub enum CompositeAlgId {
   /// DER encoded value in hex = 060B6086480186FA6B5008013E
   #[serde(rename = "id-MLDSA44-Ed25519")]

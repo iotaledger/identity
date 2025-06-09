@@ -214,6 +214,9 @@ impl DidJwkDocumentExt for CoreDocument {
         KeyType::from_static_str("Ed25519"),
         JwsAlgorithm::EdDSA,
       ),
+      _ => {
+          return Err(Error::InvalidJwsAlgorithm);
+        }
     };
 
     let JwkGenOutput {

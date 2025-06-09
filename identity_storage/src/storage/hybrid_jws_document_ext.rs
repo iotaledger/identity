@@ -62,6 +62,9 @@ macro_rules! generate_method_hybrid_for_document_type {
           KeyType::from_static_str("Ed25519"),
           JwsAlgorithm::EdDSA,
         ),
+        _ => {
+          return Err(Error::InvalidJwsAlgorithm);
+        }
       };
 
       let JwkGenOutput {

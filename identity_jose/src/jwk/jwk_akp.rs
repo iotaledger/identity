@@ -13,7 +13,7 @@ use super::JwkType;
 /// Parameters for Post-Quantum algorithm keys
 ///
 /// [More Info](https://datatracker.ietf.org/doc/html/draft-ietf-cose-dilithium-06)
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Zeroize)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize, serde::Serialize, Zeroize)]
 #[zeroize(drop)]
 pub struct JwkParamsAkp {
   /// The public key as a base64url-encoded value.
@@ -24,11 +24,6 @@ pub struct JwkParamsAkp {
   pub private: Option<String>, // Private Key
 }
 
-impl Default for JwkParamsAkp {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl JwkParamsAkp {
   /// Creates new JWK AKP Params.

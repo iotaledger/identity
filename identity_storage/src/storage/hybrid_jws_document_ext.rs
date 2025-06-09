@@ -290,12 +290,15 @@ impl JwkDocumentExtHybrid for CoreDocument {
       .await
       .map_err(Error::KeyIdStorageError)?;
 
-    let (t_key_id, pq_key_id) = key_id
-      .as_str()
-      .split_once("~")
-      .map(|v| (KeyId::new(v.0), KeyId::new(v.1)))
-      .ok_or(Error::KeyIdStorageError(KeyIdStorageErrorKind::Unspecified.into()))?;
-
+    let (t_key_id, pq_key_id) = 
+      match key_id.as_str().split_once("~") {
+          Some(v) => (KeyId::new(v.0), KeyId::new(v.1)),
+          None => {
+            // If the key_id is not in the expected format, we return an error.
+            return Err(Error::KeyIdStorageError(KeyIdStorageErrorKind::Unspecified.into()));
+          }
+      };
+    
     // Extract Compact JWS encoding options.
     let encoding_options: CompactJwsEncodingOptions = if !options.detached_payload {
       // We use this as a default and don't provide the extra UrlSafe check for now.

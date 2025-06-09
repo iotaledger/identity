@@ -9,7 +9,7 @@ use crate::jose::WasmJwk;
 use crate::jose::IJwkParams;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[wasm_bindgen(js_name = CompositeJwk, inspectable)]
+#[wasm_bindgen(js_name = CompositeJwk)]
 pub struct WasmCompositeJwk(pub(crate) CompositeJwk);
 
 #[wasm_bindgen(js_class = CompositeJwk)]

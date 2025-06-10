@@ -1,0 +1,31 @@
+name: Wasm publish to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to set'
+        required: true
+      version:
+        description: 'version to set'
+        required: true
+      branch:
+        description: 'Branch to run publish from'
+        required: true
+
+jobs:
+  release-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Run dist-tag
+        shell: sh
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm dist-tag add @iota/identity-wasm@${{ github.event.inputs.version }} ${{ github.event.inputs.tag }}

@@ -1,4 +1,4 @@
-name: Wasm publish to npm
+name: Wasm re-tag npm
 
 on:
   workflow_dispatch:
@@ -8,9 +8,6 @@ on:
         required: true
       version:
         description: 'version to set'
-        required: true
-      branch:
-        description: 'Branch to run publish from'
         required: true
 
 jobs:

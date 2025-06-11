@@ -111,7 +111,8 @@ impl CoreDID {
   ///
   /// Returns `Err` if the input is not a valid [`DID`].
   pub fn parse(input: impl AsRef<str>) -> Result<Self, Error> {
-    BaseDIDUrl::parse(input).map(Self).map_err(Error::from)
+    let base_did_url = BaseDIDUrl::parse(input)?;
+    base_did_url.try_into()
   }
 
   /// Set the method name of the [`DID`].
@@ -192,6 +193,7 @@ impl TryFrom<BaseDIDUrl> for CoreDID {
   type Error = Error;
 
   fn try_from(base_did_url: BaseDIDUrl) -> Result<Self, Self::Error> {
+    Self::check_validity(&base_did_url)?;
     Ok(Self(base_did_url))
   }
 }
@@ -315,6 +317,9 @@ mod tests {
     assert!(CoreDID::parse("").is_err());
     assert!(CoreDID::parse("did:").is_err());
     assert!(CoreDID::parse("dad:example:123456890").is_err());
+    assert!(CoreDID::parse("did:example:123456#key-1").is_err());
+    assert!(CoreDID::parse("did:example:123456/path/to/something/0").is_err());
+    assert!(CoreDID::parse("did:example:123456?key-id=cool-key").is_err());
   }
 
   proptest::proptest! {

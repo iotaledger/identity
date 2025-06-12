@@ -71,7 +71,7 @@ jobs:
   build-and-test:
     runs-on: ${{ matrix.os }}
     needs: [ check-for-run-condition, check-for-modification ]
-    if: ${{ needs.check-for-run-condition.outputs.should-run == 'true' && needs.check-for-modification.outputs.core-modified == 'true' }}
+    if: ${{ needs.check-for-run-condition.outputs.should-run == 'true' && ( needs.check-for-modification.outputs.core-modified == 'true' || github.event.schedule ) }}
     strategy:
       fail-fast: false
       matrix:

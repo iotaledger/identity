@@ -67,6 +67,11 @@ impl Deref for WasmIdentityClient {
 
 #[wasm_bindgen(js_class = IdentityClient)]
 impl WasmIdentityClient {
+  #[wasm_bindgen(constructor, skip_typescript)]  
+  pub fn _new() -> JsError {
+    JsError::new("cannot build an instance of `IdentityClient` through its default sync constructor. Use `IdentityClient.create` instead.")
+  }
+
   #[wasm_bindgen(js_name = create)]
   pub async fn new(client: WasmIdentityClientReadOnly, signer: WasmTransactionSigner) -> Result<WasmIdentityClient> {
     let inner_client = IdentityClient::new(client.0, signer).await.wasm_result()?;

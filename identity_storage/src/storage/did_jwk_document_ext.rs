@@ -87,7 +87,7 @@ impl DidJwkDocumentExt for CoreDocument {
     let b64 = encode_b64_json(&jwk)
     .map_err(|err| Error::EncodingError(Box::new(err)))?;
 
-    let did = DIDJwk::parse(&("did:jwk:".to_string() + &b64))
+    let did = DIDJwk::parse(format!("{}{}", "did:jwk:", b64).as_str())
     .map_err(|err| Error::EncodingError(Box::new(err)))?;
 
     let document = CoreDocument::expand_did_jwk(did)
@@ -129,7 +129,7 @@ impl DidJwkDocumentExt for CoreDocument {
     let b64 = encode_b64_json(&jwk)
     .map_err(|err| Error::EncodingError(Box::new(err)))?;
 
-    let did = DIDJwk::parse(&("did:jwk:".to_string() + &b64))
+    let did = DIDJwk::parse(format!("{}{}", "did:jwk:", b64).as_str())
     .map_err(|err| Error::EncodingError(Box::new(err)))?;
 
     let document = CoreDocument::expand_did_jwk(did)
@@ -170,7 +170,7 @@ impl DidJwkDocumentExt for CoreDocument {
     let b64 = encode_b64_json(&jwk)
     .map_err(|err| Error::EncodingError(Box::new(err)))?;
 
-    let did = DIDJwk::parse(&("did:jwk:".to_string() + &b64))
+    let did = DIDJwk::parse(format!("{}{}", "did:jwk:", b64).as_str())
     .map_err(|err| Error::EncodingError(Box::new(err)))?;
 
     let document = CoreDocument::expand_did_jwk(did)
@@ -249,7 +249,7 @@ impl DidJwkDocumentExt for CoreDocument {
     let b64 = encode_b64_json(&composite_pk)
       .map_err(|err| Error::EncodingError(Box::new(err)))?;
     
-    let did = DIDCompositeJwk::parse(&("did:compositejwk:".to_string() + &b64))
+    let did = DIDCompositeJwk::parse(format!("{}{}", "did:compositejwk:", b64).as_str())
       .map_err(|err| Error::EncodingError(Box::new(err)))?;
 
     let document = CoreDocument::expand_did_compositejwk(did)

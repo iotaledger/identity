@@ -13,10 +13,12 @@ mod key_set;
 mod key_type;
 mod key_use;
 mod composite_jwk;
+mod key_hybrid;
 
 pub use self::curve::*;
 pub use self::jwk_akp::*;
 pub use self::key::*;
+pub use self::key_hybrid::*;
 pub use self::key_operation::*;
 pub use self::key_params::*;
 pub use self::key_set::*;

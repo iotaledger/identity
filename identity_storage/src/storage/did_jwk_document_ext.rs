@@ -201,6 +201,8 @@ impl DidJwkDocumentExt for CoreDocument {
     K: JwkStorage + JwkStoragePQ,
     I: KeyIdStorage 
   {
+    use identity_verification::jwk::{PostQuantumJwk, TraditionalJwk};
+
     let (pq_key_type, pq_alg, trad_key_type, trad_alg) = match alg {
       CompositeAlgId::IdMldsa44Ed25519 => (
         KeyType::from_static_str("AKP"),
@@ -235,7 +237,14 @@ impl DidJwkDocumentExt for CoreDocument {
 
     let key_id = KeyId::new(format!("{}~{}", t_key_id.as_str(), pq_key_id.as_str()));
 
-    let composite_pk = CompositeJwk::new(alg, t_jwk, pq_jwk);
+    let pq_jwk = PostQuantumJwk::try_from(pq_jwk)
+    .map_err(|err| Error::EncodingError(Box::new(err)))?;
+
+    let traditional_jwk = TraditionalJwk::try_from(t_jwk)
+    .map_err(|err| Error::EncodingError(Box::new(err)))?;
+
+    let composite_pk = CompositeJwk::new(alg, traditional_jwk, pq_jwk)
+    .map_err(|err| Error::EncodingError(Box::new(err)))?;
 
     let b64 = encode_b64_json(&composite_pk)
       .map_err(|err| Error::EncodingError(Box::new(err)))?;

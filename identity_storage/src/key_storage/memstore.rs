@@ -314,6 +314,7 @@ mod pqc_liboqs {
   use identity_verification::jose::jwk::JwkType;
   use identity_verification::jose::jws::JwsAlgorithm;
   use identity_verification::jwk::JwkParams;
+  use identity_verification::jwk::PostQuantumJwk;
   use identity_verification::jwu;
   use oqs::sig::Algorithm;
   use oqs::sig::Sig;
@@ -443,7 +444,7 @@ mod pqc_liboqs {
       Ok(JwkGenOutput::new(kid, public_jwk))
     }
 
-    async fn pq_sign(&self, key_id: &KeyId, data: &[u8], public_key: &Jwk, ctx: Option<&[u8]>) -> KeyStorageResult<Vec<u8>> {
+    async fn pq_sign(&self, key_id: &KeyId, data: &[u8], public_key: &PostQuantumJwk, ctx: Option<&[u8]>) -> KeyStorageResult<Vec<u8>> {
       let jwk_store: RwLockReadGuard<'_, JwkKeyStore> = self.jwk_store.read().await;
 
       // Extract the required alg from the given public key

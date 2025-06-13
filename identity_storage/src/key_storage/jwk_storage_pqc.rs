@@ -4,8 +4,8 @@
 use crate::key_storage::KeyId;
 use crate::key_storage::KeyType;
 use async_trait::async_trait;
-use identity_verification::jose::jwk::Jwk;
 use identity_verification::jose::jws::JwsAlgorithm;
+use identity_verification::jwk::PostQuantumJwk;
 
 use super::jwk_gen_output::JwkGenOutput;
 use super::JwkStorage;
@@ -19,5 +19,5 @@ pub trait JwkStoragePQ: JwkStorage {
   async fn generate_pq_key(&self, key_type: KeyType, alg: JwsAlgorithm) -> KeyStorageResult<JwkGenOutput>;
 
   /// Sign the provided `data` using a PQ algorithm, ctx is optional for the ctx paramter of the algorithm ML-DSA
-  async fn pq_sign(&self, key_id: &KeyId, data: &[u8], public_key: &Jwk, ctx: Option<&[u8]>) -> KeyStorageResult<Vec<u8>>;
+  async fn pq_sign(&self, key_id: &KeyId, data: &[u8], public_key: &PostQuantumJwk, ctx: Option<&[u8]>) -> KeyStorageResult<Vec<u8>>;
 }

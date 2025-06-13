@@ -3,7 +3,8 @@
 
 use std::str::FromStr;
 
-use crate::jwk::Jwk;
+use crate::jwk::{PostQuantumJwk, TraditionalJwk};
+use crate::error::Error;
 
 /// Algorithms used to generate hybrid signatures.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -40,29 +41,44 @@ impl CompositeAlgId {
 #[serde(rename_all = "camelCase")]
 pub struct CompositeJwk {
   alg_id: CompositeAlgId,
-  traditional_public_key: Jwk,
-  pq_public_key: Jwk,
+  traditional_public_key: TraditionalJwk,
+  pq_public_key: PostQuantumJwk,
 }
 
 impl CompositeJwk {
   /// Create a new CompositePublicKey structure.
-  pub fn new(alg_id: CompositeAlgId, traditional_public_key: Jwk, pq_public_key: Jwk) -> Self {
-    Self {
-      alg_id,
-      traditional_public_key,
-      pq_public_key,
+  pub fn new(alg_id: CompositeAlgId, traditional_public_key: TraditionalJwk, pq_public_key: PostQuantumJwk) -> Result<Self, Error>  {
+
+    let mut traditional_pk = traditional_public_key;
+    let mut pq_pk = pq_public_key;
+
+    if !traditional_pk.is_public() {
+      traditional_pk = traditional_pk.to_public()
+        .ok_or(Error::KeyError("TraditionalJwk does not contains a public key"))?;
     }
+
+    if !pq_pk.is_public() {
+      pq_pk = pq_pk.to_public()
+        .ok_or(Error::KeyError("PostQuantumJwk does not contains a public key"))?;
+    }
+
+    Ok(Self {
+      alg_id,
+      traditional_public_key: traditional_pk,
+      pq_public_key: pq_pk,
+    })
+
   }
   /// Get the `algId` value.
   pub fn alg_id(&self) -> CompositeAlgId {
     self.alg_id
   }
   /// Get the post-quantum public key in Jwk format.
-  pub fn pq_public_key(&self) -> &Jwk {
+  pub fn pq_public_key(&self) -> &PostQuantumJwk {
     &self.pq_public_key
   }
   /// Get the traditional public key in Jwk format.
-  pub fn traditional_public_key(&self) -> &Jwk {
+  pub fn traditional_public_key(&self) -> &TraditionalJwk {
     &self.traditional_public_key
   }
 }

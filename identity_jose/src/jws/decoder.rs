@@ -8,6 +8,8 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::jwk::CompositeAlgId;
 use crate::jwk::Jwk;
+use crate::jwk::PostQuantumJwk;
+use crate::jwk::TraditionalJwk;
 use crate::jws::JwsAlgorithm;
 use crate::jws::JwsHeader;
 use crate::jwu::create_message;
@@ -182,8 +184,8 @@ impl<'a> JwsValidationItem<'a> {
     self,
     traditional_verifier: &TRV,
     pq_verifier: &PQV,
-    traditional_pk: &Jwk,
-    pq_pk: &Jwk,
+    traditional_pk: &TraditionalJwk,
+    pq_pk: &PostQuantumJwk,
   ) -> Result<DecodedJws<'a>>
   where
     TRV: JwsVerifier,
@@ -264,7 +266,7 @@ impl<'a> JwsValidationItem<'a> {
 
     // Call the traditional verifier
     traditional_verifier
-      .verify(input1, traditional_pk)
+      .verify(input1, &traditional_pk.into())
       .map_err(Error::SignatureVerificationError)?;
 
     let input2 = VerificationInput {
@@ -275,7 +277,7 @@ impl<'a> JwsValidationItem<'a> {
     
     // Call the PQ verifier
     pq_verifier
-      .verify(input2, pq_pk)
+      .verify(input2, &pq_pk.into())
       .map_err(Error::SignatureVerificationError)?;
     
     Ok(DecodedJws {

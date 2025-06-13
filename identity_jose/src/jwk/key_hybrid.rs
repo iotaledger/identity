@@ -274,6 +274,11 @@ impl TryFrom<Jwk> for PostQuantumJwk {
   }
 }
 
+impl Into<Jwk> for &PostQuantumJwk {
+  fn into(self) -> Jwk {
+    self.0.clone()
+  }
+}
 
 /// Wrapper to the [`Jwk`] structure to enforce the exclusive use of traditional JWK encoded keys in the [`CompositeJwk`]
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, Zeroize)]
@@ -551,5 +556,11 @@ impl TryFrom<Jwk> for TraditionalJwk {
       return Err(Error::KeyError("TraditionalJwk can only be created from a Jwk different from JwkType::Akp"));
     }
     Ok(Self(value))
+  }
+}
+
+impl Into<Jwk> for &TraditionalJwk {
+  fn into(self) -> Jwk {
+    self.0.clone()
   }
 }

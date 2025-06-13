@@ -30,6 +30,8 @@ use identity_verification::jws::JwsAlgorithm;
 use identity_verification::jws::JwsHeader;
 use identity_verification::jwk::CompositeAlgId;
 use identity_verification::jwk::CompositeJwk;
+use identity_verification::jwk::PostQuantumJwk;
+use identity_verification::jwk::TraditionalJwk;
 use identity_verification::MethodData;
 use identity_verification::MethodScope;
 use identity_verification::VerificationMethod;
@@ -83,7 +85,14 @@ macro_rules! generate_method_hybrid_for_document_type {
 
       let composite_kid = KeyId::new(format!("{}~{}", t_key_id.as_str(), pq_key_id.as_str()));
 
-      let composite_pk = CompositeJwk::new(alg_id, t_jwk, pq_jwk);
+      let pq_jwk = PostQuantumJwk::try_from(pq_jwk)
+      .map_err(|err| Error::EncodingError(Box::new(err)))?;
+
+      let traditional_jwk = TraditionalJwk::try_from(t_jwk)
+      .map_err(|err| Error::EncodingError(Box::new(err)))?;
+
+      let composite_pk = CompositeJwk::new(alg_id, traditional_jwk, pq_jwk)
+      .map_err(|err| Error::EncodingError(Box::new(err)))?;
 
       let method: VerificationMethod = {
         match VerificationMethod::new_from_compositejwk(document.id().clone(), composite_pk, fragment)
@@ -354,7 +363,7 @@ impl JwkDocumentExtHybrid for CoreDocument {
       _ => return Err(Error::InvalidJwsAlgorithm),
     };
 
-    let signature_t = <K as JwkStorage>::sign(storage.key_storage(), &t_key_id, &signing_input, t_jwk)
+    let signature_t = <K as JwkStorage>::sign(storage.key_storage(), &t_key_id, &signing_input, &t_jwk.into())
       .await
       .map_err(Error::KeyStorageError)?;
 

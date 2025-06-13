@@ -6,7 +6,8 @@ use identity_did::CoreDID;
 use identity_did::DIDUrl;
 use identity_document::document::CoreDocument;
 use identity_document::verifiable::JwsVerificationOptions;
-use identity_verification::jwk::Jwk;
+use identity_verification::jwk::PostQuantumJwk;
+use identity_verification::jwk::TraditionalJwk;
 use identity_verification::jws::DecodedJws;
 use identity_verification::jws::Decoder;
 use identity_verification::jws::JwsValidationItem;
@@ -292,8 +293,8 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
 
   pub(crate) fn verify_signature_raw<'a>(
     decoded: JwsValidationItem<'a>,
-    traditional_pk: &Jwk,
-    pq_pk: &Jwk,
+    traditional_pk: &TraditionalJwk,
+    pq_pk: &PostQuantumJwk,
     traditional_verifier: &TRV,
     pq_verifier: &PQV,
   ) -> Result<DecodedJws<'a>, JwtValidationError> {
@@ -308,8 +309,8 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
   /// Verify the signature using the given `public_key` and `signature_verifier`.
   fn verify_decoded_signature<T>(
     decoded: JwsValidationItem<'_>,
-    traditional_pk: &Jwk,
-    pq_pk: &Jwk,
+    traditional_pk: &TraditionalJwk,
+    pq_pk: &PostQuantumJwk,
     traditional_verifier: &TRV,
     pq_verifier: &PQV,
   ) -> Result<DecodedJwtCredential<T>, JwtValidationError>

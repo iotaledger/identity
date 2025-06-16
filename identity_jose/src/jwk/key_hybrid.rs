@@ -24,7 +24,7 @@ use crate::jwk::JwkUse;
 pub struct PostQuantumJwk(Jwk);
 
 impl PostQuantumJwk {
-  /// Creates a new PostQuantumJwk
+  /// Creates a new [PostQuantumJwk].
   pub fn new(kty: JwkType) -> Result<Self> {
     if kty != JwkType::Akp {
       return Err(Error::KeyError("PostQuantumJwk can only be created with JwkType::Akp"));

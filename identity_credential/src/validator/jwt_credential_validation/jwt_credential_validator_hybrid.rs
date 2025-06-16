@@ -242,7 +242,7 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
       .map(move |c: &CompositeJwk| (c, method_id))
   }
 
-  /// Stateless version of [`Self::verify_signature`]
+  /// Stateless version of [`Self::verify_signature`].
   fn verify_signature_with_verifiers<DOC, T>(
     traditional_signature_verifier: &TRV,
     pq_signature_verifier: &PQV,

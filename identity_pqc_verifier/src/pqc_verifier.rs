@@ -14,13 +14,15 @@ use crate::OQSVerifier;
 /// An implementor of [`JwsVerifier`] that can handle the
 /// [`JwsAlgorithm::ML_DSA_44`](identity_jose::jws::JwsAlgorithm::ML_DSA_44)
 /// | [`JwsAlgorithm::ML_DSA_65`](identity_jose::jws::JwsAlgorithm::ML_DSA_65)
-/// | [`JwsAlgorithm::ML_DSA_87`](identity_jose::jws::JwsAlgorithm::ML_DSA_87) algorithms.
+/// | [`JwsAlgorithm::ML_DSA_87`](identity_jose::jws::JwsAlgorithm::ML_DSA_87)
+/// | [`JwsAlgorithm::IdMldsa44Ed25519`](identity_jose::jws::JwsAlgorithm::IdMldsa44Ed25519)
+/// | [`JwsAlgorithm::IdMldsa65Ed25519`](identity_jose::jws::JwsAlgorithm::IdMldsa65Ed25519) algorithms.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct PQCJwsVerifier;
 
 impl Default for PQCJwsVerifier {
-  /// Constructs an [`MLDSAJwsVerifier`]. This is the only way to obtain an [`MLDSAJwsVerifier`].
+  /// Constructs an [`PQCJwsVerifier`]. This is the only way to obtain an [`PQCJwsVerifier`].
   fn default() -> Self {
     Self
   }
@@ -31,54 +33,18 @@ impl JwsVerifier for PQCJwsVerifier {
   /// [`JwsAlgorithm::ML_DSA_44`](identity_jose::jws::JwsAlgorithm::ML_DSA_44)
   /// | [`JwsAlgorithm::ML_DSA_65`](identity_jose::jws::JwsAlgorithm::ML_DSA_65)
   /// | [`JwsAlgorithm::ML_DSA_87`](identity_jose::jws::JwsAlgorithm::ML_DSA_87)
-  /// | [`JwsAlgorithm::SLH_DSA_SHA2_128s`](identity_jose::jws::JwsAlgorithm::SLH_DSA_SHA2_128s)
-  /// | [`JwsAlgorithm::SLH_DSA_SHA2_128f`](identity_jose::jws::JwsAlgorithm::SLH_DSA_SHA2_128f)
-  /// | [`JwsAlgorithm::SLH_DSA_SHAKE_128s`](identity_jose::jws::JwsAlgorithm::SLH_DSA_SHAKE_128s) algorithms.
+  /// | [`JwsAlgorithm::IdMldsa44Ed25519`](identity_jose::jws::JwsAlgorithm::IdMldsa44Ed25519)
+  /// | [`JwsAlgorithm::IdMldsa65Ed25519`](identity_jose::jws::JwsAlgorithm::IdMldsa65Ed25519) algorithms.
   // Allow unused variables in case of no-default-features.
   #[allow(unused_variables)]
   fn verify(&self, input: VerificationInput, public_key: &Jwk) -> std::result::Result<(), SignatureVerificationError> {
     match input.alg {
-      #[cfg(feature = "ML_DSA_44")]
       JwsAlgorithm::ML_DSA_44 => OQSVerifier::verify(input, public_key, Algorithm::MlDsa44),
-      #[cfg(feature = "ML_DSA_65")]
       JwsAlgorithm::ML_DSA_65 => OQSVerifier::verify(input, public_key, Algorithm::MlDsa65),
-      #[cfg(feature = "ML_DSA_87")]
       JwsAlgorithm::ML_DSA_87 => OQSVerifier::verify(input, public_key, Algorithm::MlDsa87),
-      #[cfg(feature = "ML_DSA_44")]
       JwsAlgorithm::IdMldsa44Ed25519 => OQSVerifier::verify_hybrid_signature(input, public_key, Algorithm::MlDsa44),
-      #[cfg(feature = "ML_DSA_65")]
       JwsAlgorithm::IdMldsa65Ed25519 => OQSVerifier::verify_hybrid_signature(input, public_key, Algorithm::MlDsa65),
 
-      #[cfg(feature = "SLH_DSA_SHA2_128s")]
-      JwsAlgorithm::SLH_DSA_SHA2_128s => OQSVerifier::verify(input, public_key, Algorithm::SphincsSha2128sSimple),
-      #[cfg(feature = "SLH_DSA_SHAKE_128s")]
-      JwsAlgorithm::SLH_DSA_SHAKE_128s => OQSVerifier::verify(input, public_key, Algorithm::SphincsShake128sSimple),
-      #[cfg(feature = "SLH_DSA_SHA2_128f")]
-      JwsAlgorithm::SLH_DSA_SHA2_128f => OQSVerifier::verify(input, public_key, Algorithm::SphincsSha2128fSimple),
-
-      #[cfg(feature = "SLH_DSA_SHAKE_128f")]
-      JwsAlgorithm::SLH_DSA_SHAKE_128f => OQSVerifier::verify(input, public_key, Algorithm::SphincsShake128fSimple),
-      #[cfg(feature = "SLH_DSA_SHA2_192s")]
-      JwsAlgorithm::SLH_DSA_SHA2_192s => OQSVerifier::verify(input, public_key, Algorithm::SphincsSha2192sSimple),
-      #[cfg(feature = "SLH_DSA_SHAKE_192s")]
-      JwsAlgorithm::SLH_DSA_SHAKE_192s => OQSVerifier::verify(input, public_key, Algorithm::SphincsShake192sSimple),
-      #[cfg(feature = "SLH_DSA_SHA2_192f")]
-      JwsAlgorithm::SLH_DSA_SHA2_192f => OQSVerifier::verify(input, public_key, Algorithm::SphincsSha2192fSimple),
-      #[cfg(feature = "SLH_DSA_SHAKE_192f")]
-      JwsAlgorithm::SLH_DSA_SHAKE_192f => OQSVerifier::verify(input, public_key, Algorithm::SphincsShake192fSimple),
-      #[cfg(feature = "SLH_DSA_SHA2_256s")]
-      JwsAlgorithm::SLH_DSA_SHA2_256s => OQSVerifier::verify(input, public_key, Algorithm::SphincsSha2256sSimple),
-      #[cfg(feature = "SLH_DSA_SHAKE_256s")]
-      JwsAlgorithm::SLH_DSA_SHAKE_256s => OQSVerifier::verify(input, public_key, Algorithm::SphincsShake256sSimple),
-      #[cfg(feature = "SLH_DSA_SHA2_256f")]
-      JwsAlgorithm::SLH_DSA_SHA2_256f => OQSVerifier::verify(input, public_key, Algorithm::SphincsSha2256fSimple),
-      #[cfg(feature = "SLH_DSA_SHAKE_256f")]
-      JwsAlgorithm::SLH_DSA_SHAKE_256f => OQSVerifier::verify(input, public_key, Algorithm::SphincsShake256fSimple),
-
-      #[cfg(feature = "FALCON512")]
-      JwsAlgorithm::FALCON512 => OQSVerifier::verify(input, public_key, Algorithm::Falcon512),
-      #[cfg(feature = "FALCON1024")]
-      JwsAlgorithm::FALCON1024 => OQSVerifier::verify(input, public_key, Algorithm::Falcon1024),
       _ => Err(SignatureVerificationErrorKind::UnsupportedAlg.into()),
     }
   }

@@ -362,7 +362,7 @@ mod pqc_liboqs {
     }
   }
 
-  /// JwkStoragePQ implementation for JwkMemStore based on liboqs
+  /// JwkStoragePQ implementation for JwkMemStore based on liboqs.
   #[cfg_attr(not(feature = "send-sync-storage"), async_trait(?Send))]
   #[cfg_attr(feature = "send-sync-storage", async_trait)]
   impl JwkStoragePQ for JwkMemStore {

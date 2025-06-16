@@ -28,7 +28,7 @@ pub enum MethodData {
   PublicKeyBase58(String),
   /// Verification Material in the JSON Web Key format.
   PublicKeyJwk(Jwk),
-  /// Verification Material containing two keys in JSON Web Key format, one traditional and one PQ
+  /// Verification Material containing two keys in JSON Web Key format, one traditional and one PQ.
   CompositeJwk(CompositeJwk),
   /// Arbitrary verification material.
   #[serde(untagged)]

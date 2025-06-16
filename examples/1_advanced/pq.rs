@@ -132,7 +132,7 @@ async fn main() -> anyhow::Result<()> {
     &secret_manager_holder,
     &storage_holder,
     JwkMemStore::PQ_KEY_TYPE,
-    JwsAlgorithm::SLH_DSA_SHA2_128s,
+    JwsAlgorithm::ML_DSA_44,
   )
   .await?;
 

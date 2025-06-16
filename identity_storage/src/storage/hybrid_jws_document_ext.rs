@@ -200,7 +200,7 @@ pub trait JwkDocumentExtHybrid {
   where
     K: JwkStorage + JwkStoragePQ,
     I: KeyIdStorage,
-    T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
+    T: Clone + Serialize + DeserializeOwned + Sync,
     CRED: Serialize + DeserializeOwned + Clone + Sync;
 }
 
@@ -422,8 +422,8 @@ impl JwkDocumentExtHybrid for CoreDocument {
   where
     K: JwkStorage + JwkStoragePQ,
     I: KeyIdStorage,
-    T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
-    CRED: ToOwned<Owned = CRED> + Serialize + DeserializeOwned + Clone + Sync,
+    T: Clone + Serialize + DeserializeOwned + Sync,
+    CRED: Clone + Serialize + DeserializeOwned + Sync,
   {
     if jws_options.detached_payload {
       return Err(Error::EncodingError(Box::<dyn std::error::Error + Send + Sync>::from(
@@ -524,8 +524,8 @@ mod iota_document {
     where
       K: JwkStorage + JwkStoragePQ,
       I: KeyIdStorage,
-      T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
-      CRED: ToOwned<Owned = CRED> + Serialize + DeserializeOwned + Clone + Sync,
+      T: Clone + Serialize + DeserializeOwned + Sync,
+      CRED: Clone + Serialize + DeserializeOwned + Sync,
     {
       self
         .core_document()

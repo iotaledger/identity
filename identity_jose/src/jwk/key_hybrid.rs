@@ -19,8 +19,9 @@ use crate::jwk::JwkType;
 use crate::jwk::JwkUse;
 
 
-/// Wrapper to the [`Jwk`] structure to enforce the exclusive use of post quantum JWK encoded keys in the [`CompositeJwk`]
+/// A post-quantum key encoded as JWK.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, Zeroize)]
+#[serde(transparent)]
 pub struct PostQuantumJwk(Jwk);
 
 impl PostQuantumJwk {

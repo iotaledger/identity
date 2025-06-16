@@ -81,7 +81,7 @@ pub trait JwsDocumentExtPQC {
   where
     K: JwkStoragePQ,
     I: KeyIdStorage,
-    T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync;
+    T: Clone + Serialize + DeserializeOwned + Sync;
 
   /// Produces a JWT using PQC algorithms where the payload is produced from the given `presentation`
   /// in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
@@ -100,8 +100,8 @@ pub trait JwsDocumentExtPQC {
   where
     K: JwkStoragePQ,
     I: KeyIdStorage,
-    T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
-    CRED: ToOwned<Owned = CRED> + Serialize + DeserializeOwned + Clone + Sync;
+    T: Clone + Serialize + DeserializeOwned + Sync,
+    CRED: Clone + Serialize + DeserializeOwned + Sync;
 }
 
 // ====================================================================================================================
@@ -247,7 +247,7 @@ impl JwsDocumentExtPQC for CoreDocument {
   where
     K: JwkStoragePQ,
     I: KeyIdStorage,
-    T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
+    T: Clone + Serialize + DeserializeOwned + Sync,
   {
     if options.detached_payload {
       return Err(Error::EncodingError(Box::<dyn std::error::Error + Send + Sync>::from(
@@ -282,8 +282,8 @@ impl JwsDocumentExtPQC for CoreDocument {
   where
     K: JwkStoragePQ,
     I: KeyIdStorage,
-    T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
-    CRED: ToOwned<Owned = CRED> + Serialize + DeserializeOwned + Clone + Sync,
+    T: Clone + Serialize + DeserializeOwned + Sync,
+    CRED: Clone + Serialize + DeserializeOwned + Sync,
   {
     if jws_options.detached_payload {
       return Err(Error::EncodingError(Box::<dyn std::error::Error + Send + Sync>::from(
@@ -370,7 +370,7 @@ mod iota_document {
     where
       K: JwkStoragePQ,
       I: KeyIdStorage,
-      T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
+      T: Clone + Serialize + DeserializeOwned + Sync,
     {
       self
         .core_document()
@@ -389,8 +389,8 @@ mod iota_document {
     where
       K: JwkStoragePQ,
       I: KeyIdStorage,
-      T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
-      CRED: ToOwned<Owned = CRED> + Serialize + DeserializeOwned + Clone + Sync,
+      T: Clone + Serialize + DeserializeOwned + Sync,
+      CRED: Clone + Serialize + DeserializeOwned + Sync,
     {
       self
         .core_document()

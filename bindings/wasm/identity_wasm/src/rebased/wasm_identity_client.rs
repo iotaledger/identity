@@ -67,9 +67,10 @@ impl Deref for WasmIdentityClient {
 
 #[wasm_bindgen(js_class = IdentityClient)]
 impl WasmIdentityClient {
+  /// @deprecated Use `IdentityClient.create` instead.
   #[wasm_bindgen(constructor, skip_typescript)]
-  pub fn _new() -> JsError {
-    JsError::new("cannot build an instance of `IdentityClient` through its default sync constructor. Use `IdentityClient.create` instead.")
+  pub fn _new() -> Result<WasmIdentityClient> {
+    Err(JsError::new("cannot build an instance of `IdentityClient` through its default sync constructor. Use `IdentityClient.create` instead.").into())
   }
 
   #[wasm_bindgen(js_name = create)]

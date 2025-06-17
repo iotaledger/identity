@@ -52,8 +52,11 @@ pub struct WasmIdentityClientReadOnly(pub(crate) IdentityClientReadOnly);
 #[wasm_bindgen(js_class = IdentityClientReadOnly)]
 impl WasmIdentityClientReadOnly {
   #[wasm_bindgen(constructor, skip_typescript)]
-  pub fn _new() -> JsError {
-    JsError::new("cannot build an instance of `IdentityClientReadOnly` through its default sync constructor. Use `IdentityClientReadOnly.create` instead.")
+  /// @deprecated Use `IdentityClientReadOnly.create` instead.
+  #[wasm_bindgen(constructor, skip_typescript)]
+  pub fn _new() -> Result<WasmIdentityClientReadOnly, JsError> {
+    Err(JsError::new("cannot build an instance of `IdentityClientReadOnly` through its default sync constructor. Use `IdentityClientReadOnly.create` instead."))
+  }
   }
 
   #[wasm_bindgen(js_name = create)]

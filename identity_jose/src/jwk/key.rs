@@ -466,6 +466,24 @@ impl Jwk {
 
     Some(public)
   }
+
+  /// Removes all private key components.
+  /// In the case of [JwkParams::Oct], this method does nothing.
+  #[inline(always)]
+  pub fn strip_private(&mut self) {
+    self.params_mut().strip_private();
+  }
+
+  /// Returns this key with _all_ private key components unset.
+  /// In the case of [JwkParams::Oct], this method returns [None].
+  pub fn into_public(mut self) -> Option<Self> {
+    if matches!(&self.params, JwkParams::Oct(_)) {
+      None
+    } else {
+      self.params.strip_private();
+      Some(self)
+    }
+  }
 }
 
 impl Zeroize for Jwk {
@@ -477,5 +495,29 @@ impl Zeroize for Jwk {
 impl Drop for Jwk {
   fn drop(&mut self) {
     self.zeroize();
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use identity_core::convert::FromJson;
+
+  use super::Jwk;
+
+  #[test]
+  fn into_public_and_to_public_return_the_same() {
+    let priv_jwk = Jwk::from_json_slice(
+      r#"
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "d": "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+      }
+    "#,
+    )
+    .unwrap();
+
+    assert_eq!(priv_jwk.to_public(), priv_jwk.into_public());
   }
 }

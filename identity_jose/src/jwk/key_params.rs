@@ -63,6 +63,28 @@ impl JwkParams {
     }
   }
 
+  /// Removes all private key components.
+  /// In the case of [JwkParams::Oct], this method does nothing.
+  pub fn strip_private(&mut self) {
+    match self {
+      Self::Okp(inner) => inner.strip_private(),
+      Self::Ec(inner) => inner.strip_private(),
+      Self::Rsa(inner) => inner.strip_private(),
+      Self::Oct(_) => (),
+    }
+  }
+
+  /// Returns this key with _all_ private key components unset.
+  /// In the case of [JwkParams::Oct], this method returns [None].
+  pub fn into_public(mut self) -> Option<Self> {
+    if matches!(self, JwkParams::Oct(_)) {
+      None
+    } else {
+      self.strip_private();
+      Some(self)
+    }
+  }
+
   /// Returns `true` if _all_ private key components are unset, `false` otherwise.
   pub fn is_public(&self) -> bool {
     match self {
@@ -145,6 +167,17 @@ impl JwkParamsEc {
   /// Returns `true` if _all_ private key components of the key are set, `false` otherwise.
   pub fn is_private(&self) -> bool {
     self.d.is_some()
+  }
+
+  /// Unsets _all_ private key components.
+  pub fn strip_private(&mut self) {
+    self.d = None;
+  }
+
+  /// Returns this key with _all_ private key components unset.
+  pub fn into_public(mut self) -> Self {
+    self.strip_private();
+    self
   }
 
   /// Returns the [`EcCurve`] if it is of a supported type.
@@ -321,6 +354,22 @@ impl JwkParamsRsa {
       && self.dq.is_some()
       && self.qi.is_some()
   }
+
+  /// Unsets _all_ private key components.
+  pub fn strip_private(&mut self) {
+    self.d = None;
+    self.p = None;
+    self.q = None;
+    self.dp = None;
+    self.dq = None;
+    self.qi = None;
+  }
+
+  /// Returns this key with _all_ private key components unset.
+  pub fn into_public(mut self) -> Self {
+    self.strip_private();
+    self
+  }
 }
 
 impl From<JwkParamsRsa> for JwkParams {
@@ -438,6 +487,17 @@ impl JwkParamsOkp {
   /// Returns `true` if _all_ private key components of the key are set, `false` otherwise.
   pub fn is_private(&self) -> bool {
     self.d.is_some()
+  }
+
+  /// Unsets _all_ private key components.
+  pub fn strip_private(&mut self) {
+    self.d = None;
+  }
+
+  /// Returns this key with _all_ private key components unset.
+  pub fn into_public(mut self) -> Self {
+    self.strip_private();
+    self
   }
 
   /// Returns the [`EdCurve`] if it is of a supported type.

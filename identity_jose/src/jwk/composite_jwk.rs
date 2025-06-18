@@ -48,24 +48,10 @@ pub struct CompositeJwk {
 impl CompositeJwk {
   /// Create a new CompositePublicKey structure.
   pub fn new(alg_id: CompositeAlgId, traditional_public_key: TraditionalJwk, pq_public_key: PostQuantumJwk) -> Result<Self, Error>  {
-
-    let mut traditional_pk = traditional_public_key;
-    let mut pq_pk = pq_public_key;
-
-    if !traditional_pk.is_public() {
-      traditional_pk = traditional_pk.to_public()
-        .ok_or(Error::KeyError("TraditionalJwk does not contains a public key"))?;
-    }
-
-    if !pq_pk.is_public() {
-      pq_pk = pq_pk.to_public()
-        .ok_or(Error::KeyError("PostQuantumJwk does not contains a public key"))?;
-    }
-
     Ok(Self {
       alg_id,
-      traditional_public_key: traditional_pk,
-      pq_public_key: pq_pk,
+      traditional_public_key: traditional_pk.to_public().unwrap(),
+      pq_public_key: pq_pk.to_public().unwrap(),
     })
 
   }

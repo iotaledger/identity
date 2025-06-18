@@ -66,7 +66,7 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
     fail_fast: FailFast,
   ) -> Result<DecodedJwtCredential<T>, CompoundCredentialValidationError>
   where
-    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned,
     DOC: AsRef<CoreDocument>,
   {
     let credential_token = self
@@ -110,7 +110,7 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
     options: &JwsVerificationOptions,
   ) -> Result<DecodedJwtCredential<T>, JwtValidationError>
   where
-    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned,
     DOC: AsRef<CoreDocument>,
   {
     Self::verify_signature_with_verifiers(&self.0, &self.1, credential, trusted_issuers, options)
@@ -126,7 +126,7 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
     fail_fast: FailFast,
   ) -> Result<DecodedJwtCredential<T>, CompoundCredentialValidationError>
   where
-    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned,
     DOC: AsRef<CoreDocument>,
   {
     let credential: &Credential<T> = &credential_token.credential;
@@ -251,7 +251,7 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
     options: &JwsVerificationOptions,
   ) -> Result<DecodedJwtCredential<T>, JwtValidationError>
   where
-    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned,
     DOC: AsRef<CoreDocument>
   {
     // Note the below steps are necessary because `CoreDocument::verify_jws` decodes the JWS and then searches for a
@@ -315,7 +315,7 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
     pq_verifier: &PQV,
   ) -> Result<DecodedJwtCredential<T>, JwtValidationError>
   where
-    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned,
   {
     // Verify the JWS signature and obtain the decoded token containing the protected header and raw claims
     let DecodedJws { protected, claims, .. } =

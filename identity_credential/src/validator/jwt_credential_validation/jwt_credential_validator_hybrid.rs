@@ -9,7 +9,6 @@ use identity_document::verifiable::JwsVerificationOptions;
 use identity_verification::jwk::PostQuantumJwk;
 use identity_verification::jwk::TraditionalJwk;
 use identity_verification::jws::DecodedJws;
-use identity_verification::jws::Decoder;
 use identity_verification::jws::JwsValidationItem;
 use identity_verification::jws::JwsVerifier;
 use identity_verification::jwk::CompositeJwk;
@@ -24,6 +23,7 @@ use crate::credential::Credential;
 use crate::credential::CredentialJwtClaims;
 use crate::credential::Jwt;
 use crate::validator::FailFast;
+use crate::validator::JwtCredentialValidator;
 
 /// A type for decoding and validating [`Credential`]s signed with a PQ/T signature.
 pub struct JwtCredentialValidatorHybrid<TRV, PQV>(TRV, PQV);
@@ -79,7 +79,7 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
         validation_errors: [err].into(),
       })?;
 
-    Self::validate_decoded_credential::<CoreDocument, T>(
+    JwtCredentialValidator::<TRV>::validate_decoded_credential(
       credential_token,
       std::slice::from_ref(issuer.as_ref()),
       options,
@@ -114,73 +114,6 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
     DOC: AsRef<CoreDocument>,
   {
     Self::verify_signature_with_verifiers(&self.0, &self.1, credential, trusted_issuers, options)
-  }
-
-  // This method takes a slice of issuer's instead of a single issuer in order to better accommodate presentation
-  // validation. It also validates the relationship between a holder and the credential subjects when
-  // `relationship_criterion` is Some.
-  pub(crate) fn validate_decoded_credential<DOC, T>(
-    credential_token: DecodedJwtCredential<T>,
-    issuers: &[DOC],
-    options: &JwtCredentialValidationOptions,
-    fail_fast: FailFast,
-  ) -> Result<DecodedJwtCredential<T>, CompoundCredentialValidationError>
-  where
-    T: Clone + serde::Serialize + serde::de::DeserializeOwned,
-    DOC: AsRef<CoreDocument>,
-  {
-    let credential: &Credential<T> = &credential_token.credential;
-    // Run all single concern Credential validations in turn and fail immediately if `fail_fast` is true.
-
-    let expiry_date_validation = std::iter::once_with(|| {
-      JwtCredentialValidatorUtils::check_expires_on_or_after(
-        &credential_token.credential,
-        options.earliest_expiry_date.unwrap_or_default(),
-      )
-    });
-
-    let issuance_date_validation = std::iter::once_with(|| {
-      JwtCredentialValidatorUtils::check_issued_on_or_before(
-        credential,
-        options.latest_issuance_date.unwrap_or_default(),
-      )
-    });
-
-    let structure_validation = std::iter::once_with(|| JwtCredentialValidatorUtils::check_structure(credential));
-
-    let subject_holder_validation = std::iter::once_with(|| {
-      options
-        .subject_holder_relationship
-        .as_ref()
-        .map(|(holder, relationship)| {
-          JwtCredentialValidatorUtils::check_subject_holder_relationship(credential, holder, *relationship)
-        })
-        .unwrap_or(Ok(()))
-    });
-
-    let validation_units_iter = issuance_date_validation
-      .chain(expiry_date_validation)
-      .chain(structure_validation)
-      .chain(subject_holder_validation);
-
-    #[cfg(feature = "revocation-bitmap")]
-    let validation_units_iter = {
-      let revocation_validation =
-        std::iter::once_with(|| JwtCredentialValidatorUtils::check_status(credential, issuers, options.status));
-      validation_units_iter.chain(revocation_validation)
-    };
-
-    let validation_units_error_iter = validation_units_iter.filter_map(|result| result.err());
-    let validation_errors: Vec<JwtValidationError> = match fail_fast {
-      FailFast::FirstError => validation_units_error_iter.take(1).collect(),
-      FailFast::AllErrors => validation_units_error_iter.collect(),
-    };
-
-    if validation_errors.is_empty() {
-      Ok(credential_token)
-    } else {
-      Err(CompoundCredentialValidationError { validation_errors })
-    }
   }
 
   pub(crate) fn parse_composite_pk<'a, 'i, DOC>(
@@ -259,7 +192,7 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
     // that process for potentially every document in `trusted_issuers`.
 
     // Start decoding the credential
-    let decoded: JwsValidationItem<'_> = Self::decode(credential.as_str())?;
+    let decoded: JwsValidationItem<'_> = JwtCredentialValidator::<TRV>::decode(credential.as_str())?;
 
     let (composite, method_id) = Self::parse_composite_pk(&decoded, trusted_issuers, options)?;
 
@@ -282,15 +215,6 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
     Ok(credential_token)
   }
 
-  /// Decode the credential into a [`JwsValidationItem`].
-  pub(crate) fn decode(credential_jws: &str) -> Result<JwsValidationItem<'_>, JwtValidationError> {
-    let decoder: Decoder = Decoder::new();
-
-    decoder
-      .decode_compact_serialization(credential_jws.as_bytes(), None)
-      .map_err(JwtValidationError::JwsDecodingError)
-  }
-
   pub(crate) fn verify_signature_raw<'a>(
     decoded: JwsValidationItem<'a>,
     traditional_pk: &TraditionalJwk,
@@ -306,7 +230,7 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
       })
   }
 
-  /// Verify the signature using the given `public_key` and `signature_verifier`.
+  /// Verify the signature using the given the `traditional_pk`, `pq_pk`,  `traditional_verifier` and `pq_verifier`.
   fn verify_decoded_signature<T>(
     decoded: JwsValidationItem<'_>,
     traditional_pk: &TraditionalJwk,

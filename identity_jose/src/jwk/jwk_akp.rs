@@ -56,4 +56,15 @@ impl JwkParamsAkp {
   pub fn is_private(&self) -> bool {
     self.private.is_some()
   }
+
+  /// Unsets private key component.
+  pub fn strip_private(&mut self) {
+    self.private = None;
+  }
+
+  /// Returns this key with the private key components unset.
+  pub fn into_public(mut self) -> Self {
+    self.strip_private();
+    self
+  }
 }

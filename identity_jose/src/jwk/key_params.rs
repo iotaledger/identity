@@ -76,6 +76,7 @@ impl JwkParams {
       Self::Ec(inner) => inner.strip_private(),
       Self::Rsa(inner) => inner.strip_private(),
       Self::Oct(_) => (),
+      Self::Akp(inner) => inner.strip_private()
     }
   }
 

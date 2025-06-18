@@ -50,8 +50,8 @@ impl CompositeJwk {
   pub fn new(alg_id: CompositeAlgId, traditional_public_key: TraditionalJwk, pq_public_key: PostQuantumJwk) -> Result<Self, Error>  {
     Ok(Self {
       alg_id,
-      traditional_public_key: traditional_pk.to_public().unwrap(),
-      pq_public_key: pq_pk.to_public().unwrap(),
+      traditional_public_key: traditional_public_key.to_public().unwrap(),
+      pq_public_key: pq_public_key.to_public().unwrap(),
     })
 
   }

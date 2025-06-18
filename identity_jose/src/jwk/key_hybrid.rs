@@ -3,6 +3,7 @@
 
 use identity_core::common::Url;
 use zeroize::Zeroize;
+use zeroize::ZeroizeOnDrop;
 
 use crate::error::Error;
 use crate::error::Result;
@@ -20,7 +21,7 @@ use crate::jwk::JwkUse;
 
 
 /// A post-quantum key encoded as JWK.
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, Zeroize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, Zeroize, ZeroizeOnDrop)]
 #[serde(transparent)]
 pub struct PostQuantumJwk(Jwk);
 
@@ -258,12 +259,6 @@ impl PostQuantumJwk {
 
 }
 
-impl Drop for PostQuantumJwk {
-  fn drop(&mut self) {
-    self.zeroize();
-  }
-}
-
 impl TryFrom<Jwk> for PostQuantumJwk {
   type Error = Error;
 
@@ -282,7 +277,7 @@ impl Into<Jwk> for &PostQuantumJwk {
 }
 
 /// Wrapper to the [`Jwk`] structure to enforce the exclusive use of traditional JWK encoded keys in the [`CompositeJwk`]
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, Zeroize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, Zeroize, ZeroizeOnDrop)]
 pub struct TraditionalJwk(Jwk);
 
 impl TraditionalJwk {
@@ -541,12 +536,6 @@ impl TraditionalJwk {
       .map(|jwk| TraditionalJwk(jwk))
   }
 
-}
-
-impl Drop for TraditionalJwk {
-  fn drop(&mut self) {
-    self.zeroize();
-  }
 }
 
 impl TryFrom<Jwk> for TraditionalJwk {

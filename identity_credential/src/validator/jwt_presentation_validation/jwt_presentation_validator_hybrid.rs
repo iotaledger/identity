@@ -69,8 +69,8 @@ where
   ) -> Result<DecodedJwtPresentation<CRED, T>, CompoundJwtPresentationValidationError>
   where
     HDOC: AsRef<CoreDocument> + ?Sized,
-    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
-    CRED: ToOwned<Owned = CRED> + serde::Serialize + serde::de::DeserializeOwned + Clone,
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned,
+    CRED: Clone + serde::Serialize + serde::de::DeserializeOwned + Clone,
   {
     // Verify JWS.
     let decoded_jws: DecodedJws<'_> = holder
@@ -119,12 +119,11 @@ where
       })
       .transpose()?;
 
-    (expiration_date.is_none() || expiration_date >= Some(options.earliest_expiry_date.unwrap_or_default()))
-      .then_some(())
-      .ok_or(CompoundJwtPresentationValidationError::one_presentation_error(
+    if expiration_date.is_some_and(|exp| exp < options.earliest_expiry_date.unwrap_or_default()) {
+      return Err(CompoundJwtPresentationValidationError::one_presentation_error(
         JwtValidationError::ExpirationDate,
-      ))?;
-
+      ));
+    }
     // Check issuance date.
     let issuance_date: Option<Timestamp> = match claims.issuance_date {
       Some(iss) => {
@@ -141,11 +140,11 @@ where
       None => None,
     };
 
-    (issuance_date.is_none() || issuance_date <= Some(options.latest_issuance_date.unwrap_or_default()))
-      .then_some(())
-      .ok_or(CompoundJwtPresentationValidationError::one_presentation_error(
+    if issuance_date.is_some_and(|iss| iss > options.latest_issuance_date.unwrap_or_default()){
+      return Err(CompoundJwtPresentationValidationError::one_presentation_error(
         JwtValidationError::IssuanceDate,
-      ))?;
+      ));
+    }
 
     let aud: Option<Url> = claims.aud.clone();
     let custom_claims: Option<Object> = claims.custom.clone();

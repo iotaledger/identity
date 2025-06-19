@@ -8,6 +8,8 @@
 
 use zeroize::Zeroize;
 
+use crate::jwk::JwkParams;
+
 use super::JwkType;
 
 /// Parameters for Post-Quantum algorithm keys
@@ -66,5 +68,11 @@ impl JwkParamsAkp {
   pub fn into_public(mut self) -> Self {
     self.strip_private();
     self
+  }
+}
+
+impl From<JwkParamsAkp> for JwkParams {
+  fn from(other: JwkParamsAkp) -> Self {
+    JwkParams::Akp(other)
   }
 }

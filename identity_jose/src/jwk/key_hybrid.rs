@@ -144,11 +144,6 @@ impl PostQuantumJwk {
     self.0.set_x5t_s256(value);
   }
 
-  /// Returns a mutable reference to the custom inner JWK properties.
-  pub fn params_mut(&mut self) -> &mut JwkParams {
-    self.0.params_mut()
-  }
-
   /// Sets the value of the custom inner JWK properties. Only for `Akp` keys.
   pub fn set_params(&mut self, params: impl Into<JwkParams>) -> Result<()> {
     let params: JwkParams = params.into();
@@ -340,11 +335,6 @@ impl TraditionalJwk {
   /// (x5t#S256).
   pub fn set_x5t_s256(&mut self, value: impl Into<String>) {
     self.0.set_x5t_s256(value);
-  }
-
-  /// Returns a mutable reference to the custom JWK properties.
-  pub fn params_mut(&mut self) -> &mut JwkParams {
-    self.0.params_mut()
   }
 
   /// Sets the value of the custom JWK properties.

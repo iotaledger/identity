@@ -266,7 +266,7 @@ impl<'a> JwsValidationItem<'a> {
 
     // Call the traditional verifier
     traditional_verifier
-      .verify(input1, &traditional_pk.into())
+      .verify(input1, &traditional_pk)
       .map_err(Error::SignatureVerificationError)?;
 
     let input2 = VerificationInput {
@@ -277,7 +277,7 @@ impl<'a> JwsValidationItem<'a> {
     
     // Call the PQ verifier
     pq_verifier
-      .verify(input2, &pq_pk.into())
+      .verify(input2, &pq_pk)
       .map_err(Error::SignatureVerificationError)?;
     
     Ok(DecodedJws {

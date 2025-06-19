@@ -363,7 +363,7 @@ impl JwkDocumentExtHybrid for CoreDocument {
       _ => return Err(Error::InvalidJwsAlgorithm),
     };
 
-    let signature_t = <K as JwkStorage>::sign(storage.key_storage(), &t_key_id, &signing_input, &t_jwk.into())
+    let signature_t = <K as JwkStorage>::sign(storage.key_storage(), &t_key_id, &signing_input, &t_jwk)
       .await
       .map_err(Error::KeyStorageError)?;
 

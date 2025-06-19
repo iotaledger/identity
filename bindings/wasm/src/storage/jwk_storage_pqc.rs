@@ -7,7 +7,6 @@ use identity_iota::storage::JwkStoragePQ;
 use identity_iota::storage::KeyId;
 use identity_iota::storage::KeyStorageResult;
 use identity_iota::storage::KeyType;
-use identity_iota::verification::jwk::Jwk;
 use identity_iota::verification::jwk::PostQuantumJwk;
 use wasm_bindgen::prelude::*;
 use crate::error::JsValueResult;
@@ -17,10 +16,8 @@ use identity_iota::verification::jose::jws::JwsAlgorithm;
 use identity_iota::storage::KeyStorageError;
 use wasm_bindgen_futures::JsFuture;
 use super::jwk_storage::PromiseJwkGenOutput;
-use js_sys::Array;
 use crate::jose::WasmJwk;
 use js_sys::Uint8Array;
-
 
 use crate::common::PromiseUint8Array;
 
@@ -77,8 +74,5 @@ fn uint8array_to_bytes(value: JsValue) -> KeyStorageResult<Vec<u8>> {
         .with_custom_message("expected Uint8Array".to_owned()),
     );
   }
-  let array_js_value = JsValue::from(Array::from(&value));
-  array_js_value
-    .into_serde()
-    .map_err(|e| KeyStorageError::new(KeyStorageErrorKind::SerializationError).with_custom_message(e.to_string()))
+  Ok(Uint8Array::new(&value).to_vec())
 }

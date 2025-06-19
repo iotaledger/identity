@@ -8,6 +8,7 @@ use identity_iota::storage::KeyId;
 use identity_iota::storage::KeyStorageResult;
 use identity_iota::storage::KeyType;
 use identity_iota::verification::jwk::Jwk;
+use identity_iota::verification::jwk::PostQuantumJwk;
 use wasm_bindgen::prelude::*;
 use crate::error::JsValueResult;
 use js_sys::Promise;
@@ -43,12 +44,12 @@ impl JwkStoragePQ for WasmJwkStorage {
     result.into()
   }
 
-  async fn pq_sign(&self, key_id: &KeyId, data: &[u8], public_key: &Jwk, ctx: Option<&[u8]>) -> KeyStorageResult<Vec<u8>> {
+  async fn pq_sign(&self, key_id: &KeyId, data: &[u8], public_key: &PostQuantumJwk, ctx: Option<&[u8]>) -> KeyStorageResult<Vec<u8>> {
     let promise: Promise = Promise::resolve(&WasmJwkStorage::_pq_sign(
       self,
       key_id.clone().into(),
       data.to_owned(),
-      WasmJwk(public_key.clone(),),
+      WasmJwk(public_key.clone().into()),
       ctx
     ));
     let result: JsValueResult = JsFuture::from(promise).await.into();

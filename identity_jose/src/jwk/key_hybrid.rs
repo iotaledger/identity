@@ -5,8 +5,6 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use identity_core::common::Url;
-use zeroize::Zeroize;
-use zeroize::ZeroizeOnDrop;
 
 use crate::error::Error;
 use crate::error::Result;

@@ -322,52 +322,32 @@ impl JwkDocumentExtHybrid for CoreDocument {
     let jws_encoder: CompactJwsEncoder<'_> = CompactJwsEncoder::new_with_options(payload, &header, encoding_options)
       .map_err(|err| Error::EncodingError(err.into()))?;
 
-    //M' = Prefix || Domain || len(ctx) || ctx || M
-    //let prefix = b"CompositeAlgorithmSignatures2025";
-
-    let (signing_input, ctx) = match alg {
-      JwsAlgorithm::IdMldsa44Ed25519 => {
-        //Prefix: CompositeAlgorithmSignatures2025
-        let mut input = b"CompositeAlgorithmSignatures2025".to_vec();
-
-        //Domain: id-MLDSA44-Ed25519
-        let domain = CompositeAlgId::IdMldsa44Ed25519.domain();
-        
-        input.extend_from_slice(domain);
-
-        //len(ctx) = 0
-        input.push(0x00);
-
-        //M
-        input.extend(jws_encoder.signing_input());
-        
-        (input, domain)
-      }
-      JwsAlgorithm::IdMldsa65Ed25519 => {
-        //Prefix: CompositeAlgorithmSignatures2025
-        let mut input = b"CompositeAlgorithmSignatures2025".to_vec();
-
-        //Domain: id-MLDSA65-Ed25519
-        let domain = CompositeAlgId::IdMldsa65Ed25519.domain();
-        
-        input.extend_from_slice(domain);
-        
-        //len(ctx) = 0
-        input.push(0x00);
-
-        //M
-        input.extend(jws_encoder.signing_input());
-
-        (input, domain)
-      }
+    let domain= match alg {
+      JwsAlgorithm::IdMldsa44Ed25519 => CompositeAlgId::IdMldsa44Ed25519.domain(),
+      JwsAlgorithm::IdMldsa65Ed25519 => CompositeAlgId::IdMldsa65Ed25519.domain(),
       _ => return Err(Error::InvalidJwsAlgorithm),
     };
 
-    let signature_t = <K as JwkStorage>::sign(storage.key_storage(), &t_key_id, &signing_input, &t_jwk)
+    //M' = Prefix || Domain || len(ctx) || ctx || M
+    //let prefix = b"CompositeAlgorithmSignatures2025";
+
+    //Prefix: CompositeAlgorithmSignatures2025
+    let mut input = CompositeAlgId::composite_signature_prefix().to_vec();
+
+    //Domain: id-MLDSA44-Ed25519 or id-MLDSA65-Ed25519
+    input.extend_from_slice(domain);
+
+    //len(ctx) = 0
+    input.push(0x00);
+
+    //M
+    input.extend(jws_encoder.signing_input());
+        
+    let signature_t = <K as JwkStorage>::sign(storage.key_storage(), &t_key_id, &input, &t_jwk)
       .await
       .map_err(Error::KeyStorageError)?;
 
-    let signature_pq = <K as JwkStoragePQ>::pq_sign(storage.key_storage(), &pq_key_id, &signing_input, pq_jwk, Some(ctx))
+    let signature_pq = <K as JwkStoragePQ>::pq_sign(storage.key_storage(), &pq_key_id, &input, pq_jwk, Some(domain))
       .await
       .map_err(Error::KeyStorageError)?;
 

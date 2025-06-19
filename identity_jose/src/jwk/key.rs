@@ -262,6 +262,9 @@ impl Jwk {
       (JwkType::Okp, value @ JwkParams::Okp(_)) => {
         self.set_params_unchecked(value);
       }
+      (JwkType::Akp, value @ JwkParams::Akp(_)) => {
+        self.set_params_unchecked(value);
+      }
       (_, _) => {
         return Err(Error::InvalidParam("`params` type does not match `kty`"));
       }

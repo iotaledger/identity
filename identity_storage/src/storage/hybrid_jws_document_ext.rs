@@ -91,8 +91,7 @@ macro_rules! generate_method_hybrid_for_document_type {
       let traditional_jwk = TraditionalJwk::try_from(t_jwk)
       .map_err(|err| Error::EncodingError(Box::new(err)))?;
 
-      let composite_pk = CompositeJwk::new(alg_id, traditional_jwk, pq_jwk)
-      .map_err(|err| Error::EncodingError(Box::new(err)))?;
+      let composite_pk = CompositeJwk::new(alg_id, traditional_jwk, pq_jwk);
 
       let method: VerificationMethod = {
         match VerificationMethod::new_from_compositejwk(document.id().clone(), composite_pk, fragment)

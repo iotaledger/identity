@@ -4,7 +4,6 @@
 use std::str::FromStr;
 
 use crate::jwk::{PostQuantumJwk, TraditionalJwk};
-use crate::error::Error;
 
 /// Algorithms used to generate hybrid signatures.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -52,13 +51,12 @@ pub struct CompositeJwk {
 
 impl CompositeJwk {
   /// Create a new CompositePublicKey structure.
-  pub fn new(alg_id: CompositeAlgId, traditional_public_key: TraditionalJwk, pq_public_key: PostQuantumJwk) -> Result<Self, Error>  {
-    Ok(Self {
+  pub fn new(alg_id: CompositeAlgId, traditional_public_key: TraditionalJwk, pq_public_key: PostQuantumJwk) -> Self  {
+    Self {
       alg_id,
-      traditional_public_key: traditional_public_key,
-      pq_public_key: pq_public_key,
-    })
-
+      traditional_public_key: traditional_public_key.into_public().unwrap(),
+      pq_public_key: pq_public_key.into_public().unwrap(),
+    }
   }
   /// Get the `algId` value.
   pub fn alg_id(&self) -> CompositeAlgId {

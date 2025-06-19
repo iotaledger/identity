@@ -243,8 +243,7 @@ impl DidJwkDocumentExt for CoreDocument {
     let traditional_jwk = TraditionalJwk::try_from(t_jwk)
     .map_err(|err| Error::EncodingError(Box::new(err)))?;
 
-    let composite_pk = CompositeJwk::new(alg, traditional_jwk, pq_jwk)
-    .map_err(|err| Error::EncodingError(Box::new(err)))?;
+    let composite_pk = CompositeJwk::new(alg, traditional_jwk, pq_jwk);
 
     let b64 = encode_b64_json(&composite_pk)
       .map_err(|err| Error::EncodingError(Box::new(err)))?;

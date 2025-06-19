@@ -218,7 +218,7 @@ impl<'a> JwsValidationItem<'a> {
     //Prefix: CompositeAlgorithmSignatures2025
     let mut input = CompositeAlgId::composite_signature_prefix().to_vec();
 
-    //Domain: id-MLDSA44-Ed25519
+    //Domain: id-MLDSA44-Ed25519 or id-MLDSA65-Ed25519
     input.extend_from_slice(domain);
 
     //len(ctx) = 0

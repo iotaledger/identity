@@ -23,7 +23,7 @@ use crate::jwk::JwkUse;
 use crate::jws::JwsAlgorithm;
 
 /// A post-quantum key encoded as JWK.
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, Zeroize, ZeroizeOnDrop)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(transparent)]
 pub struct PostQuantumJwk(Jwk);
 
@@ -212,12 +212,12 @@ impl AsRef<Jwk> for PostQuantumJwk {
 
 impl From<PostQuantumJwk> for Jwk {
   fn from(value: PostQuantumJwk) -> Self {
-    value.0.clone()
+    value.0
   }
 }
 
 /// Wrapper to the [`Jwk`] structure to enforce the exclusive use of traditional JWK encoded keys in the [`CompositeJwk`]
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, Zeroize, ZeroizeOnDrop)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(transparent)]
 pub struct TraditionalJwk(Jwk);
 
@@ -424,7 +424,7 @@ impl AsRef<Jwk> for TraditionalJwk {
 
 impl From<TraditionalJwk> for Jwk {
   fn from(value: TraditionalJwk) -> Self {
-    value.0.clone()
+    value.0
   }
 }
 

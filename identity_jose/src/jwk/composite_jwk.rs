@@ -34,6 +34,11 @@ impl CompositeAlgId {
       Self::IdMldsa65Ed25519 => &[0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x08, 0x01, 0x47],
     }
   }
+
+  /// Returns the prefix used for composite signatures.
+  pub const fn composite_signature_prefix() -> &'static [u8] {
+    b"CompositeAlgorithmSignatures2025"
+  }
 }
 
 /// Represent a combination of a traditional public key and a post-quantum public key both in Jwk format.

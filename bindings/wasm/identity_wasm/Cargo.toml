@@ -83,14 +83,3 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_bindgen_unstable_test
 default = []
 keytool = ["iota_interaction_ts/keytool", "identity_iota/keytool"]
 
-# Uncomment the following patch if you need to use a local `product-core` repository for development purposes.
-# --------------------------------------------------------------------------
-# IMPORTANT:
-# * Remember to comment out the patch before committing your changes.
-# * Remember also to comment out the patch in the root workspace Cargo.toml file
-# --------------------------------------------------------------------------
-[patch."https://github.com/iotaledger/product-core.git"]
-iota_interaction = { version = "0.2.1", path = "../../../../product-core/iota_interaction" }
-iota_interaction_rust = { version = "0.2.1", path = "../../../../product-core/iota_interaction_rust" }
-iota_interaction_ts = { version = "0.2.1", path = "../../../../product-core/bindings/wasm/iota_interaction_ts" }
-product_common = { version = "0.2.1", path = "../../../../product-core/product_common" }

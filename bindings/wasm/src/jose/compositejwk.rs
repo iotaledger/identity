@@ -7,6 +7,7 @@ use wasm_bindgen::prelude::*;
 use crate::jose::WasmCompositeAlgId;
 use crate::jose::WasmJwk;
 use crate::jose::IJwkParams;
+use crate::error::Result;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
@@ -16,9 +17,10 @@ pub struct WasmCompositeJwk(pub(crate) CompositeJwk);
 #[wasm_bindgen(js_class = CompositeJwk)]
 impl WasmCompositeJwk {
   #[wasm_bindgen(constructor)]
-  pub fn new(jwk: IJwkParams) -> Self {
-    let jwk: CompositeJwk = jwk.into_serde().unwrap();
-    Self(jwk)
+  pub fn new(jwk: IJwkParams) -> Result<Self> {
+    let jwk = jwk.into_serde()
+      .map_err(|e| JsValue::from_str(&format!("Failed to deserialize CompositeJwk: {}", e)))?;
+    Ok(Self(jwk))
   }
 
   #[wasm_bindgen]

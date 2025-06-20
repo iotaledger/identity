@@ -82,4 +82,3 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_bindgen_unstable_test
 [features]
 default = []
 keytool = ["iota_interaction_ts/keytool", "identity_iota/keytool"]
-

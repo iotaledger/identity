@@ -9,6 +9,7 @@ use crate::jose::WasmJwk;
 use crate::jose::IJwkParams;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
 #[wasm_bindgen(js_name = CompositeJwk)]
 pub struct WasmCompositeJwk(pub(crate) CompositeJwk);
 

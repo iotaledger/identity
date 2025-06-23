@@ -8,7 +8,7 @@ keywords = ["iota", "tangle", "identity", "wasm"]
 license = "Apache-2.0"
 publish = false
 readme = "README.md"
-repository = "https://github.com/iotaledger/identity.rs"
+repository = "https://github.com/iotaledger/identity"
 resolver = "2"
 description = "Web Assembly bindings for the identity-rs crate."
 

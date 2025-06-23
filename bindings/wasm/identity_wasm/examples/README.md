@@ -1,4 +1,4 @@
-![banner](https://github.com/iotaledger/identity.rs/raw/HEAD/.github/banner_identity.svg)
+![banner](https://github.com/iotaledger/identity/raw/HEAD/.github/banner_identity.svg)
 
 ## IOTA Identity Examples
 

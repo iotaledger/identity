@@ -6,7 +6,7 @@
 
 ## [API Reference](https://docs.iota.org/references/iota-identity/wasm/api_ref)
 
-## [Examples](https://github.com/iotaledger/identity.rs/blob/wasm-v1.6.0-alpha/bindings/wasm/identity_wasm/examples/README.md)
+## [Examples](https://github.com/iotaledger/identity/tree/main/bindings/wasm/identity_wasm/examples/README.md)
 
 ## Install the Library
 

@@ -6,7 +6,7 @@ edition.workspace = true
 homepage.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Verification data types and functionality for identity.rs"
+description = "Verification data types and functionality for IOTA Identity"
 
 [dependencies]
 identity_core = { version = "=1.6.0-beta", path = "./../identity_core" }

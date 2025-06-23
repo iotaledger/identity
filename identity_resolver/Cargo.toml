@@ -8,7 +8,7 @@ keywords = ["iota", "did", "identity", "resolver", "resolution"]
 license.workspace = true
 readme = "./README.md"
 repository.workspace = true
-description = "DID Resolution utilities for the identity.rs library."
+description = "DID Resolution utilities for the IOTA Identity library."
 
 [dependencies]
 # This is currently necessary for the ResolutionHandler trait. This can be made an optional dependency if alternative ways of attaching handlers are introduced.

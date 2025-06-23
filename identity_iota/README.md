@@ -1,11 +1,11 @@
-![banner](https://github.com/iotaledger/identity.rs/raw/HEAD/.github/banner_identity.svg)
+![banner](https://github.com/iotaledger/identity/raw/HEAD/.github/banner_identity.svg)
 
 <p align="center">
   <a href="https://iota.stackexchange.com/" style="text-decoration:none;"><img src="https://img.shields.io/badge/StackExchange-9cf.svg?logo=stackexchange" alt="StackExchange"></a>
   <a href="https://discord.iota.org/" style="text-decoration:none;"><img src="https://img.shields.io/badge/Discord-9cf.svg?logo=discord" alt="Discord"></a>
-  <a href="https://github.com/iotaledger/identity.rs/blob/HEAD/LICENSE" style="text-decoration:none;"><img src="https://img.shields.io/github/license/iotaledger/identity.rs.svg" alt="Apache 2.0 license"></a>
-  <img src="https://deps.rs/repo/github/iotaledger/identity.rs/status.svg" alt="Dependencies">
-  <a href='https://coveralls.io/github/iotaledger/identity.rs?branch=main'><img src='https://coveralls.io/repos/github/iotaledger/identity.rs/badge.svg?branch=main' alt='Coverage Status' /></a>
+  <a href="https://github.com/iotaledger/identity/blob/HEAD/LICENSE" style="text-decoration:none;"><img src="https://img.shields.io/github/license/iotaledger/identity.svg" alt="Apache 2.0 license"></a>
+  <img src="https://deps.rs/repo/github/iotaledger/identity/status.svg" alt="Dependencies">
+  <a href='https://coveralls.io/github/iotaledger/identity?branch=main'><img src='https://coveralls.io/repos/github/iotaledger/identity/badge.svg?branch=main' alt='Coverage Status' /></a>
 
 </p>
 
@@ -21,7 +21,7 @@
 ---
 
 > [!NOTE]
-> This version of the library is compatible with IOTA Rebased networks and in active development, for a version of the library compatible with IOTA Stardust networks check [here](https://github.com/iotaledger/identity.rs/tree/support/v1.5)
+> This version of the library is compatible with IOTA Rebased networks and in active development, for a version of the library compatible with IOTA Stardust networks check [here](https://github.com/iotaledger/identity/tree/support/v1.5)
 
 ## Introduction
 
@@ -31,21 +31,21 @@ IOTA Identity is a [Rust](https://www.rust-lang.org/) implementation of decentra
 
 - [Identity Documentation Pages](https://docs.iota.org/iota-identity): Supplementing documentation with context around identity and simple examples on library usage.
 - API References:
-  - [Rust API Reference](https://iotaledger.github.io/identity.rs/identity_iota/index.html): Package documentation (cargo docs).
+  - [Rust API Reference](https://iotaledger.github.io/identity/identity_iota/index.html): Package documentation (cargo docs).
   - [Wasm API Reference](https://docs.iota.org/references/iota-identity/wasm/api_ref): Wasm Package documentation.
 - Examples:
-  - [Rust Examples](https://github.com/iotaledger/identity.rs/blob/feat/identity-rebased-alpha/examples): Practical code snippets to get you started with the library in Rust.
-  - [Wasm Examples](https://github.com/iotaledger/identity.rs/blob/feat/identity-rebased-alpha/bindings/wasm/identity_wasm/examples): Practical code snippets to get you started with the library in TypeScript/JavaScript.
+  - [Rust Examples](https://github.com/iotaledger/identity/tree/main/examples): Practical code snippets to get you started with the library in Rust.
+  - [Wasm Examples](https://github.com/iotaledger/identity/tree/main/bindings/wasm/identity_wasm/examples): Practical code snippets to get you started with the library in TypeScript/JavaScript.
 
 ## Bindings
 
 [Foreign Function Interface (FFI)](https://en.wikipedia.org/wiki/Foreign_function_interface) Bindings of this [Rust](https://www.rust-lang.org/) library to other programming languages:
 
-- [Web Assembly](https://github.com/iotaledger/identity.rs/blob/feat/identity-rebased-alpha/bindings/wasm/identity_wasm/) (JavaScript/TypeScript)
+- [Web Assembly](https://github.com/iotaledger/identity/tree/main/bindings/wasm/identity_wasm/) (JavaScript/TypeScript)
 
 ## gRPC
 
-We provide a collection of experimental [gRPC services](https://github.com/iotaledger/identity.rs/blob/feat/identity-rebased-alpha/bindings/grpc/)
+We provide a collection of experimental [gRPC services](https://github.com/iotaledger/identity/tree/main/bindings/grpc/)
 
 ## Roadmap and Milestones
 

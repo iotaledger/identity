@@ -25,11 +25,13 @@ use crate::error::wasm_error;
 use crate::error::Result;
 use crate::error::WasmResult;
 use crate::iota::WasmIotaDocument;
+use crate::rebased::proposals::WasmCreateBorrowProposal;
 use crate::rebased::proposals::WasmCreateConfigChangeProposal;
 use crate::rebased::proposals::WasmCreateUpdateDidProposal;
 use crate::rebased::WasmDeleteDelegationToken;
 
 use super::proposals::StringCouple;
+use super::proposals::WasmBorrowFn;
 use super::proposals::WasmConfigChange;
 use super::proposals::WasmCreateSendProposal;
 use super::WasmControllerCap;
@@ -250,6 +252,31 @@ impl WasmOnChainIdentity {
   )]
   pub fn delete_delegation_token(&self, delegation_token: WasmDelegationToken) -> Result<WasmDeleteDelegationToken> {
     WasmDeleteDelegationToken::new(self, delegation_token)
+  }
+
+  #[wasm_bindgen(
+    js_name = borrowAssets,
+    unchecked_return_type = "TransactionBuilder<CreateProposal<Borrow>>",
+  )]
+  pub fn borrow_assets(
+    &self,
+    controller_token: &WasmControllerToken,
+    objects: Vec<String>,
+    borrow_fn: Option<WasmBorrowFn>,
+    expiration_epoch: Option<u64>,
+  ) -> Result<WasmTransactionBuilder> {
+    let objects = objects
+      .into_iter()
+      .map(|s| s.parse().map_err(|e| JsError::from(e).into()))
+      .collect::<Result<Vec<ObjectID>>>()?;
+    let tx = JsValue::from(WasmCreateBorrowProposal::new(
+      self,
+      controller_token,
+      objects,
+      borrow_fn,
+      expiration_epoch,
+    ));
+    Ok(WasmTransactionBuilder::new(tx.unchecked_into()))
   }
 }
 

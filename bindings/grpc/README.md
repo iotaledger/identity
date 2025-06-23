@@ -1,5 +1,5 @@
-# identity gRPC Bindings
-This project provides the functionalities of [identity](https://github.com/iotaledger/identity) in a language-agnostic way through a [gRPC](https://grpc.io) server.
+# Identity gRPC Bindings
+This project provides the functionalities of [Identity](https://github.com/iotaledger/identity) in a language-agnostic way through a [gRPC](https://grpc.io) server.
 
 The server can easily be run with docker using [this dockerfile](https://github.com/iotaledger/identity/blob/main/bindings/grpc/Dockerfile).
 

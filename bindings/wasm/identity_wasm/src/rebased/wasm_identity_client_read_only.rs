@@ -51,6 +51,12 @@ pub struct WasmIdentityClientReadOnly(pub(crate) IdentityClientReadOnly);
 // builder related functions
 #[wasm_bindgen(js_class = IdentityClientReadOnly)]
 impl WasmIdentityClientReadOnly {
+  /// @deprecated Use `IdentityClientReadOnly.create` instead.
+  #[wasm_bindgen(constructor)]
+  pub fn _new() -> Result<WasmIdentityClientReadOnly, JsError> {
+    Err(JsError::new("cannot build an instance of `IdentityClientReadOnly` through its default sync constructor. Use `IdentityClientReadOnly.create` instead."))
+  }
+
   #[wasm_bindgen(js_name = create)]
   pub async fn new(iota_client: WasmIotaClient) -> Result<WasmIdentityClientReadOnly, JsError> {
     let inner_client = IdentityClientReadOnly::new(iota_client).await?;

@@ -37,13 +37,13 @@ use super::StringSet;
 
 #[wasm_bindgen(typescript_custom_section)]
 const _TYPE_DEFS: &str = r#"
-import { Transaction as SdkTransaction, Argument } from "@iota/iota-sdk/transactions";
+import { TransactionDataBuilder, Argument } from "@iota/iota-sdk/transactions";
 import { IotaObjectData } from "@iota/iota-sdk/client";
 
 /**
- * User defined function to define what should be done with the borrowed objects.
+ * Closure needed to define what should be done with the borrowed objects.
  */
-export type BorrowFn = (tx: SdkTransaction, objects: Map<string, [Argument, IotaObjectData]>) => void;
+export type BorrowFn = (tx: TransactionDataBuilder, objects: Map<string, [Argument, IotaObjectData]>) => void;
 "#;
 
 #[wasm_bindgen]
@@ -58,16 +58,16 @@ extern "C" {
 #[wasm_bindgen(module = "@iota/iota-sdk/transactions")]
 extern "C" {
   #[wasm_bindgen(typescript_type = TransactionDataBuilder, extends = js_sys::Object)]
-  type _TransactionDataBuilder;
+  type TransactionDataBuilder;
 
-  #[wasm_bindgen(js_name = fromKindBytes, static_method_of = _TransactionDataBuilder)]
-  fn from_tx_kind_bcs(bytes: &[u8]) -> _TransactionDataBuilder;
+  #[wasm_bindgen(js_name = fromKindBytes, static_method_of = TransactionDataBuilder, catch)]
+  fn from_tx_kind_bcs(bytes: Vec<u8>) -> StdResult<TransactionDataBuilder, JsValue>;
 
   #[wasm_bindgen(method)]
-  fn build(this: &_TransactionDataBuilder, options: Option<&js_sys::Object>) -> Vec<u8>;
+  fn build(this: &TransactionDataBuilder, options: Option<&js_sys::Object>) -> Vec<u8>;
 }
 
-impl _TransactionDataBuilder {
+impl TransactionDataBuilder {
   fn build_tx_kind(&self) -> Vec<u8> {
     let options = js_sys::Object::new();
     let _ = js_sys::Reflect::set(&options, &JsValue::from_str("onlyTransactionKind"), &JsValue::TRUE);
@@ -79,18 +79,16 @@ impl WasmBorrowFn {
   /// The resulting closure may panic if anything goes wrong.
   /// Make sure to catch_unwind when it's called.
   pub(crate) fn into_intent_fn(self) -> impl BorrowIntentFnT {
-    use serde::Serialize as _;
     type Ptb = ProgrammableTransactionBuilder;
 
     move |ptb: &mut Ptb, objects: &HashMap<ObjectID, (Argument, IotaObjectData)>| {
       // Convert the PTB into a TS Transaction (the builder).
-      let tx_kind = TransactionKind::ProgrammableTransaction(std::mem::take(ptb).finish());
+      let pt = std::mem::take(ptb).finish();
+      let tx_kind = TransactionKind::ProgrammableTransaction(pt);
       let tx_kind_bytes = bcs::to_bytes(&tx_kind).unwrap();
-      let ts_tx_builder = _TransactionDataBuilder::from_tx_kind_bcs(&tx_kind_bytes);
+      let ts_tx_builder = TransactionDataBuilder::from_tx_kind_bcs(tx_kind_bytes).unwrap();
       // Convert objects into a JS Map of the same types.
-      let ts_map = objects
-        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
-        .unwrap();
+      let ts_map = serde_wasm_bindgen::to_value(objects).unwrap();
 
       // Call the provided JS closure `borrow_fn`.
       self
@@ -101,6 +99,7 @@ impl WasmBorrowFn {
           &ts_map,
         )
         .unwrap();
+      // Call the provided JS closure `borrow_fn`.
 
       // `borrow_fn` has changed the internals of transaction builder.
       // Convert it back into a PTB and set `ptb`.
@@ -405,7 +404,7 @@ pub struct WasmCreateBorrowProposal {
   objects: Vec<ObjectID>,
 }
 
-#[wasm_bindgen(js_class = CreateBorrowProsal)]
+#[wasm_bindgen(js_class = CreateBorrowProposal)]
 impl WasmCreateBorrowProposal {
   pub(crate) fn new(
     identity: &WasmOnChainIdentity,

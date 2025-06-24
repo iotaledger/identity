@@ -147,6 +147,17 @@ impl IdentityClientReadOnly {
 
   /// Queries an [`IotaDocument`] DID Document through its `did`.
   pub async fn resolve_did(&self, did: &IotaDID) -> Result<IotaDocument, Error> {
+    // Make sure `did` references a DID Document on the network
+    // this client is connected to.
+    let did_network = did.network_str();
+    let client_network = self.network.as_ref();
+    if did_network != client_network && did_network != self.chain_id() {
+      return Err(Error::DIDResolutionError(format!(
+        "provided DID `{did}` \
+        references a DID Document on network `{did_network}`, \
+        but this client is connected to network `{client_network}`"
+      )));
+    }
     let identity = self.get_identity(get_object_id_from_did(did)?).await?;
     let did_doc = identity.did_document(self.network())?;
 
@@ -260,5 +271,26 @@ impl CoreClientReadOnly for IdentityClientReadOnly {
 
   fn package_history(&self) -> Vec<ObjectID> {
     self.package_history.clone()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::IotaDID;
+
+  use super::IdentityClientReadOnly;
+  use iota_sdk::IotaClientBuilder;
+
+  #[tokio::test]
+  async fn resolution_of_a_did_for_a_different_network_fails() -> anyhow::Result<()> {
+    let iota_client = IotaClientBuilder::default().build_testnet().await?;
+    let identity_client = IdentityClientReadOnly::new(iota_client).await?;
+
+    let did = IotaDID::new(&[1; 32], &"unknown".parse().unwrap());
+    let error = identity_client.resolve_did(&did).await.unwrap_err();
+
+    assert!(matches!(error, crate::rebased::Error::DIDResolutionError(_)));
+
+    Ok(())
   }
 }

@@ -39,4 +39,7 @@ pub enum Error {
   /// Caused by key material that is not a JSON Web Key.
   #[error("verification material format is not publicKeyJwk")]
   NotPublicKeyJwk,
+  /// Failed to deserialize [`MethodRef`](crate::MethodRef)
+  #[error("invalid method ref; {0}")]
+  InvalidMethodRef(#[from] serde_json::Error),
 }

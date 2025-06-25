@@ -27,12 +27,14 @@ use crate::error::WasmResult;
 use crate::iota::WasmIotaDocument;
 use crate::rebased::proposals::WasmCreateBorrowProposal;
 use crate::rebased::proposals::WasmCreateConfigChangeProposal;
+use crate::rebased::proposals::WasmCreateControllerExecutionProposal;
 use crate::rebased::proposals::WasmCreateUpdateDidProposal;
 use crate::rebased::WasmDeleteDelegationToken;
 
 use super::proposals::StringCouple;
 use super::proposals::WasmBorrowFn;
 use super::proposals::WasmConfigChange;
+use super::proposals::WasmControllerExecutionFn;
 use super::proposals::WasmCreateSendProposal;
 use super::WasmControllerCap;
 use super::WasmControllerToken;
@@ -274,6 +276,28 @@ impl WasmOnChainIdentity {
       controller_token,
       objects,
       borrow_fn,
+      expiration_epoch,
+    ));
+    Ok(WasmTransactionBuilder::new(tx.unchecked_into()))
+  }
+
+  #[wasm_bindgen(
+    js_name = controllerExecution,
+    unchecked_return_type = "TransactionBuilder<CreateProposal<ControllerExecution>>",
+  )]
+  pub fn controller_execution(
+    &self,
+    controller_token: &WasmControllerToken,
+    controller_cap: &str,
+    exec_fn: Option<WasmControllerExecutionFn>,
+    expiration_epoch: Option<u64>,
+  ) -> std::result::Result<WasmTransactionBuilder, JsError> {
+    let controller_cap = controller_cap.parse()?;
+    let tx = JsValue::from(WasmCreateControllerExecutionProposal::new(
+      self,
+      controller_token,
+      controller_cap,
+      exec_fn,
       expiration_epoch,
     ));
     Ok(WasmTransactionBuilder::new(tx.unchecked_into()))

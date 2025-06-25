@@ -3,11 +3,13 @@
 
 mod borrow;
 mod config_change;
+mod controller_execution;
 mod send;
 mod update_did;
 
 pub use borrow::*;
 pub use config_change::*;
+pub use controller_execution::*;
 pub use send::*;
 pub use update_did::*;
 
@@ -101,5 +103,27 @@ impl TryFrom<&'_ HashSet<ObjectID>> for StringSet {
   fn try_from(value: &'_ HashSet<ObjectID>) -> Result<Self, Self::Error> {
     let js_value = serde_wasm_bindgen::to_value(value)?;
     js_value.dyn_into::<StringSet>()
+  }
+}
+
+// TODO: implement the same in product-core and consume it from
+// there instead of having the implementation here.
+#[wasm_bindgen(module = "@iota/iota-sdk/transactions")]
+extern "C" {
+  #[wasm_bindgen(typescript_type = TransactionDataBuilder, extends = js_sys::Object)]
+  pub(crate) type TransactionDataBuilder;
+
+  #[wasm_bindgen(js_name = fromKindBytes, static_method_of = TransactionDataBuilder, catch)]
+  pub(crate) fn from_tx_kind_bcs(bytes: Vec<u8>) -> Result<TransactionDataBuilder, JsValue>;
+
+  #[wasm_bindgen(method)]
+  pub(crate) fn build(this: &TransactionDataBuilder, options: Option<&js_sys::Object>) -> Vec<u8>;
+}
+
+impl TransactionDataBuilder {
+  pub(crate) fn build_tx_kind(&self) -> Vec<u8> {
+    let options = js_sys::Object::new();
+    let _ = js_sys::Reflect::set(&options, &JsValue::from_str("onlyTransactionKind"), &JsValue::TRUE);
+    self.build(Some(&options))
   }
 }

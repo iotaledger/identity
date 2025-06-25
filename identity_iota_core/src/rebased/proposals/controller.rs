@@ -21,6 +21,7 @@ use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::types::TypeTag;
 use iota_interaction::MoveType;
+use iota_interaction::OptionalSend;
 use iota_interaction::OptionalSync;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::transaction::transaction_builder::Transaction;
@@ -45,7 +46,7 @@ cfg_if::cfg_if! {
       impl<T> ControllerIntentFnT for T where T: FnOnce(&mut Ptb, &Argument) {}
       #[allow(unreachable_pub)]
       /// Boxed dynamic trait object of {@link ControllerIntentFnT}
-      pub type ControllerIntentFn = Box<dyn ControllerIntentFnT + Send>;
+      pub type ControllerIntentFn = Box<dyn ControllerIntentFnT>;
     } else {
       use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
       /// Instances of ControllerIntentFnT can be used as user-provided function to describe how
@@ -78,8 +79,7 @@ impl<F> ControllerExecutionWithIntent<F>
 where
   F: ControllerIntentFnT,
 {
-  fn new(mut action: ControllerExecution<F>) -> Self {
-    debug_assert!(action.intent_fn.get_mut().is_some());
+  fn new(action: ControllerExecution<F>) -> Self {
     Self(action)
   }
 }
@@ -93,6 +93,25 @@ impl<F> ControllerExecution<F> {
       identity: identity.id().into(),
       intent_fn: Mutex::default(),
     }
+  }
+
+  /// Creates a new [ControllerExecution] action from identity's address and identity's controller cap ID.
+  pub fn new_from_identity_address(controller_cap: ObjectID, identity_address: IotaAddress) -> Self {
+    Self {
+      controller_cap,
+      identity: identity_address,
+      intent_fn: Mutex::default(),
+    }
+  }
+
+  /// Returns the [ObjectID] of the controller cap that will be borrowed.
+  pub fn controller_cap(&self) -> ObjectID {
+    self.controller_cap
+  }
+
+  /// Returns the address of the identity whose controller cap will be borrowed.
+  pub fn identity_address(&self) -> IotaAddress {
+    self.identity
   }
 
   /// Specifies how the borrowed `ControllerCap` should be used in the transaction.
@@ -150,7 +169,7 @@ impl MoveType for ControllerExecution {
 #[cfg_attr(feature = "send-sync", async_trait)]
 impl<F> ProposalT for Proposal<ControllerExecution<F>>
 where
-  F: ControllerIntentFnT + Send,
+  F: ControllerIntentFnT + OptionalSend,
 {
   type Action = ControllerExecution<F>;
   type Output = ();
@@ -294,7 +313,7 @@ impl<'i, F> ProtoTransaction for UserDrivenTx<'i, ControllerExecution<F>> {
 
 impl<F> UserDrivenTx<'_, ControllerExecutionWithIntent<F>>
 where
-  F: ControllerIntentFnT + Send,
+  F: ControllerIntentFnT + OptionalSend,
 {
   async fn make_ptb<C>(&self, client: &C) -> Result<ProgrammableTransaction, Error>
   where
@@ -346,7 +365,7 @@ where
 #[cfg_attr(feature = "send-sync", async_trait)]
 impl<F> Transaction for UserDrivenTx<'_, ControllerExecutionWithIntent<F>>
 where
-  F: ControllerIntentFnT + Send,
+  F: ControllerIntentFnT + OptionalSend,
 {
   type Output = ();
   type Error = Error;

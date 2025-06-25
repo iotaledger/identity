@@ -1,18 +1,17 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::HashMap;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::rc::Rc;
 use std::result::Result as StdResult;
 
 use identity_iota::iota::rebased::migration::Proposal;
-use identity_iota::iota::rebased::proposals::BorrowAction;
-use identity_iota::iota::rebased::proposals::BorrowIntentFnT;
+use identity_iota::iota::rebased::proposals::ControllerExecution;
+use identity_iota::iota::rebased::proposals::ControllerIntentFnT;
 use identity_iota::iota::rebased::proposals::ProposalResult;
 use identity_iota::iota::rebased::proposals::ProposalT as _;
-use iota_interaction::rpc_types::IotaObjectData;
+use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use iota_interaction::types::transaction::Argument;
@@ -42,45 +41,44 @@ import { TransactionDataBuilder, Argument } from "@iota/iota-sdk/transactions";
 import { IotaObjectData } from "@iota/iota-sdk/client";
 
 /**
- * Closure needed to define what should be done with the borrowed objects.
+ * Closure that allows users to define what to do with the Identity's controller capability.
  */
-export type BorrowFn = (tx: TransactionDataBuilder, objects: Map<string, [Argument, IotaObjectData]>) => void;
+export type ControllerExecutionFn = (tx: TransactionDataBuilder, capability: Argument) => void;
 "#;
 
 #[wasm_bindgen]
 extern "C" {
   #[derive(Clone)]
-  #[wasm_bindgen(typescript_type = BorrowFn, extends = js_sys::Function)]
-  pub type WasmBorrowFn;
+  #[wasm_bindgen(typescript_type = ControllerExecutionFn, extends = js_sys::Function)]
+  pub type WasmControllerExecutionFn;
 }
 
-impl WasmBorrowFn {
+impl WasmControllerExecutionFn {
   /// The resulting closure may panic if anything goes wrong.
   /// Make sure to catch_unwind when it's called.
-  pub(crate) fn into_intent_fn(self) -> impl BorrowIntentFnT {
+  pub(crate) fn into_intent_fn(self) -> impl ControllerIntentFnT {
     type Ptb = ProgrammableTransactionBuilder;
 
-    move |ptb: &mut Ptb, objects: &HashMap<ObjectID, (Argument, IotaObjectData)>| {
+    move |ptb: &mut Ptb, cap: &Argument| {
       // Convert the PTB into a TS Transaction (the builder).
       let pt = std::mem::take(ptb).finish();
       let tx_kind = TransactionKind::ProgrammableTransaction(pt);
       let tx_kind_bytes = bcs::to_bytes(&tx_kind).unwrap();
       let ts_tx_builder = TransactionDataBuilder::from_tx_kind_bcs(tx_kind_bytes).unwrap();
-      // Convert objects into a JS Map of the same types.
-      let ts_map = serde_wasm_bindgen::to_value(objects).unwrap();
+      let ts_argument = serde_wasm_bindgen::to_value(cap).unwrap();
 
-      // Call the provided JS closure `borrow_fn`.
+      // Call the provided JS closure `exec_fn`.
       self
         .call2(
           // No `this`.
           &JsValue::NULL,
           &ts_tx_builder,
-          &ts_map,
+          &ts_argument,
         )
         .unwrap();
-      // Call the provided JS closure `borrow_fn`.
+      // Call the provided JS closure `exec_fn`.
 
-      // `borrow_fn` has changed the internals of transaction builder.
+      // `exec_fn` has changed the internals of transaction builder.
       // Convert it back into a PTB and set `ptb`.
       // Build the programmable transaction.
       // Dev note: since we already know which transaction kind (PT) we are dealing with
@@ -97,48 +95,60 @@ impl WasmBorrowFn {
 }
 
 #[derive(Clone)]
-#[wasm_bindgen(js_name = Borrow, inspectable, getter_with_clone)]
-pub struct WasmBorrow {
-  objects: Vec<ObjectID>,
-  pub borrow_fn: Option<WasmBorrowFn>,
+#[wasm_bindgen(js_name = ControllerExecution, inspectable, getter_with_clone)]
+pub struct WasmControllerExecution {
+  controller_cap: ObjectID,
+  identity: IotaAddress,
+  pub controller_exec_fn: Option<WasmControllerExecutionFn>,
 }
 
-impl From<WasmBorrow> for BorrowAction {
-  fn from(value: WasmBorrow) -> Self {
-    if let Some(borrow_fn) = value.borrow_fn {
-      let intent_fn = borrow_fn.into_intent_fn();
-      Self::new_with_intent(value.objects, Box::new(intent_fn))
+impl From<WasmControllerExecution> for ControllerExecution {
+  fn from(value: WasmControllerExecution) -> Self {
+    let action = Self::new_from_identity_address(value.controller_cap, value.identity);
+    if let Some(exec_fn) = value.controller_exec_fn {
+      action.with_intent(Box::new(exec_fn.into_intent_fn()))
     } else {
-      Self::new(value.objects)
+      action
     }
   }
 }
 
-#[wasm_bindgen(js_class = Borrow)]
-impl WasmBorrow {
+#[wasm_bindgen(js_class = ControllerExecution)]
+impl WasmControllerExecution {
   #[wasm_bindgen(constructor)]
-  pub fn new(objects: Vec<String>, borrow_fn: Option<WasmBorrowFn>) -> StdResult<Self, JsError> {
-    let objects = objects
-      .iter()
-      .map(|s| s.parse::<ObjectID>())
-      .collect::<StdResult<Vec<_>, _>>()?;
+  pub fn new(
+    controller_cap: String,
+    identity: &WasmOnChainIdentity,
+    exec_fn: Option<WasmControllerExecutionFn>,
+  ) -> StdResult<Self, JsError> {
+    let controller_cap = controller_cap.parse()?;
+    let identity = identity.0.try_read()?.id().into();
 
-    Ok(Self { borrow_fn, objects })
+    Ok(Self {
+      controller_cap,
+      identity,
+      controller_exec_fn: exec_fn,
+    })
   }
 
-  #[wasm_bindgen(getter)]
-  pub fn objects(&self) -> Vec<String> {
-    self.objects.iter().map(ToString::to_string).collect()
+  #[wasm_bindgen(getter, js_name = controllerCap)]
+  pub fn controller_cap(&self) -> String {
+    self.controller_cap.to_string()
+  }
+
+  #[wasm_bindgen(getter, js_name = identityAddress)]
+  pub fn identity_address(&self) -> String {
+    self.identity.to_string()
   }
 }
 
 struct Internal {
-  proposal: Proposal<BorrowAction>,
-  borrow_fn: Option<WasmBorrowFn>,
+  proposal: Proposal<ControllerExecution>,
+  exec_fn: Option<WasmControllerExecutionFn>,
 }
 
 impl Deref for Internal {
-  type Target = Proposal<BorrowAction>;
+  type Target = Proposal<ControllerExecution>;
   fn deref(&self) -> &Self::Target {
     &self.proposal
   }
@@ -151,15 +161,15 @@ impl DerefMut for Internal {
 }
 
 #[derive(Clone)]
-#[wasm_bindgen(js_name = BorrowProposal)]
-pub struct WasmProposalBorrow(Rc<RwLock<Internal>>);
+#[wasm_bindgen(js_name = ControllerExecutionProposal)]
+pub struct WasmProposalControllerExecution(Rc<RwLock<Internal>>);
 
-#[wasm_bindgen(js_class = BorrowProposal)]
-impl WasmProposalBorrow {
-  fn new(proposal: Proposal<BorrowAction>) -> Self {
+#[wasm_bindgen(js_class = ControllerExecutionProposal)]
+impl WasmProposalControllerExecution {
+  fn new(proposal: Proposal<ControllerExecution>) -> Self {
     Self(Rc::new(RwLock::new(Internal {
       proposal,
-      borrow_fn: None,
+      exec_fn: None,
     })))
   }
 
@@ -173,10 +183,11 @@ impl WasmProposalBorrow {
   }
 
   #[wasm_bindgen(getter)]
-  pub fn action(&self) -> Result<WasmBorrow> {
-    self.0.try_read().wasm_result().map(|guard| WasmBorrow {
-      objects: guard.proposal.action().objects().to_vec(),
-      borrow_fn: None,
+  pub fn action(&self) -> Result<WasmControllerExecution> {
+    self.0.try_read().wasm_result().map(|guard| WasmControllerExecution {
+      controller_cap: guard.action().controller_cap(),
+      identity: guard.action().identity_address(),
+      controller_exec_fn: None,
     })
   }
 
@@ -214,9 +225,9 @@ impl WasmProposalBorrow {
     Ok(js_set)
   }
 
-  #[wasm_bindgen(js_name = borrowFn, setter)]
-  pub fn set_intent_fn(&self, borrow_fn: WasmBorrowFn) -> Result<()> {
-    self.0.try_write().wasm_result()?.borrow_fn = Some(borrow_fn);
+  #[wasm_bindgen(js_name = execFn, setter)]
+  pub fn set_intent_fn(&self, exec_fn: WasmControllerExecutionFn) -> Result<()> {
+    self.0.try_write().wasm_result()?.exec_fn = Some(exec_fn);
     Ok(())
   }
 
@@ -226,35 +237,43 @@ impl WasmProposalBorrow {
     identity: &WasmOnChainIdentity,
     controller_token: &WasmControllerToken,
   ) -> Result<WasmTransactionBuilder> {
-    let js_tx = JsValue::from(WasmApproveBorrowProposal::new(self, identity, controller_token));
+    let js_tx = JsValue::from(WasmApproveControllerExecutionProposal::new(
+      self,
+      identity,
+      controller_token,
+    ));
     Ok(WasmTransactionBuilder::new(js_tx.unchecked_into()))
   }
 
   #[wasm_bindgen(
     js_name = intoTx,
-    unchecked_return_type = "TransactionBuilder<ExecuteProposal<Borrow>>"
+    unchecked_return_type = "TransactionBuilder<ExecuteProposal<ControllerExecution>>"
   )]
   pub fn into_tx(
     self,
     identity: &WasmOnChainIdentity,
     controller_token: &WasmControllerToken,
   ) -> WasmTransactionBuilder {
-    let js_tx = JsValue::from(WasmExecuteBorrowProposal::new(self, identity, controller_token));
+    let js_tx = JsValue::from(WasmExecuteControllerExecutionProposal::new(
+      self,
+      identity,
+      controller_token,
+    ));
     WasmTransactionBuilder::new(js_tx.unchecked_into())
   }
 }
 
-#[wasm_bindgen(js_name = ApproveBorrowProposal)]
-pub struct WasmApproveBorrowProposal {
-  proposal: WasmProposalBorrow,
+#[wasm_bindgen(js_name = ApproveControllerExecutionProposal)]
+pub struct WasmApproveControllerExecutionProposal {
+  proposal: WasmProposalControllerExecution,
   identity: WasmOnChainIdentity,
   controller_token: WasmControllerToken,
 }
 
-#[wasm_bindgen(js_class = ApproveBorrowProposal)]
-impl WasmApproveBorrowProposal {
+#[wasm_bindgen(js_class = ApproveControllerExecutionProposal)]
+impl WasmApproveControllerExecutionProposal {
   fn new(
-    proposal: &WasmProposalBorrow,
+    proposal: &WasmProposalControllerExecution,
     identity: &WasmOnChainIdentity,
     controller_token: &WasmControllerToken,
   ) -> Self {
@@ -299,17 +318,17 @@ impl WasmApproveBorrowProposal {
   }
 }
 
-#[wasm_bindgen(js_name = ExecuteBorrowProposal)]
-pub struct WasmExecuteBorrowProposal {
-  proposal: WasmProposalBorrow,
+#[wasm_bindgen(js_name = ExecuteControllerExecutionProposal)]
+pub struct WasmExecuteControllerExecutionProposal {
+  proposal: WasmProposalControllerExecution,
   identity: WasmOnChainIdentity,
   controller_token: WasmControllerToken,
 }
 
-#[wasm_bindgen(js_class = ExecuteBorrowProposal)]
-impl WasmExecuteBorrowProposal {
+#[wasm_bindgen(js_class = ExecuteControllerExecutionProposal)]
+impl WasmExecuteControllerExecutionProposal {
   pub fn new(
-    proposal: WasmProposalBorrow,
+    proposal: WasmProposalControllerExecution,
     identity: &WasmOnChainIdentity,
     controller_token: &WasmControllerToken,
   ) -> Self {
@@ -325,20 +344,20 @@ impl WasmExecuteBorrowProposal {
     let managed_client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
     let proposal_id = self.proposal.0.read().await.id();
     let mut proposal = managed_client.get_object_by_id(proposal_id).await.wasm_result()?;
-    let borrow_fn = {
+    let exec_fn = {
       let mut guard = self.proposal.0.write().await;
       std::mem::swap(&mut guard.proposal, &mut proposal);
-      guard.borrow_fn.clone()
+      guard.exec_fn.clone()
     };
-    let Some(borrow_fn) = borrow_fn else {
-      return Err(JsError::new("cannot execute this borrow proposal without a `borrowFn`").into());
+    let Some(exec_fn) = exec_fn else {
+      return Err(JsError::new("cannot execute this controller execution proposal without an `execFn`").into());
     };
     let mut identity = self.identity.0.write().await;
     let tx = proposal
       .into_tx(&mut identity, &self.controller_token.0, &managed_client)
       .await
       .wasm_result()?
-      .with(Box::new(borrow_fn.into_intent_fn()))
+      .with(Box::new(exec_fn.into_intent_fn()))
       .into_inner()
       .build_programmable_transaction(&managed_client)
       .await
@@ -354,7 +373,7 @@ impl WasmExecuteBorrowProposal {
     let managed_client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
     let proposal_id = self.proposal.0.read().await.id();
     let proposal = managed_client
-      .get_object_by_id::<Proposal<BorrowAction>>(proposal_id)
+      .get_object_by_id::<Proposal<ControllerExecution>>(proposal_id)
       .await
       .wasm_result()?;
     let mut identity = self.identity.0.write().await;
@@ -362,7 +381,7 @@ impl WasmExecuteBorrowProposal {
       .into_tx(&mut identity, &self.controller_token.0, &managed_client)
       .await
       .wasm_result()?
-      // Dummy borrow fn as it won't be needed for apply.
+      // Dummy exec fn as it won't be needed for apply.
       .with(Box::new(move |_, _| ()))
       .into_inner();
     let mut effects = wasm_effects.clone().into();
@@ -374,30 +393,30 @@ impl WasmExecuteBorrowProposal {
   }
 }
 
-#[wasm_bindgen(js_name = CreateBorrowProposal)]
-pub struct WasmCreateBorrowProposal {
+#[wasm_bindgen(js_name = CreateControllerExecutionProposal)]
+pub struct WasmCreateControllerExecutionProposal {
   identity: WasmOnChainIdentity,
   controller_token: WasmControllerToken,
   expiration_epoch: Option<u64>,
-  borrow_fn: Option<WasmBorrowFn>,
-  objects: Vec<ObjectID>,
+  exec_fn: Option<WasmControllerExecutionFn>,
+  controller_cap: ObjectID,
 }
 
-#[wasm_bindgen(js_class = CreateBorrowProposal)]
-impl WasmCreateBorrowProposal {
+#[wasm_bindgen(js_class = CreateControllerExecutionProposal)]
+impl WasmCreateControllerExecutionProposal {
   pub(crate) fn new(
     identity: &WasmOnChainIdentity,
     controller_token: &WasmControllerToken,
-    objects: Vec<ObjectID>,
-    borrow_fn: Option<WasmBorrowFn>,
+    controller_cap: ObjectID,
+    exec_fn: Option<WasmControllerExecutionFn>,
     expiration_epoch: Option<u64>,
   ) -> Self {
     Self {
       identity: identity.clone(),
       controller_token: controller_token.clone(),
-      objects,
+      controller_cap,
       expiration_epoch,
-      borrow_fn,
+      exec_fn,
     }
   }
 
@@ -405,12 +424,10 @@ impl WasmCreateBorrowProposal {
   pub async fn build_programmable_transaction(&self, client: &WasmCoreClientReadOnly) -> Result<Vec<u8>> {
     let managed_client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
     let mut identity_lock = self.identity.0.write().await;
-    let mut builder = identity_lock
-      .borrow_assets(&self.controller_token.0)
-      .borrow_objects(self.objects.iter().copied());
+    let mut builder = identity_lock.controller_execution(self.controller_cap, &self.controller_token.0);
 
-    if let Some(borrow_fn) = self.borrow_fn.clone() {
-      builder = builder.with_intent(Box::new(borrow_fn.into_intent_fn()))
+    if let Some(exec_fn) = self.exec_fn.clone() {
+      builder = builder.with_intent(Box::new(exec_fn.into_intent_fn()))
     }
 
     if let Some(expiration) = self.expiration_epoch {
@@ -421,20 +438,18 @@ impl WasmCreateBorrowProposal {
     bcs::to_bytes(tx.ptb()).wasm_result()
   }
 
-  #[wasm_bindgen(unchecked_return_type = "ProposalResult<Borrow>")]
+  #[wasm_bindgen(unchecked_return_type = "ProposalResult<ControllerExecution>")]
   pub async fn apply(
     self,
     wasm_effects: &WasmIotaTransactionBlockEffects,
     client: &WasmCoreClientReadOnly,
-  ) -> Result<Option<WasmProposalBorrow>> {
+  ) -> Result<Option<WasmProposalControllerExecution>> {
     let managed_client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
     let mut identity_lock = self.identity.0.write().await;
-    let mut builder = identity_lock
-      .borrow_assets(&self.controller_token.0)
-      .borrow_objects(self.objects.iter().copied());
+    let mut builder = identity_lock.controller_execution(self.controller_cap, &self.controller_token.0);
 
-    if let Some(borrow_fn) = self.borrow_fn.clone() {
-      builder = builder.with_intent(Box::new(borrow_fn.into_intent_fn()))
+    if let Some(exec_fn) = self.exec_fn.clone() {
+      builder = builder.with_intent(Box::new(exec_fn.into_intent_fn()))
     }
 
     if let Some(expiration) = self.expiration_epoch {
@@ -452,6 +467,6 @@ impl WasmCreateBorrowProposal {
       return Ok(None);
     };
 
-    Ok(Some(WasmProposalBorrow::new(proposal)))
+    Ok(Some(WasmProposalControllerExecution::new(proposal)))
   }
 }

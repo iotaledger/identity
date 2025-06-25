@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Transaction, TransactionBuilder } from "@iota/iota-interaction-ts/transaction_internal";
-import { Borrow, ConfigChange, ControllerToken, OnChainIdentity, SendAction, UpdateDid } from "~identity_wasm";
+import { Borrow, ConfigChange, ControllerExecution, ControllerToken, OnChainIdentity, SendAction, UpdateDid } from "~identity_wasm";
 
-export type Action = UpdateDid | SendAction | ConfigChange | Borrow;
+export type Action = UpdateDid | SendAction | ConfigChange | Borrow | ControllerExecution;
 export type ProposalOutput<A extends Action> = A extends UpdateDid ? void
     : A extends SendAction ? void
     : A extends ConfigChange ? void
     : A extends Borrow ? void
+    : A extends ControllerExecution ? void
     : never;
 export type ProposalResult<A extends Action> = ProposalOutput<A> | Proposal<A>;
 

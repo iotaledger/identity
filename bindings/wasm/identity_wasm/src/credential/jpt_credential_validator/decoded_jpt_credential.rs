@@ -4,10 +4,11 @@
 use identity_iota::core::Object;
 use identity_iota::credential::DecodedJptCredential;
 use wasm_bindgen::prelude::*;
+use product_common::impl_wasm_clone;
+use product_common::bindings::wasm_error::Result;
 
 use crate::common::MapStringAny;
 use crate::credential::WasmCredential;
-use crate::error::Result;
 use crate::jpt::WasmJwpIssued;
 
 #[wasm_bindgen(js_name = DecodedJptCredential)]

@@ -22,9 +22,9 @@ use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsError;
 use wasm_bindgen::JsValue;
 
-use crate::error::wasm_error;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::wasm_error;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 
 use super::WasmIdentityClientReadOnly;
 use super::WasmOnChainIdentity;

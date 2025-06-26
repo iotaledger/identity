@@ -8,8 +8,8 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::common::WasmTimestamp;
 use crate::credential::WasmCredential;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 use crate::sd_jwt_vc::WasmSdJwtVc;
 
 use super::sd_jwt_v2::WasmHasher;

@@ -6,8 +6,10 @@ use identity_iota::did::DID;
 use wasm_bindgen::prelude::*;
 
 use crate::did::wasm_did_url::WasmDIDUrl;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 
 /// A method-agnostic Decentralized Identifier (DID).
 #[wasm_bindgen(js_name = CoreDID, inspectable)]

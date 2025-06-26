@@ -6,8 +6,11 @@ use super::WasmMethodType;
 use crate::common::MapStringAny;
 use crate::did::WasmCoreDID;
 use crate::did::WasmDIDUrl;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
+
 use identity_iota::core::Object;
 use identity_iota::did::CoreDID;
 use identity_iota::verification::VerificationMethod;

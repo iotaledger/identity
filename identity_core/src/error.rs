@@ -5,6 +5,9 @@
 
 use crate::convert::Base;
 
+#[cfg(target_arch = "wasm32")]
+use product_common::impl_wasm_error_from;
+
 /// Alias for a `Result` with the error type [`Error`].
 pub type Result<T, E = Error> = ::core::result::Result<T, E>;
 
@@ -37,3 +40,6 @@ pub enum Error {
   #[error("duplicate key in OrderedSet")]
   OrderedSetDuplicate,
 }
+
+#[cfg(target_arch = "wasm32")]
+impl_wasm_error_from!(Error);

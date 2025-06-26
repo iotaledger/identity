@@ -41,6 +41,7 @@ iota_interaction = { git = "https://github.com/iotaledger/product-core.git", bra
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 iota_interaction = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-2-3-and-resources-for-wasm", package = "iota_interaction", default-features = false, optional = true }
+product_common = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-2-3-and-resources-for-wasm", package = "product_common", default-features = false, features = ["bindings"] }
 
 [dev-dependencies]
 identity_credential = { version = "=1.6.0-beta", path = "../identity_credential", features = ["revocation-bitmap"] }

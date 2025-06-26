@@ -14,9 +14,6 @@ extern crate serde;
 
 use wasm_bindgen::prelude::*;
 
-#[macro_use]
-mod macros;
-
 pub mod common;
 pub mod credential;
 pub mod did;

@@ -3,6 +3,9 @@
 
 //! Errors that may occur when working with DID Documents.
 
+#[cfg(target_arch = "wasm32")]
+use product_common::impl_wasm_error_from;
+
 /// Alias for a [`Result`][::core::result::Result] with the error type [Error].
 pub type Result<T, E = Error> = ::core::result::Result<T, E>;
 
@@ -40,3 +43,6 @@ pub enum Error {
   #[error("jws verification failed")]
   JwsVerificationError(#[source] identity_verification::jose::error::Error),
 }
+
+#[cfg(target_arch = "wasm32")]
+impl_wasm_error_from!(Error);

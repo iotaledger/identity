@@ -8,8 +8,10 @@ use wasm_bindgen::prelude::*;
 use super::wasm_core_did::get_core_did_clone;
 use super::IToCoreDID;
 use super::WasmCoreDID;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 use crate::jose::WasmJwk;
 
 /// `did:jwk` DID.

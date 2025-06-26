@@ -4,8 +4,10 @@
 use identity_iota::credential::JptCredentialValidationOptions;
 use wasm_bindgen::prelude::*;
 
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 
 /// Options to declare validation criteria for {@link Jpt}.
 #[derive(Debug, Default, Clone)]

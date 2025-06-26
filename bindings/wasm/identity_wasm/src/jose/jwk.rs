@@ -7,8 +7,11 @@ use identity_iota::verification::jose::jwk::JwkParams;
 use identity_iota::verification::jose::jwk::JwkUse;
 use wasm_bindgen::prelude::*;
 
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
+
 use crate::common::ArrayString;
-use crate::error::WasmResult;
 use crate::jose::ArrayJwkOperation;
 use crate::jose::IJwkParams;
 use crate::jose::WasmJwkParamsEc;
@@ -132,7 +135,7 @@ impl WasmJwk {
 
   /// If this JWK is of kty EC, returns those parameters.
   #[wasm_bindgen(js_name = paramsEc)]
-  pub fn params_ec(&self) -> crate::error::Result<Option<WasmJwkParamsEc>> {
+  pub fn params_ec(&self) -> product_common::bindings::wasm_error::Result<Option<WasmJwkParamsEc>> {
     if let JwkParams::Ec(params_ec) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
       Ok(Some(JsValue::from_serde(params_ec).wasm_result()?.unchecked_into()))
@@ -143,7 +146,7 @@ impl WasmJwk {
 
   /// If this JWK is of kty OKP, returns those parameters.
   #[wasm_bindgen(js_name = paramsOkp)]
-  pub fn params_okp(&self) -> crate::error::Result<Option<WasmJwkParamsOkp>> {
+  pub fn params_okp(&self) -> product_common::bindings::wasm_error::Result<Option<WasmJwkParamsOkp>> {
     if let JwkParams::Okp(params_okp) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
       Ok(Some(JsValue::from_serde(params_okp).wasm_result()?.unchecked_into()))
@@ -154,7 +157,7 @@ impl WasmJwk {
 
   /// If this JWK is of kty OCT, returns those parameters.
   #[wasm_bindgen(js_name = paramsOct)]
-  pub fn params_oct(&self) -> crate::error::Result<Option<WasmJwkParamsOct>> {
+  pub fn params_oct(&self) -> product_common::bindings::wasm_error::Result<Option<WasmJwkParamsOct>> {
     if let JwkParams::Oct(params_oct) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
       Ok(Some(JsValue::from_serde(params_oct).wasm_result()?.unchecked_into()))
@@ -165,7 +168,7 @@ impl WasmJwk {
 
   /// If this JWK is of kty RSA, returns those parameters.
   #[wasm_bindgen(js_name = paramsRsa)]
-  pub fn params_rsa(&self) -> crate::error::Result<Option<WasmJwkParamsRsa>> {
+  pub fn params_rsa(&self) -> product_common::bindings::wasm_error::Result<Option<WasmJwkParamsRsa>> {
     if let JwkParams::Rsa(params_rsa) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
       Ok(Some(JsValue::from_serde(params_rsa).wasm_result()?.unchecked_into()))

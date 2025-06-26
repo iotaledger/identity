@@ -5,8 +5,10 @@ use identity_iota::storage::key_id_storage::MethodDigest;
 use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
 
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+
 use crate::verification::WasmVerificationMethod;
 
 /// Unique identifier of a {@link VerificationMethod}.

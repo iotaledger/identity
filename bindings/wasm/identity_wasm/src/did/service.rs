@@ -12,8 +12,10 @@ use crate::common::deserialize_map_or_any;
 use crate::common::ArrayString;
 use crate::common::MapStringAny;
 use crate::did::WasmDIDUrl;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 
 /// A DID Document Service used to enable trusted interactions associated with a DID subject.
 #[wasm_bindgen(js_name = Service, inspectable)]

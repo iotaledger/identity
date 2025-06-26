@@ -9,7 +9,7 @@ use identity_iota::verification::jws::JwsVerifier;
 use identity_iota::verification::jws::VerificationInput;
 use wasm_bindgen::prelude::*;
 
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::WasmResult;
 use crate::jose::WasmJwk;
 use crate::jose::WasmJwsAlgorithm;
 

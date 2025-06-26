@@ -5,9 +5,12 @@ use identity_iota::verification::CustomMethodData;
 use identity_iota::verification::MethodData;
 use wasm_bindgen::prelude::*;
 
-use crate::error::Result;
-use crate::error::WasmError;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmError;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
+
 use crate::jose::WasmJwk;
 use std::borrow::Cow;
 

@@ -23,8 +23,8 @@ use crate::did::ArrayIToCoreDocument;
 use crate::did::IToCoreDocument;
 use crate::did::WasmCoreDID;
 use crate::did::WasmJwsVerificationOptions;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 use crate::verification::IJwsVerifier;
 use crate::verification::WasmJwsVerifier;
 

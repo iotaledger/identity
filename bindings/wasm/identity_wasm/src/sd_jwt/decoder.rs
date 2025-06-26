@@ -3,8 +3,8 @@
 
 use crate::common::ArrayString;
 use crate::common::RecordStringAny;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 use identity_iota::sd_jwt_payload::SdObjectDecoder;
 use serde_json::Map;
 use serde_json::Value;

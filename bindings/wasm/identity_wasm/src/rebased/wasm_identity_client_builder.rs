@@ -11,8 +11,8 @@ use iota_interaction_ts::iota_client_ts_sdk::IotaClientTsSdk;
 
 use super::client_dummy::IdentityClientBuilder;
 
-use crate::error::wasm_error;
-use crate::error::Result;
+use product_common::bindings::wasm_error::wasm_error;
+use product_common::bindings::wasm_error::Result;
 
 use super::types::WasmObjectID;
 use super::WasmIotaAddress;

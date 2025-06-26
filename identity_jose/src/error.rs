@@ -3,6 +3,11 @@
 
 //! Errors that may occur in the library.
 
+#[cfg(target_arch = "wasm32")]
+use product_common::bindings::wasm_error;
+#[cfg(target_arch = "wasm32")]
+use std::borrow::Cow;
+
 /// Alias for a `Result` with the error type [Error].
 pub type Result<T, E = Error> = core::result::Result<T, E>;
 
@@ -55,4 +60,14 @@ pub enum Error {
   /// Key type not supported.
   #[error("key type not supported; {0}")]
   UnsupportedKeyType(String),
+}
+
+#[cfg(target_arch = "wasm32")]
+impl From<Error> for wasm_error::WasmError<'_> {
+  fn from(error: Error) -> Self {
+    Self {
+      name: Cow::Borrowed("JoseError"),
+      message: Cow::Owned(wasm_error::ErrorMessage(&error).to_string()),
+    }
+  }
 }

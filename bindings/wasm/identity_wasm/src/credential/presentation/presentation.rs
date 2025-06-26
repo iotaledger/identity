@@ -18,8 +18,10 @@ use crate::credential::IPresentation;
 use crate::credential::UnknownCredential;
 use crate::credential::WasmProof;
 use crate::credential::WasmUnknownCredentialContainer;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 
 /// Represents a bundle of one or more {@link Credential}s.
 #[wasm_bindgen(js_name = Presentation, inspectable)]

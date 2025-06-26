@@ -8,9 +8,9 @@ use wasm_bindgen::prelude::*;
 
 use crate::did::WasmDIDUrl;
 use crate::did::WasmService;
-use crate::error::Result;
-use crate::error::WasmError;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmError;
+use product_common::bindings::wasm_error::WasmResult;
 
 /// A compressed bitmap for managing credential revocation.
 #[wasm_bindgen(js_name = RevocationBitmap, inspectable)]

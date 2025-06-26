@@ -12,7 +12,7 @@ use proc_typescript::typescript;
 use wasm_bindgen::prelude::*;
 
 use crate::credential::UnknownCredential;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::WasmResult;
 
 impl TryFrom<IPresentation> for PresentationBuilder<UnknownCredential> {
   type Error = JsValue;

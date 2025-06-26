@@ -11,7 +11,7 @@ use serde::Serialize as _;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast;
 
-use crate::error::Result;
+use product_common::bindings::wasm_error::Result;
 
 #[wasm_bindgen(typescript_custom_section)]
 const I_JWS_SIGNER: &str = r#"

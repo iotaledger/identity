@@ -7,8 +7,9 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_json;
 use crate::sd_jwt_vc::resolver::ResolverUrlToValue;
 
 #[wasm_bindgen(typescript_custom_section)]

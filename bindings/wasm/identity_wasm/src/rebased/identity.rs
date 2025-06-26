@@ -13,17 +13,16 @@ use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
-use iota_interaction_ts::error::WasmResult as _;
 use js_sys::Object;
+use product_common::bindings::wasm_error::wasm_error;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 use product_common::bindings::core_client::WasmManagedCoreClientReadOnly;
 use product_common::bindings::transaction::WasmTransactionBuilder;
 use product_common::transaction::transaction_builder::Transaction;
 use tokio::sync::RwLock;
 use wasm_bindgen::prelude::*;
 
-use crate::error::wasm_error;
-use crate::error::Result;
-use crate::error::WasmResult;
 use crate::iota::WasmIotaDocument;
 use crate::rebased::proposals::WasmCreateConfigChangeProposal;
 use crate::rebased::proposals::WasmCreateUpdateDidProposal;
@@ -317,7 +316,7 @@ impl WasmCreateIdentity {
       .build_programmable_transaction(&managed_client)
       .await
       .wasm_result()?;
-    crate::error::WasmResult::wasm_result(bcs::to_bytes(&pt))
+    product_common::bindings::wasm_error::WasmResult::wasm_result(bcs::to_bytes(&pt))
   }
 
   #[wasm_bindgen]

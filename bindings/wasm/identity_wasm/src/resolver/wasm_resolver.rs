@@ -18,7 +18,6 @@ use wasm_bindgen_futures::JsFuture;
 
 use crate::common::ArrayString;
 use crate::error::JsValueResult;
-use crate::error::WasmError;
 use crate::iota::WasmIotaDID;
 use crate::iota::WasmIotaDocument;
 use crate::resolver::resolver_config::MapResolutionHandler;
@@ -27,8 +26,9 @@ use crate::resolver::PromiseArrayIToCoreDocument;
 use crate::resolver::WasmDidResolutionHandler;
 
 use super::resolver_types::PromiseIToCoreDocument;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::bindings::wasm_error::WasmError;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::future_to_promise;

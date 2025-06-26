@@ -4,8 +4,8 @@
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 
 /// Special-case for deserializing [`js_sys::Map`], which otherwise serializes to JSON as an empty
 /// object `{}`. This uses a [`js_sys::Object`] as an intermediate representation to convert

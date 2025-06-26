@@ -3,6 +3,9 @@
 
 use std::error::Error;
 
+#[cfg(target_arch = "wasm32")]
+use product_common::impl_wasm_error_from;
+
 pub(crate) type DomainLinkageValidationResult = Result<(), DomainLinkageValidationError>;
 
 /// An error caused by a failure to verify a Domain Linkage configuration or credential.
@@ -13,6 +16,9 @@ pub struct DomainLinkageValidationError {
   /// Source of the error.
   pub source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
+
+#[cfg(target_arch = "wasm32")]
+impl_wasm_error_from!(DomainLinkageValidationError);
 
 /// List of errors caused by failures to verify a Domain Linkage configuration or credential.
 #[derive(Debug, thiserror::Error)]

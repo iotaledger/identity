@@ -12,8 +12,8 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 
 use crate::common::WasmTimestamp;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 
 use super::WasmJwsSigner;
 use super::WasmSdJwt;

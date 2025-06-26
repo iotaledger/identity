@@ -10,8 +10,8 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use super::WasmJwkGenOutput;
 use super::WasmMethodDigest;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 use crate::jose::WasmJwk;
 
 /// Implementation of {@link JwkStorage} for {@link KeytoolStorage}.

@@ -5,7 +5,7 @@ use identity_iota::core::Object;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::WasmResult;
 
 #[wasm_bindgen]
 extern "C" {

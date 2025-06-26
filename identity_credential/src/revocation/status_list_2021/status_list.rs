@@ -9,6 +9,9 @@ use identity_core::convert::BaseEncoding;
 use std::io::Write;
 use thiserror::Error;
 
+#[cfg(target_arch = "wasm32")]
+use product_common::impl_wasm_error_from;
+
 const MINIMUM_LIST_SIZE: usize = 16 * 1024 * 8;
 
 /// [`std::error::Error`] type for [`StatusList2021`]'s operations.
@@ -24,6 +27,9 @@ pub enum StatusListError {
   #[error("A StatusList2021 must have at least {MINIMUM_LIST_SIZE} entries.")]
   InvalidListSize,
 }
+
+#[cfg(target_arch = "wasm32")]
+impl_wasm_error_from!(StatusListError);
 
 /// StatusList2021 data structure as described in [W3C's VC status list 2021](https://www.w3.org/TR/2023/WD-vc-status-list-20230427/).
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]

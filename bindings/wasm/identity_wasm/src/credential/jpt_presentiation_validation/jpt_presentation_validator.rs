@@ -7,8 +7,8 @@ use crate::credential::WasmFailFast;
 use crate::credential::WasmJpt;
 use crate::credential::WasmJptPresentationValidationOptions;
 use crate::did::IToCoreDocument;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 use identity_iota::credential::JptPresentationValidator;
 use wasm_bindgen::prelude::*;
 

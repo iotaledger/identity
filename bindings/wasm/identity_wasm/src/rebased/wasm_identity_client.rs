@@ -32,8 +32,8 @@ use super::WasmIdentityClientReadOnly;
 use super::WasmIotaAddress;
 use super::WasmObjectID;
 
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 use crate::iota::IotaDocumentLock;
 use crate::iota::WasmIotaDID;
 use crate::iota::WasmIotaDocument;

@@ -7,8 +7,10 @@ use wasm_bindgen::prelude::*;
 
 use crate::common::WasmDuration;
 use crate::common::WasmTimestamp;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 
 /// Information used to determine the current status of a {@link Credential}.
 #[wasm_bindgen(js_name = RevocationTimeframeStatus, inspectable)]

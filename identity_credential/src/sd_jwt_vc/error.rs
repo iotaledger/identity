@@ -4,6 +4,11 @@
 use serde_json::Value;
 use thiserror::Error;
 
+#[cfg(target_arch = "wasm32")]
+use product_common::bindings::wasm_error;
+#[cfg(target_arch = "wasm32")]
+use std::borrow::Cow;
+
 /// Error type that represents failures that might arise when dealing
 /// with `SdJwtVc`s.
 #[derive(Error, Debug)]
@@ -55,3 +60,14 @@ pub enum Error {
 
 /// Either a value of type `T` or an [`Error`].
 pub type Result<T> = std::result::Result<T, Error>;
+
+
+#[cfg(target_arch = "wasm32")]
+impl From<Error> for wasm_error::WasmError<'_> {
+  fn from(error: Error) -> Self {
+    Self {
+      name: Cow::Borrowed("SdJwtVcError"),
+      message: Cow::Owned(wasm_error::ErrorMessage(&error).to_string()),
+    }
+  }
+}

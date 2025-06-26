@@ -10,8 +10,9 @@ use identity_iota::credential::sd_jwt_vc::SdJwtVc;
 use wasm_bindgen::prelude::*;
 
 use crate::credential::WasmKeyBindingJWTValidationOptions;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
 use crate::jose::WasmJwk;
 use crate::sd_jwt_vc::metadata::WasmTypeMetadata;
 use crate::verification::IJwsVerifier;

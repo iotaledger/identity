@@ -38,6 +38,9 @@ thiserror.workspace = true
 url = { version = "2.5", default-features = false }
 zkryptium = { workspace = true, optional = true }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+product_common = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-2-3-and-resources-for-wasm", package = "product_common", default-features = false, features = ["bindings"] }
+
 [dev-dependencies]
 anyhow = "1.0.62"
 identity_eddsa_verifier = { path = "../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }

@@ -74,7 +74,7 @@
     "wasm-opt": "^1.4.0"
   },
   "dependencies": {
-    "@iota/iota-interaction-ts": "^0.5.1",
+    "@iota/iota-interaction-ts": "file:../../../../product-core/bindings/wasm/iota_interaction_ts",
     "@noble/ed25519": "^1.7.3",
     "@noble/hashes": "^1.4.0",
     "@types/node-fetch": "^2.6.2",

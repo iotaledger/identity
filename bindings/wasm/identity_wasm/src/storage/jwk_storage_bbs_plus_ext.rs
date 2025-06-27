@@ -3,8 +3,8 @@
 
 use std::str::FromStr;
 
-use crate::error::Result as WasmResult;
-use crate::error::WasmResult as _;
+use product_common::bindings::wasm_error::Result as WasmResult;
+use product_common::bindings::wasm_error::WasmResult as _;
 use crate::jose::WasmJwk;
 use crate::jpt::WasmProofAlgorithm;
 

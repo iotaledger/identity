@@ -20,6 +20,9 @@ serde.workspace = true
 strum.workspace = true
 thiserror.workspace = true
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+product_common = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-2-3-and-resources-for-wasm", package = "product_common", default-features = false, features = ["bindings"] }
+
 [dev-dependencies]
 criterion = { version = "0.4.0", default-features = false, features = ["cargo_bench_support"] }
 serde_json.workspace = true

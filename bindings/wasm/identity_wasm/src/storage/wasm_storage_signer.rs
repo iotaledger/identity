@@ -8,8 +8,10 @@ use iota_interaction_ts::WasmPublicKey;
 use secret_storage::Signer;
 use wasm_bindgen::prelude::*;
 
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::console_log;
+
 use crate::jose::WasmJwk;
 use crate::storage::WasmJwkStorage;
 use crate::storage::WasmKeyIdStorage;

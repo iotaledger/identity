@@ -5,8 +5,9 @@ use identity_iota::core::Duration;
 use identity_iota::core::Timestamp;
 use wasm_bindgen::prelude::*;
 
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_json;
 
 #[wasm_bindgen]
 extern "C" {

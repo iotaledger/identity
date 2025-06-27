@@ -43,7 +43,7 @@ impl JwsVerifier for WasmJwsVerifier {
         WasmJwk(public_key.to_owned()),
       );
       // Convert error
-      crate::error::stringify_js_error(verification_result).map_err(|error_string| {
+      product_common::bindings::wasm_error::stringify_js_error(verification_result).map_err(|error_string| {
         SignatureVerificationError::new(SignatureVerificationErrorKind::Unspecified).with_custom_message(error_string)
       })
     } else {

@@ -6,6 +6,9 @@ use std::error::Error;
 use std::fmt::Debug;
 use std::fmt::Display;
 
+#[cfg(target_arch = "wasm32")]
+use product_common::bindings::wasm_error;
+
 /// A container implementing the [`std::error::Error`] trait.
 ///
 /// Instances always carry a corresponding `kind` of type `T` and may be extended with a custom error
@@ -18,6 +21,16 @@ use std::fmt::Display;
 #[derive(Debug)]
 pub struct SingleStructError<T: Debug + Display> {
   repr: Repr<T>,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl<T: Debug + Display> From<SingleStructError<T>> for wasm_error::WasmError<'_> {
+  fn from(error: SingleStructError<T>) -> Self {
+    Self {
+      name: Cow::Borrowed(std::any::type_name::<SingleStructError<T>>()),
+      message: Cow::Owned(wasm_error::ErrorMessage(&error).to_string()),
+    }
+  }
 }
 
 impl<T: Display + Debug> Display for SingleStructError<T> {

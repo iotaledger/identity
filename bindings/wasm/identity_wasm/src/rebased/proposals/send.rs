@@ -19,11 +19,11 @@ use wasm_bindgen::JsValue;
 
 use super::StringCouple;
 use super::StringSet;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::bindings::transaction::WasmTransactionBuilder;
 use crate::rebased::WasmControllerToken;
 use crate::rebased::WasmOnChainIdentity;
-use product_common::bindings::transaction::WasmTransactionBuilder;
 
 #[wasm_bindgen(js_name = SendAction)]
 #[derive(Clone)]

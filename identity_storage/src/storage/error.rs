@@ -5,6 +5,11 @@ use crate::key_id_storage::KeyIdStorageError;
 use crate::key_id_storage::MethodDigestConstructionError;
 use crate::key_storage::KeyStorageError;
 
+#[cfg(target_arch = "wasm32")]
+use product_common::bindings::wasm_error;
+#[cfg(target_arch = "wasm32")]
+use std::borrow::Cow;
+
 /// Errors that can occur when working with the [`JwkDocumentExt`](crate::storage::JwkDocumentExt) API.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
@@ -58,6 +63,16 @@ pub enum JwkStorageDocumentError {
     /// The error that occurred during the undo operation.
     undo_error: Option<Box<Self>>,
   },
+}
+
+#[cfg(target_arch = "wasm32")]
+impl From<JwkStorageDocumentError> for wasm_error::WasmError<'_> {
+  fn from(error: JwkStorageDocumentError) -> Self {
+    Self {
+      name: Cow::Borrowed("JwkDocumentExtensionError"),
+      message: Cow::Owned(wasm_error::ErrorMessage(&error).to_string()),
+    }
+  }
 }
 
 #[cfg(test)]

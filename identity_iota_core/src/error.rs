@@ -1,6 +1,9 @@
 // Copyright 2020-2023 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(target_arch = "wasm32")]
+use product_common::impl_wasm_error_from;
+
 /// Alias for a `Result` with the error type [`Error`].
 pub type Result<T, E = Error> = core::result::Result<T, E>;
 
@@ -49,3 +52,6 @@ pub enum Error {
   #[error("jws signature verification failed")]
   JwsVerificationError(#[source] identity_document::Error),
 }
+
+#[cfg(target_arch = "wasm32")]
+impl_wasm_error_from!(Error);

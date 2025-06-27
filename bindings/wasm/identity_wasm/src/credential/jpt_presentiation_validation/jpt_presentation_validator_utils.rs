@@ -6,8 +6,8 @@ use crate::credential::options::WasmStatusCheck;
 use crate::credential::WasmCredential;
 use crate::credential::WasmJpt;
 use crate::did::WasmCoreDID;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 use identity_iota::credential::JptPresentationValidatorUtils;
 use wasm_bindgen::prelude::*;
 

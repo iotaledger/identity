@@ -4,8 +4,10 @@
 use crate::common::ArrayString;
 use crate::common::RecordStringAny;
 use crate::common::WasmTimestamp;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 use identity_iota::core::Timestamp;
 use identity_iota::core::ToJson;
 use identity_iota::sd_jwt_payload::KeyBindingJwtClaims;

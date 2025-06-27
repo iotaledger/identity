@@ -3,6 +3,8 @@
 
 use identity_iota::verification::MethodScope;
 use wasm_bindgen::prelude::*;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 
 #[wasm_bindgen]
 extern "C" {

@@ -3,6 +3,9 @@
 
 use crate::validator::JwtValidationError;
 
+#[cfg(target_arch = "wasm32")]
+use product_common::impl_wasm_error_from;
+
 /// An error associated with validating KB-JWT.
 #[derive(Debug, thiserror::Error, strum::IntoStaticStr)]
 #[non_exhaustive]
@@ -43,3 +46,6 @@ pub enum KeyBindingJwtError {
   #[error("header `typ` value is missing or not equal to `kb+jwt`")]
   InvalidHeaderTypValue,
 }
+
+#[cfg(target_arch = "wasm32")]
+impl_wasm_error_from!(KeyBindingJwtError);

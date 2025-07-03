@@ -6,7 +6,9 @@ use wasm_bindgen::prelude::*;
 
 use crate::common::MapStringAny;
 use crate::common::WasmTimestamp;
-use crate::error::Result;
+use product_common::bindings::wasm_error::Result;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 
 /// Additional attributes related to an IOTA DID Document.
 #[wasm_bindgen(js_name = IotaDocumentMetadata, inspectable)]

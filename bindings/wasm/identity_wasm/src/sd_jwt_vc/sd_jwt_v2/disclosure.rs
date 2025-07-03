@@ -5,8 +5,8 @@ use identity_iota::sd_jwt_rework::Disclosure;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 
 /// A disclosable value.
 /// Both object properties and array elements disclosures are supported.

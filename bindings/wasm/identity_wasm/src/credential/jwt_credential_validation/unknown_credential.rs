@@ -5,6 +5,8 @@ use identity_iota::core::Object;
 use identity_iota::credential::Credential;
 use identity_iota::credential::Jwt;
 use wasm_bindgen::prelude::*;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 
 use crate::common::RecordStringAny;
 use crate::credential::WasmCredential;

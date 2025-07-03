@@ -26,8 +26,10 @@ use crate::credential::ArraySubject;
 use crate::credential::ICredential;
 use crate::credential::UrlOrIssuer;
 use crate::credential::WasmProof;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 
 /// Represents a set of claims describing an entity.
 #[wasm_bindgen(js_name = Credential, inspectable)]

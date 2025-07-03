@@ -3,6 +3,7 @@
 
 use identity_iota::credential::Jpt;
 use wasm_bindgen::prelude::*;
+use product_common::impl_wasm_clone;
 
 /// A JSON Proof Token (JPT).
 #[wasm_bindgen(js_name = Jpt)]

@@ -6,6 +6,11 @@ use std::fmt::Display;
 
 use crate::validator::jwt_credential_validation::JwtValidationError;
 
+#[cfg(target_arch = "wasm32")]
+use product_common::bindings::wasm_error;
+#[cfg(target_arch = "wasm32")]
+use std::borrow::Cow;
+
 /// Errors caused by a failure to validate a [`Presentation`](crate::presentation::Presentation).
 #[derive(Debug)]
 pub struct CompoundJwtPresentationValidationError {
@@ -34,3 +39,13 @@ impl Display for CompoundJwtPresentationValidationError {
 }
 
 impl Error for CompoundJwtPresentationValidationError {}
+
+#[cfg(target_arch = "wasm32")]
+impl From<CompoundJwtPresentationValidationError> for wasm_error::WasmError<'_> {
+  fn from(error: CompoundJwtPresentationValidationError) -> Self {
+    Self {
+      name: Cow::Borrowed("CompoundJwtPresentationValidationError"),
+      message: Cow::Owned(wasm_error::ErrorMessage(&error).to_string()),
+    }
+  }
+}

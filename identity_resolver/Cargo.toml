@@ -29,6 +29,9 @@ default-features = false
 features = ["iota-client"]
 optional = true
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+product_common = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-2-3-and-resources-for-wasm", package = "product_common", default-features = false, features = ["bindings"] }
+
 [dev-dependencies]
 tokio = { version = "1.43", default-features = false, features = ["rt-multi-thread", "macros"] }
 

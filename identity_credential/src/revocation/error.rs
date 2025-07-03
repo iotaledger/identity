@@ -1,6 +1,9 @@
 // Copyright 2020-2023 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(target_arch = "wasm32")]
+use product_common::impl_wasm_error_from;
+
 /// A result type designed for `RevocationBitmap2022` handling.
 pub type RevocationResult<T> = std::result::Result<T, RevocationError>;
 
@@ -26,3 +29,6 @@ pub enum RevocationError {
   /// Indicates a failure to construct a URL when attempting to construct a `ServiceEndpoint`.
   UrlConstructionError(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 }
+
+#[cfg(target_arch = "wasm32")]
+impl_wasm_error_from!(RevocationError);

@@ -1,6 +1,12 @@
 // Copyright 2020-2022 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
+
+#[cfg(target_arch = "wasm32")]
+use product_common::bindings::wasm_error;
+#[cfg(target_arch = "wasm32")]
+use std::borrow::Cow;
+
 /// Alias for a `Result` with the error type [`Error`].
 pub type Result<T, E = Error> = core::result::Result<T, E>;
 
@@ -10,6 +16,16 @@ pub type Result<T, E = Error> = core::result::Result<T, E>;
 #[derive(Debug)]
 pub struct Error {
   error_cause: ErrorCause,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl From<Error> for wasm_error::WasmError<'_> {
+  fn from(error: Error) -> Self {
+    Self {
+      name: Cow::Owned(format!("ResolverError::{}", <&'static str>::from(error.error_cause()))),
+      message: Cow::Owned(wasm_error::ErrorMessage(&error).to_string()),
+    }
+  }
 }
 
 impl Error {

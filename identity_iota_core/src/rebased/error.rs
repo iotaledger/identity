@@ -5,6 +5,9 @@
 
 use crate::iota_interaction_adapter::AdapterError;
 
+#[cfg(target_arch = "wasm32")]
+use product_common::impl_wasm_error_from;
+
 /// This type represents all possible errors that can occur in the library.
 #[derive(Debug, thiserror::Error, strum::IntoStaticStr)]
 #[non_exhaustive]
@@ -106,3 +109,6 @@ where
 {
   error.into()
 }
+
+#[cfg(target_arch = "wasm32")]
+impl_wasm_error_from!(Error);

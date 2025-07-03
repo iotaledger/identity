@@ -8,8 +8,8 @@ use super::sd_jwt_v2::WasmDisclosure;
 use super::sd_jwt_v2::WasmHasher;
 use super::sd_jwt_v2::WasmKeyBindingJwt;
 use super::WasmSdJwtVc;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 
 #[wasm_bindgen(js_name = SdJwtVcPresentationBuilder)]
 pub struct WasmSdJwtVcPresentationBuilder(pub(crate) SdJwtVcPresentationBuilder);

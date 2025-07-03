@@ -6,6 +6,13 @@ use std::fmt::Display;
 
 use itertools;
 
+#[cfg(target_arch = "wasm32")]
+use product_common::impl_wasm_error_from;
+#[cfg(target_arch = "wasm32")]
+use product_common::bindings::wasm_error;
+#[cfg(target_arch = "wasm32")]
+use std::borrow::Cow;
+
 /// An error associated with validating credentials and presentations.
 #[derive(Debug, thiserror::Error, strum::IntoStaticStr)]
 #[non_exhaustive]
@@ -118,6 +125,9 @@ pub enum JwtValidationError {
   JwpProofVerificationError(#[source] jsonprooftoken::errors::CustomError),
 }
 
+#[cfg(target_arch = "wasm32")]
+impl_wasm_error_from!(JwtValidationError);
+
 /// Specifies whether an error is related to a credential issuer or the presentation holder.
 #[derive(Debug)]
 #[non_exhaustive]
@@ -143,6 +153,16 @@ impl Display for SignerContext {
 pub struct CompoundCredentialValidationError {
   /// List of credential validation errors.
   pub validation_errors: Vec<JwtValidationError>,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl From<CompoundCredentialValidationError> for wasm_error::WasmError<'_> {
+  fn from(error: CompoundCredentialValidationError) -> Self {
+    Self {
+      name: Cow::Borrowed("CompoundCredentialValidationError"),
+      message: Cow::Owned(wasm_error::ErrorMessage(&error).to_string()),
+    }
+  }
 }
 
 impl Display for CompoundCredentialValidationError {

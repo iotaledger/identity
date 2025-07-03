@@ -5,8 +5,10 @@ use identity_iota::core::Object;
 use identity_iota::credential::Proof;
 use wasm_bindgen::prelude::*;
 
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 
 /// Represents a cryptographic proof that can be used to validate verifiable credentials and
 /// presentations.

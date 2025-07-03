@@ -3,6 +3,9 @@
 
 use core::fmt::Debug;
 
+#[cfg(target_arch = "wasm32")]
+use product_common::impl_wasm_error_from;
+
 /// Error type caused by invalid DID handling.
 #[derive(Debug, thiserror::Error, strum::IntoStaticStr)]
 #[non_exhaustive]
@@ -36,3 +39,6 @@ impl From<did_url_parser::Error> for Error {
     }
   }
 }
+
+#[cfg(target_arch = "wasm32")]
+impl_wasm_error_from!(Error);

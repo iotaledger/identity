@@ -15,13 +15,18 @@ description = "The core traits and types for the identity-rs library."
 # that conflicts with `iota-sdk`s `core` impl, leading to errors in `iota-sdk` crate
 deranged = { version = ">=0.4.0, <0.4.1", default-features = false }
 multibase = { version = "0.9", default-features = false, features = ["std"] }
-product_common.workspace = true
 serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
 strum.workspace = true
 thiserror.workspace = true
 time = { version = "0.3.23", default-features = false, features = ["std", "serde", "parsing", "formatting"] }
 url = { version = "2.4", default-features = false, features = ["serde"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+product_common.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+product_common = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-2-3-and-resources-for-wasm", package = "product_common", features= ["bindings"] }
 
 [target.'cfg(all(target_arch = "wasm32", not(target_os = "wasi")))'.dependencies]
 js-sys = { version = "0.3.55", default-features = false, optional = true }

@@ -3,6 +3,9 @@
 
 //! Errors that may occur when working with Verifiable Credentials.
 
+#[cfg(target_arch = "wasm32")]
+use product_common::impl_wasm_error_from;
+
 /// Alias for a `Result` with the error type [`Error`].
 pub type Result<T, E = Error> = ::core::result::Result<T, E>;
 
@@ -85,3 +88,6 @@ pub enum Error {
   #[error(transparent)]
   SdJwtVc(#[from] crate::sd_jwt_vc::Error),
 }
+
+#[cfg(target_arch = "wasm32")]
+impl_wasm_error_from!(Error);

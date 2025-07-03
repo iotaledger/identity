@@ -3,8 +3,8 @@
 
 use super::WasmJwpIssued;
 use super::WasmPresentationProtectedHeader;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 use identity_iota::credential::SelectiveDisclosurePresentation;
 use wasm_bindgen::prelude::*;
 

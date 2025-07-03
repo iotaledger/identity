@@ -1,9 +1,11 @@
 // Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::error::Result;
-use crate::error::WasmError;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmError;
+use product_common::bindings::wasm_error::WasmResult;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 use jsonprooftoken::jpt::payloads::PayloadType;
 use jsonprooftoken::jpt::payloads::Payloads;
 use serde_json::Value;

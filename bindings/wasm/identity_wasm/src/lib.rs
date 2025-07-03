@@ -34,6 +34,9 @@ pub mod verification;
 // Currently it's unclear if this module will be removed or can be used for integration or unit tests.
 pub(crate) mod rebased;
 
+// Re-export the bindings in product_common.
+pub use product_common::bindings::*;
+
 /// Initializes the console error panic hook for better error messages
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {

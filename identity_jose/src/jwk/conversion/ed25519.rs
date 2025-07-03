@@ -41,7 +41,7 @@ pub(crate) fn jwk_to_keypair(jwk: &Jwk) -> Result<Ed25519KeyPair, Error> {
     .as_deref()
     .map(jwu::decode_b64)
     .ok_or_else(|| Error::KeyConversion("expected Jwk `d` param to be present".to_string()))?
-    .map_err(|err| Error::KeyConversion(format!("unable to decode `d` param; {}", err)))?
+    .map_err(|err| Error::KeyConversion(format!("unable to decode `d` param; {err}")))?
     .try_into()
     .map_err(|_| Error::KeyConversion(format!("expected key of length {}", Ed25519PrivateKey::LENGTH)))?;
 

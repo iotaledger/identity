@@ -170,8 +170,7 @@ impl JptCredentialValidatorUtils {
   ) -> ValidationUnitResult {
     let issuer_service_url: identity_did::DIDUrl = identity_did::DIDUrl::parse(status.id()).map_err(|err| {
       JwtValidationError::InvalidStatus(crate::Error::InvalidStatus(format!(
-        "could not convert status id to DIDUrl; {}",
-        err,
+        "could not convert status id to DIDUrl; {err}",
       )))
     })?;
 

@@ -145,7 +145,7 @@ pub fn pretty_print_json(label: &str, value: &str) {
   let data: Value = serde_json::from_str(value).unwrap();
   let pretty_json = serde_json::to_string_pretty(&data).unwrap();
   println!("--------------------------------------");
-  println!("{}:", label);
+  println!("{label}:");
   println!("--------------------------------------");
-  println!("{} \n", pretty_json);
+  println!("{pretty_json} \n");
 }

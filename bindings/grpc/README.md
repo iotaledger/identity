@@ -34,7 +34,7 @@ Make sure to provide a valid stronghold snapshot at the provided `SNAPSHOT_PATH`
 ### Domain Linkage
 
 #### Http server
-In order to test domain linkage, you need access to a server that is reachable via HTTPS. If you already have one, you can ignore the server setup steps here and and provide the `did-configuration.json` on your server.
+In order to test domain linkage, you need access to a server that is reachable via HTTPS. If you already have one, you can ignore the server setup steps here and provide the `did-configuration.json` on your server.
 
 1. create a folder with did configuration in it, e.g. (you can also use the template in `./tooling/domain-linkage-test-server`)
     ```raw

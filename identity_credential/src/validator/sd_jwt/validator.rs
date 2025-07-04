@@ -129,7 +129,7 @@ impl<V: JwsVerifier> SdJwtCredentialValidator<V> {
       identity_verification::jose::error::Error::InvalidClaim("sd-jwt claims could not be deserialized"),
     ))?;
     let decoded: String = Value::Object(self.1.decode(obj, disclosures).map_err(|e| {
-      let err_str = format!("sd-jwt claims decoding failed, {}", e);
+      let err_str = format!("sd-jwt claims decoding failed, {e}");
       let err: &'static str = Box::leak(err_str.into_boxed_str());
       JwtValidationError::JwsDecodingError(identity_verification::jose::error::Error::InvalidClaim(err))
     })?)

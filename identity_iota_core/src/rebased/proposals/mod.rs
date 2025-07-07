@@ -1,6 +1,7 @@
 // Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
+pub mod access_sub_identity;
 mod borrow;
 mod config_change;
 mod controller;
@@ -35,6 +36,7 @@ use product_common::core_client::CoreClientReadOnly;
 use product_common::transaction::transaction_builder::Transaction;
 use product_common::transaction::transaction_builder::TransactionBuilder;
 use product_common::transaction::ProtoTransaction;
+use serde::Deserialize;
 use tokio::sync::OnceCell;
 
 pub use send::*;
@@ -136,12 +138,16 @@ impl<'i, 'c, A> ProposalBuilder<'i, 'c, A> {
     self.expiration = Some(exp);
     self
   }
+}
 
+impl<'i, 'c, A> ProposalBuilder<'i, 'c, A>
+where
+  Proposal<A>: ProposalT<Action = A>,
+{
   /// Creates a [`Proposal`] with the provided arguments. If `forbid_chained_execution` is set to `true`,
   /// the [`Proposal`] won't be executed even if creator alone has enough voting power.
   pub async fn finish<C>(self, client: &C) -> Result<TransactionBuilder<CreateProposal<'i, A>>, Error>
   where
-    Proposal<A>: ProposalT<Action = A>,
     C: CoreClientReadOnly + OptionalSync,
   {
     let Self {
@@ -155,16 +161,22 @@ impl<'i, 'c, A> ProposalBuilder<'i, 'c, A> {
   }
 }
 
+/// The result of attempting to perform an action on an Identity.
+/// This action can either be executed right away - when the executing controller
+/// has enough voting power to do so - or it can be pending, waiting for other
+/// controllers' approvals.
 #[derive(Debug)]
+pub enum ProposedTxResult<P, T> {
+  /// A proposed operation that has yet to be executed.
+  Pending(P),
+  /// Execute proposal output.
+  Executed(T),
+}
+
 /// The result of creating a [`Proposal`]. When a [`Proposal`] is executed
 /// in the same transaction as its creation, a [`ProposalResult::Executed`] is
 /// returned. [`ProposalResult::Pending`] otherwise.
-pub enum ProposalResult<P: ProposalT> {
-  /// A [`Proposal`] that has yet to be executed.
-  Pending(P),
-  /// A [`Proposal`]'s execution output.
-  Executed(P::Output),
-}
+pub type ProposalResult<P: ProposalT> = ProposedTxResult<P, P::Output>;
 
 /// A transaction to create a [`Proposal`].
 #[derive(Debug)]
@@ -437,4 +449,12 @@ impl<'i, A> UserDrivenTx<'i, A> {
       cached_ptb: OnceCell::new(),
     }
   }
+}
+
+#[derive(Debug, Deserialize)]
+struct ProposalEvent {
+  identity: ObjectID,
+  controller: ObjectID,
+  proposal: ObjectID,
+  executed: bool,
 }

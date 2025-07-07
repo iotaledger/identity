@@ -7,6 +7,7 @@ mod config_change;
 mod create;
 mod exec;
 mod send;
+pub(crate) mod sub_identity;
 mod update;
 mod upgrade;
 

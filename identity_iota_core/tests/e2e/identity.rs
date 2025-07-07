@@ -11,6 +11,7 @@ use identity_iota_core::rebased::migration::has_previous_version;
 use identity_iota_core::rebased::migration::ControllerToken;
 use identity_iota_core::rebased::migration::DelegationToken;
 use identity_iota_core::rebased::migration::Identity;
+use identity_iota_core::rebased::migration::OnChainIdentity;
 use identity_iota_core::rebased::proposals::ProposalResult;
 use identity_iota_core::IotaDID;
 use identity_iota_core::IotaDocument;
@@ -28,6 +29,7 @@ use iota_sdk::types::IOTA_FRAMEWORK_PACKAGE_ID;
 use move_core_types::ident_str;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
+use product_common::transaction::transaction_builder::TransactionBuilder;
 use secret_storage::Signer as _;
 
 #[tokio::test]
@@ -614,6 +616,45 @@ async fn controller_delegation_works() -> anyhow::Result<()> {
     .get_object_by_id::<DelegationToken>(bobs_delegation_token_id)
     .await;
   assert!(maybe_obj.is_err());
+
+  Ok(())
+}
+
+#[tokio::test]
+async fn access_sub_identity_works() -> anyhow::Result<()> {
+  let client = TestClient::new().await?;
+  let network = client.network();
+  let mut identity = client
+    .create_identity(IotaDocument::new(network))
+    .finish()
+    .build_and_execute(&client)
+    .await?
+    .output;
+  let mut sub_identity = client
+    .create_identity(IotaDocument::new(network))
+    .controller(identity.id().into(), 1)
+    .finish()
+    .build_and_execute(&client)
+    .await?
+    .output;
+  let controller_token = identity.get_controller_token(&client).await?.expect("is a controller");
+  let client_ref = &client;
+
+  identity
+    .access_sub_identity(&mut sub_identity, &controller_token)
+    .to_perform(|sub_identity, token| async move {
+      sub_identity
+        .deactivate_did(&token)
+        .finish(client_ref)
+        .await
+        .map(TransactionBuilder::into_inner)
+    })
+    .finish(&client)
+    .await?
+    .build_and_execute(&client)
+    .await?;
+
+  assert!(sub_identity.did_document().metadata.deactivated == Some(true));
 
   Ok(())
 }

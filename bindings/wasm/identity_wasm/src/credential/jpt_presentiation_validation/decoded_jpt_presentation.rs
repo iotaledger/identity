@@ -7,7 +7,8 @@ use wasm_bindgen::prelude::*;
 
 use crate::common::MapStringAny;
 use crate::credential::WasmCredential;
-use crate::error::Result;
+use product_common::bindings::wasm_error::Result;
+use product_common::impl_wasm_clone;
 
 #[wasm_bindgen(js_name = DecodedJptPresentation)]
 pub struct WasmDecodedJptPresentation(pub(crate) DecodedJptPresentation<Object>);

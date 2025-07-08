@@ -3,6 +3,8 @@
 
 use identity_iota::verification::MethodType;
 use wasm_bindgen::prelude::*;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 
 /// Supported verification method types.
 #[wasm_bindgen(js_name = MethodType, inspectable)]

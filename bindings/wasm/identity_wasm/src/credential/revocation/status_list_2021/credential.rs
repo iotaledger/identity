@@ -15,8 +15,8 @@ use wasm_bindgen::prelude::*;
 use crate::common::WasmTimestamp;
 use crate::credential::WasmCredential;
 use crate::credential::WasmProof;
-use crate::error::Result;
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::Result;
+use product_common::bindings::wasm_error::WasmResult;
 
 use super::WasmStatusList2021;
 use super::WasmStatusList2021Entry;

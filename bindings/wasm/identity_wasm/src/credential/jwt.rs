@@ -3,6 +3,8 @@
 
 use identity_iota::credential::Jwt;
 use wasm_bindgen::prelude::*;
+use product_common::impl_wasm_clone;
+use product_common::impl_wasm_json;
 
 /// A wrapper around a JSON Web Token (JWK).
 #[wasm_bindgen(js_name = Jwt)]

@@ -19,7 +19,7 @@ use wasm_bindgen::prelude::*;
 
 use proc_typescript::typescript;
 
-use crate::error::WasmResult;
+use product_common::bindings::wasm_error::WasmResult;
 
 impl TryFrom<ICredential> for CredentialBuilder {
   type Error = JsValue;

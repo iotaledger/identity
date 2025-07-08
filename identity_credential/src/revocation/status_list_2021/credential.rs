@@ -14,6 +14,9 @@ use serde::Serialize;
 use serde_json::Value;
 use thiserror::Error;
 
+#[cfg(target_arch = "wasm32")]
+use product_common::impl_wasm_error_from;
+
 /// The type of a `StatusList2021Credential`.
 pub const CREDENTIAL_TYPE: &str = "StatusList2021Credential";
 const CREDENTIAL_SUBJECT_TYPE: &str = "StatusList2021";
@@ -41,6 +44,9 @@ pub enum StatusList2021CredentialError {
   #[error("A previously revoked credential cannot be unrevoked.")]
   UnreversibleRevocation,
 }
+
+#[cfg(target_arch = "wasm32")]
+impl_wasm_error_from!(StatusList2021CredentialError);
 
 use crate::credential::Credential;
 use crate::credential::CredentialBuilder;

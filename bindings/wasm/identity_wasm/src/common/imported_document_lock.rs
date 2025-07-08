@@ -7,11 +7,12 @@ use identity_iota::document::CoreDocument;
 use identity_iota::prelude::IotaDocument;
 use js_sys::Array;
 
+use product_common::bindings::wasm_error::Result;
+
 use crate::did::ArrayIToCoreDocument;
 use crate::did::CoreDocumentLock;
 use crate::did::IToCoreDocument;
 use crate::did::WasmCoreDocument;
-use crate::error::Result;
 use crate::iota::IotaDocumentLock;
 use crate::iota::WasmIotaDocument;
 

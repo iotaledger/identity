@@ -11,7 +11,6 @@ use identity_iota_core::rebased::migration::has_previous_version;
 use identity_iota_core::rebased::migration::ControllerToken;
 use identity_iota_core::rebased::migration::DelegationToken;
 use identity_iota_core::rebased::migration::Identity;
-use identity_iota_core::rebased::migration::OnChainIdentity;
 use identity_iota_core::rebased::proposals::ProposalResult;
 use identity_iota_core::IotaDID;
 use identity_iota_core::IotaDocument;
@@ -29,7 +28,6 @@ use iota_sdk::types::IOTA_FRAMEWORK_PACKAGE_ID;
 use move_core_types::ident_str;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
-use product_common::transaction::transaction_builder::TransactionBuilder;
 use secret_storage::Signer as _;
 
 #[tokio::test]
@@ -391,6 +389,7 @@ async fn borrow_proposal_works() -> anyhow::Result<()> {
   Ok(())
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn controller_execution_works() -> anyhow::Result<()> {
   let test_client = get_funded_test_client().await?;
@@ -642,13 +641,7 @@ async fn access_sub_identity_works() -> anyhow::Result<()> {
 
   identity
     .access_sub_identity(&mut sub_identity, &controller_token)
-    .to_perform(|sub_identity, token| async move {
-      sub_identity
-        .deactivate_did(&token)
-        .finish(client_ref)
-        .await
-        .map(TransactionBuilder::into_inner)
-    })
+    .to_perform(|sub_identity, token| async move { sub_identity.deactivate_did(&token).finish(client_ref).await })
     .finish(&client)
     .await?
     .build_and_execute(&client)

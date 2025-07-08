@@ -14,7 +14,7 @@ use iota_sdk::types::transaction::ProgrammableTransaction;
 use crate::rebased::iota::move_calls::utils;
 use crate::rebased::iota::move_calls::ControllerTokenRef;
 use crate::rebased::iota::ptb_merge_tx_with_inputs_replacement;
-use crate::rebased::proposals::access_sub_identity::AccessSubIdentity;
+use crate::rebased::proposals::AccessSubIdentity;
 use crate::rebased::Error;
 
 use super::ControllerTokenArg;

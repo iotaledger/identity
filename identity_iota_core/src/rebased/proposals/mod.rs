@@ -1,7 +1,7 @@
 // Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-pub mod access_sub_identity;
+mod access_sub_identity;
 mod borrow;
 mod config_change;
 mod controller;
@@ -15,6 +15,7 @@ use std::ops::DerefMut;
 
 use crate::rebased::iota::move_calls;
 use crate::rebased::migration::get_identity;
+pub use access_sub_identity::*;
 use async_trait::async_trait;
 pub use borrow::*;
 pub use config_change::*;
@@ -176,6 +177,7 @@ pub enum ProposedTxResult<P, T> {
 /// The result of creating a [`Proposal`]. When a [`Proposal`] is executed
 /// in the same transaction as its creation, a [`ProposalResult::Executed`] is
 /// returned. [`ProposalResult::Pending`] otherwise.
+#[allow(type_alias_bounds)]
 pub type ProposalResult<P: ProposalT> = ProposedTxResult<P, P::Output>;
 
 /// A transaction to create a [`Proposal`].
@@ -456,5 +458,6 @@ struct ProposalEvent {
   identity: ObjectID,
   controller: ObjectID,
   proposal: ObjectID,
+  #[allow(dead_code)]
   executed: bool,
 }

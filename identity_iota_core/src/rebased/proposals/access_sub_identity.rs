@@ -20,14 +20,13 @@ use iota_sdk::rpc_types::IotaTransactionBlockResponseOptions;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::transaction::transaction_builder::Transaction;
 use product_common::transaction::transaction_builder::TransactionBuilder;
+use product_common::transaction::IntoTransaction;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
 use crate::rebased::migration::ControllerToken;
-use crate::rebased::migration::IdentityResolutionError;
-use crate::rebased::migration::IdentityResolutionErrorKind;
 use crate::rebased::migration::InvalidControllerTokenForIdentity;
 use crate::rebased::migration::OnChainIdentity;
 use crate::rebased::migration::Proposal;
@@ -37,21 +36,29 @@ use super::ProposedTxResult;
 
 type BoxedStdError = Box<dyn std::error::Error + Send + Sync>;
 
+/// Trait describing the function used to define what operation to perform on a sub-identity.
 #[cfg(feature = "send-sync")]
 pub trait SubAccessFnT<'a>: FnOnce(&'a mut OnChainIdentity, ControllerToken) -> Self::Future {
-  type Future: Future<Output = Result<Self::Tx, Self::Error>> + Send + 'a;
+  /// The [Future] type returned by the closure.
+  type Future: Future<Output = Result<Self::IntoTx, Self::Error>> + Send + 'a;
+  /// An [IntoTransaction] type.
+  type IntoTx: IntoTransaction<Tx = Self::Tx>;
+  /// The [Transaction] that encodes the operation to be performed on the sub-identity.
   type Tx: Transaction + 'a;
+  /// The error returned by this function
   type Error: Into<BoxedStdError>;
 }
 
-impl<'a, F, Fut, Tx, E> SubAccessFnT<'a> for F
+impl<'a, F, Fut, IntoTx, Tx, E> SubAccessFnT<'a> for F
 where
   F: FnOnce(&'a mut OnChainIdentity, ControllerToken) -> Fut,
-  Fut: Future<Output = Result<Tx, E>> + Send + 'a,
+  Fut: Future<Output = Result<IntoTx, E>> + Send + 'a,
+  IntoTx: IntoTransaction<Tx = Tx>,
   Tx: Transaction + 'a,
   E: Into<BoxedStdError>,
 {
   type Future = Fut;
+  type IntoTx = IntoTx;
   type Tx = Tx;
   type Error = E;
 }
@@ -77,6 +84,7 @@ pub struct AccessSubIdentity {
   pub sub_identity: ObjectID,
 }
 
+/// A builder structure that eases the creation of an [AccessSubIdentityTx].
 #[derive(Debug)]
 pub struct AccessSubIdentityBuilder<'i, 'sub, F = ()> {
   identity: &'i mut OnChainIdentity,
@@ -87,6 +95,8 @@ pub struct AccessSubIdentityBuilder<'i, 'sub, F = ()> {
 }
 
 impl<'i, 'sub, F> AccessSubIdentityBuilder<'i, 'sub, F> {
+  /// Returns a new [AccessSubIdentityBuilder] that when built will return a [AccessSubIdentityTx]
+  /// to access `sub_identity` through `identity`'s token.
   pub fn new(
     identity: &'i mut OnChainIdentity,
     sub_identity: &'sub mut OnChainIdentity,
@@ -101,11 +111,24 @@ impl<'i, 'sub, F> AccessSubIdentityBuilder<'i, 'sub, F> {
     }
   }
 
+  /// Sets an epoch before which this proposal must be executed by any member of the controllers committee.
+  ///
+  /// If this action can be carried out in the same transaction as its proposal, this option is ignored.
   pub fn with_expiration(mut self, epoch_id: u64) -> Self {
     self.expiration = Some(epoch_id);
     self
   }
 
+  /// Sets the operation to be performed on the sub-Identity.
+  ///
+  /// # Example
+  /// ```ignore
+  /// identity
+  ///   .access_sub_identity(&mut sub_identity, &identity_token)
+  ///   .to_perform(|sub_identity, sub_identity_token| async move {
+  ///     sub_identity.deactivate_did(&sub_identity_token).finish().await
+  ///   })
+  /// ```
   pub fn to_perform<F1>(self, f: F1) -> AccessSubIdentityBuilder<'i, 'sub, F1>
   where
     F1: SubAccessFnT<'sub>,
@@ -125,14 +148,16 @@ where
   F: SubAccessFnT<'sub>,
   F::Tx: Transaction + Send + Sync,
 {
+  /// Consumes this builder returning a [TransactionBuilder] wrapping a [AccessSubIdentityTx] created
+  /// with the supplied data.
   pub async fn finish(
     self,
     client: &(impl CoreClientReadOnly + Sync),
-  ) -> Result<TransactionBuilder<AccessSubIdentityTx<'i, 'sub, F::Tx>>, BuilderError> {
+  ) -> Result<TransactionBuilder<AccessSubIdentityTx<'i, 'sub, F::Tx>>, AccessSubIdentityBuilderError> {
     // Make sure `identity_token` grants access to `identity`.
     if self.identity.id() != self.identity_token.controller_of() {
       return Err(
-        BuilderErrorKind::Unauthorized(InvalidControllerTokenForIdentity {
+        AccessSubIdentityBuilderErrorKind::Unauthorized(InvalidControllerTokenForIdentity {
           identity: self.identity.id(),
           controller_token: self.identity_token,
         })
@@ -145,14 +170,16 @@ where
       .sub_identity
       .get_controller_token_for_address(self.identity.id().into(), client)
       .await
-      .map_err(|e| BuilderErrorKind::RpcError(e.into()))?
+      .map_err(|e| AccessSubIdentityBuilderErrorKind::RpcError(e.into()))?
       // If no token was found, the two identities are unrelated, AKA `identity` is not a controller of `sub_identity`.
-      .ok_or(BuilderErrorKind::UnrelatedIdentities(UnrelatedIdentities {
-        identity: self.identity.id(),
-        sub_identity: self.sub_identity.id(),
-      }))?;
+      .ok_or(AccessSubIdentityBuilderErrorKind::UnrelatedIdentities(
+        UnrelatedIdentities {
+          identity: self.identity.id(),
+          sub_identity: self.sub_identity.id(),
+        },
+      ))?;
 
-    // `true` if this operation can also be executed in a single transaction.
+    // `true` if this operation can also be executed in the same transaction.
     let can_execute = self
       .identity
       .controller_voting_power(self.identity_token.controller_id())
@@ -165,8 +192,8 @@ where
     let maybe_sub_tx = if let Some(fetch_sub_tx) = self.sub_action.filter(|_| can_execute) {
       fetch_sub_tx(self.sub_identity, sub_identity_token.clone())
         .await
-        .map(Some)
-        .map_err(|e| BuilderErrorKind::SubIdentityOperation {
+        .map(|into_tx| Some(into_tx.into_transaction()))
+        .map_err(|e| AccessSubIdentityBuilderErrorKind::SubIdentityOperation {
           sub_identity: sub_identity_id,
           source: e.into(),
         })?
@@ -195,6 +222,7 @@ where
 }
 
 impl Proposal<AccessSubIdentity> {
+  /// Executes this proposal by returning the corresponding transaction to be executed.
   pub async fn into_tx<'i, 'sub, F, C>(
     self,
     identity: &'i mut OnChainIdentity,
@@ -202,7 +230,7 @@ impl Proposal<AccessSubIdentity> {
     identity_token: &ControllerToken,
     sub_action: F,
     client: &C,
-  ) -> Result<TransactionBuilder<AccessSubIdentityTx<'i, 'sub, F::Tx>>, BuilderError>
+  ) -> Result<TransactionBuilder<AccessSubIdentityTx<'i, 'sub, F::Tx>>, AccessSubIdentityBuilderError>
   where
     F: SubAccessFnT<'sub>,
     F::Tx: Transaction + Sync + Send,
@@ -233,38 +261,51 @@ impl Proposal<AccessSubIdentity> {
   }
 }
 
+/// Error type that is returned when attempting to access an Identity `sub_identity`
+/// that is **not** controlled by `base_identity`.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 #[error("Identity `{identity}` has no control over Identity `{sub_identity}`")]
 pub struct UnrelatedIdentities {
+  /// ID of the base-Identity.
   pub identity: ObjectID,
+  /// ID of the sub-Identity to be accessed.
   pub sub_identity: ObjectID,
 }
 
+/// Kind of failure that might happen when consuming an [AccessSubIdentityBuilder].
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
-pub enum BuilderErrorKind {
+pub enum AccessSubIdentityBuilderErrorKind {
+  /// An RPC request to an IOTA Node failed.
   #[error(transparent)]
   RpcError(BoxedStdError),
+  /// See [UnrelatedIdentities].
   #[error(transparent)]
   UnrelatedIdentities(#[from] UnrelatedIdentities),
+  /// See [InvalidControllerTokenForIdentity].
   #[error(transparent)]
   Unauthorized(#[from] InvalidControllerTokenForIdentity),
+  /// The user-defined operation passed to the builder through [AccessSubIdentityBuilder::to_perform] failed.
   #[non_exhaustive]
-  #[error("user-defined operation of sub-Identity `{sub_identity}` failed")]
+  #[error("user-defined operation on sub-Identity `{sub_identity}` failed")]
   SubIdentityOperation {
+    /// ID of the sub-Identity.
     sub_identity: ObjectID,
+    /// Error returned by the user closure.
     source: BoxedStdError,
   },
 }
 
+/// Error type returned by [AccessSubIdentityBuilder::finish].
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 #[error("failed to build a valid sub-Identity access operation")]
-pub struct BuilderError {
+pub struct AccessSubIdentityBuilderError {
+  /// Type of failure.
   #[from]
   #[source]
-  pub kind: BuilderErrorKind,
+  pub kind: AccessSubIdentityBuilderErrorKind,
 }
 
 #[derive(Debug)]
@@ -283,6 +324,8 @@ enum TxKind<Tx> {
   },
 }
 
+/// [Transaction] that allows a controller of `identity` to access `sub_identity`
+/// by borrowing one of `identity`'s token over it.
 #[derive(Debug)]
 pub struct AccessSubIdentityTx<'i, 'sub, Tx> {
   identity: &'i mut OnChainIdentity,
@@ -297,7 +340,7 @@ impl<'i, 'sub, Tx> AccessSubIdentityTx<'i, 'sub, Tx>
 where
   Tx: Transaction,
 {
-  async fn build_pt_impl<C>(&self, client: &C) -> Result<ProgrammableTransaction, ErrorKind>
+  async fn build_pt_impl<C>(&self, client: &C) -> Result<ProgrammableTransaction, AccessSubIdentityErrorKind>
   where
     C: CoreClientReadOnly + Sync,
   {
@@ -305,21 +348,21 @@ where
     let identity = client
       .get_object_ref_by_id(self.identity.id())
       .await
-      .map_err(|e| ErrorKind::RpcError(e.into()))?
+      .map_err(|e| AccessSubIdentityErrorKind::RpcError(e.into()))?
       .expect("exists on-chain");
     let sub_identity = client
       .get_object_ref_by_id(self.sub_identity)
       .await
-      .map_err(|e| ErrorKind::RpcError(e.into()))?
+      .map_err(|e| AccessSubIdentityErrorKind::RpcError(e.into()))?
       .expect("exists on-chain");
     let identity_token = self
       .identity_token
       .controller_ref(client)
       .await
-      .map_err(|e| ErrorKind::RpcError(e.into()))?;
+      .map_err(|e| AccessSubIdentityErrorKind::RpcError(e.into()))?;
     let package_id = identity_package_id(client)
       .await
-      .map_err(|e| ErrorKind::RpcError(e.into()))?;
+      .map_err(|e| AccessSubIdentityErrorKind::RpcError(e.into()))?;
 
     match &self.tx_kind {
       TxKind::Create { expiration } => move_calls::identity::sub_identity::propose_identity_sub_access(
@@ -336,11 +379,11 @@ where
         let sub_identity_token = sub_identity_token
           .controller_ref(client)
           .await
-          .map_err(|e| ErrorKind::RpcError(e.into()))?;
+          .map_err(|e| AccessSubIdentityErrorKind::RpcError(e.into()))?;
         let sub_pt = sub_tx
           .build_programmable_transaction(client)
           .await
-          .map_err(|e| ErrorKind::InnerTransactionBuilding(e.into()))?;
+          .map_err(|e| AccessSubIdentityErrorKind::InnerTransactionBuilding(e.into()))?;
 
         move_calls::identity::sub_identity::propose_and_execute_sub_identity_access(
           identity,
@@ -360,11 +403,11 @@ where
         let sub_identity_token = sub_identity_token
           .controller_ref(client)
           .await
-          .map_err(|e| ErrorKind::RpcError(e.into()))?;
+          .map_err(|e| AccessSubIdentityErrorKind::RpcError(e.into()))?;
         let sub_pt = sub_tx
           .build_programmable_transaction(client)
           .await
-          .map_err(|e| ErrorKind::InnerTransactionBuilding(e.into()))?;
+          .map_err(|e| AccessSubIdentityErrorKind::InnerTransactionBuilding(e.into()))?;
 
         move_calls::identity::sub_identity::execute_sub_identity_access(
           identity,
@@ -376,7 +419,7 @@ where
         )
       }
     }
-    .map_err(|e| ErrorKind::TransactionBuilding(e.into()))
+    .map_err(|e| AccessSubIdentityErrorKind::TransactionBuilding(e.into()))
   }
 }
 
@@ -385,13 +428,13 @@ impl<'i, 'sub, Tx> Transaction for AccessSubIdentityTx<'i, 'sub, Tx>
 where
   Tx: Transaction + Sync + OptionalSend,
 {
-  type Error = Error;
+  type Error = AccessSubIdentityError;
   type Output = ProposedTxResult<Proposal<AccessSubIdentity>, Tx::Output>;
   async fn build_programmable_transaction<C>(&self, client: &C) -> Result<ProgrammableTransaction, Self::Error>
   where
     C: CoreClientReadOnly + OptionalSync,
   {
-    self.build_pt_impl(client).await.map_err(|kind| Error {
+    self.build_pt_impl(client).await.map_err(|kind| AccessSubIdentityError {
       identity: self.identity.id(),
       sub_identity: self.sub_identity,
       kind,
@@ -409,14 +452,14 @@ where
       .client_adapter()
       .read_api()
       .get_transaction_with_options(
-        tx_digest.clone(),
+        *tx_digest,
         IotaTransactionBlockResponseOptions::default().with_events(),
       )
       .await
-      .map_err(|e| Error {
+      .map_err(|e| AccessSubIdentityError {
         identity: self.identity.id(),
         sub_identity: self.sub_identity,
-        kind: ErrorKind::RpcError(e.into()),
+        kind: AccessSubIdentityErrorKind::RpcError(e.into()),
       })?;
     let mut tx_events = tx_block.events().cloned().unwrap_or_default();
 
@@ -444,10 +487,10 @@ where
     };
 
     if let IotaExecutionStatus::Failure { error } = effects.status() {
-      return Err(Error {
+      return Err(AccessSubIdentityError {
         identity: self.identity.id(),
         sub_identity: self.sub_identity,
-        kind: ErrorKind::TransactionExecution(error.as_str().into()),
+        kind: AccessSubIdentityErrorKind::TransactionExecution(error.as_str().into()),
       });
     }
 
@@ -472,14 +515,14 @@ where
         .get_object_by_id(maybe_proposal_id.expect("tx was successful"))
         .await
         .map(ProposedTxResult::Pending)
-        .map_err(|e| ErrorKind::RpcError(e.into())),
+        .map_err(|e| AccessSubIdentityErrorKind::RpcError(e.into())),
       TxKind::CreateAndExecute { sub_tx, .. } | TxKind::Execute { sub_tx, .. } => sub_tx
         .apply_with_events(effects, events, client)
         .await
         .map(ProposedTxResult::Executed)
-        .map_err(|e| ErrorKind::EffectsApplication(e.into())),
+        .map_err(|e| AccessSubIdentityErrorKind::EffectsApplication(e.into())),
     }
-    .map_err(|kind| Error {
+    .map_err(|kind| AccessSubIdentityError {
       kind,
       sub_identity: self.sub_identity,
       identity: self.identity.id(),
@@ -495,51 +538,37 @@ impl MoveType for AccessSubIdentity {
   }
 }
 
+/// Type of failures that can be encountered when executing a [AccessSubIdentityTx].
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
-pub enum ErrorKind {
+pub enum AccessSubIdentityErrorKind {
+  /// An RPC request to an IOTA Node failed.
   #[error("RPC request failed")]
   RpcError(#[source] Box<dyn std::error::Error + Send + Sync>),
-  #[error("Identity has no control over sub-Identity")]
-  UnrelatedIdentities,
-  #[error("invalid Identity `{identity}`")]
-  #[non_exhaustive]
-  InvalidIdentity {
-    identity: ObjectID,
-    source: Box<IdentityResolutionErrorKind>,
-  },
-  #[error("cannot access Identity `{}`", .0.identity)]
-  Unauthorized(#[from] InvalidControllerTokenForIdentity),
+  /// Building the user-provided transaction failed.
   #[error("failed to build user-provided Transaction")]
   InnerTransactionBuilding(#[source] Box<dyn std::error::Error + Send + Sync>),
+  /// Building the whole transaction failed.
   #[error("failed to build transaction")]
   TransactionBuilding(#[source] Box<dyn std::error::Error + Send + Sync>),
+  /// Executing the transaction failed.
   #[error("transaction execution failed")]
   TransactionExecution(#[source] Box<dyn std::error::Error + Send + Sync>),
+  /// Failed to apply the transaction's effects off-chain.
   #[error("transaction was successful but its effect couldn't be applied off-chain")]
   EffectsApplication(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
+/// Error type returned by executing an [AccessSubIdentityTx].
 #[derive(Debug, thiserror::Error)]
 #[error("failed to access Identity `{sub_identity}` through Identity `{identity}`")]
 #[non_exhaustive]
-pub struct Error {
+pub struct AccessSubIdentityError {
+  /// ID of the base-Identity.
   pub identity: ObjectID,
+  /// Id of the sub-Identity.
   pub sub_identity: ObjectID,
+  /// Type of failure.
   #[source]
-  pub kind: ErrorKind,
-}
-
-impl From<IdentityResolutionError> for ErrorKind {
-  fn from(IdentityResolutionError { kind, resolving }: IdentityResolutionError) -> Self {
-    use IdentityResolutionErrorKind::*;
-
-    match kind {
-      RpcError(e) => ErrorKind::RpcError(e),
-      e => ErrorKind::InvalidIdentity {
-        identity: resolving,
-        source: Box::new(e),
-      },
-    }
-  }
+  pub kind: AccessSubIdentityErrorKind,
 }

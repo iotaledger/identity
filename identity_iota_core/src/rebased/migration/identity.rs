@@ -8,7 +8,7 @@ use std::error::Error as StdError;
 use crate::rebased::iota::move_calls;
 
 use crate::rebased::iota::package::identity_package_id;
-use crate::rebased::proposals::access_sub_identity::AccessSubIdentityBuilder;
+use crate::rebased::proposals::AccessSubIdentityBuilder;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::IotaKeySignature;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;
@@ -272,6 +272,7 @@ impl OnChainIdentity {
   /// Borrows a `ControllerCap` with ID `controller_cap` owned by this identity in a transaction.
   /// This proposal is used to perform operation on a sub-identity controlled
   /// by this one.
+  #[deprecated = "use `OnChainIdentity::access_sub_identity` instead."]
   pub fn controller_execution<'i, 'c>(
     &'i mut self,
     controller_cap: ObjectID,
@@ -467,13 +468,17 @@ pub(crate) async fn get_identity_impl(
   })
 }
 
+/// Type of failures that can be encountered when resolving an Identity.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
-pub enum IdentityResolutionErrorKind {
+pub(crate) enum IdentityResolutionErrorKind {
+  /// RPC request to an IOTA Node failed.
   #[error("object lookup RPC request failed")]
   RpcError(#[source] Box<dyn StdError + Send + Sync>),
-  #[error("object does not exist")]
+  /// The queried object ID doesn't exist on-chain.
+  #[error("Identity does not exist")]
   NotFound,
+  /// Type
   #[error("invalid object type: expected `iota_identity::identity::Identity`, found `{0}`")]
   InvalidType(String),
   #[error("invalid or malformed DID Document")]
@@ -485,7 +490,7 @@ pub enum IdentityResolutionErrorKind {
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 #[error("failed to resolve Identity `{resolving}`")]
-pub struct IdentityResolutionError {
+pub(crate) struct IdentityResolutionError {
   pub resolving: ObjectID,
   #[source]
   pub kind: IdentityResolutionErrorKind,

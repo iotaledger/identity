@@ -13,7 +13,7 @@ import {
     UpdateDid,
 } from "~identity_wasm";
 
-export type Action = UpdateDid | SendAction | ConfigChange | Borrow | ControllerExecution | AccessSubIdentity;
+export type Action = UpdateDid | SendAction | ConfigChange | Borrow | ControllerExecution;
 export type ProposalOutput<A extends Action> = A extends UpdateDid ? void
     : A extends SendAction ? void
     : A extends ConfigChange ? void
@@ -51,6 +51,15 @@ declare module "~identity_wasm" {
             subIdentity: OnChainIdentity,
             subFn?: SubAccessFn<Tx>,
             expiration?: bigint,
-        ): TransactionBuilder<Transaction<Proposal<AccessSubIdentity> | Awaited<ReturnType<Tx["apply"]>>>>;
+        ): TransactionBuilder<Transaction<AccessSubIdentityProposal | Awaited<ReturnType<Tx["apply"]>>>>;
+    }
+
+    interface AccessSubIdentityProposal {
+        intoTx<Tx extends Transaction<unknown>>(
+            identity: OnChainIdentity,
+            identityToken: ControllerToken,
+            subIdentity: OnChainIdentity,
+            subAccessFn: SubAccessFn<Tx>
+        ): TransactionBuilder<Tx>;
     }
 }

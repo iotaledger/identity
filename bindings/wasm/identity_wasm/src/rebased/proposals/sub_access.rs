@@ -44,6 +44,11 @@ pub struct WasmAccessSubIdentity {
 
 #[wasm_bindgen(js_class = AccessSubIdentity)]
 impl WasmAccessSubIdentity {
+  #[wasm_bindgen(constructor)]  
+  pub fn new(identity: String, sub_identity: String) -> Self {
+    Self { identity, sub_identity }
+  }
+
   #[wasm_bindgen(js_name = toJSON)]
   pub fn to_json(&self) -> Result<JsValue, JsValue> {
     let js_object = js_sys::Object::new();
@@ -79,7 +84,7 @@ impl From<AccessSubIdentity> for WasmAccessSubIdentity {
 #[wasm_bindgen(js_name = AccessSubIdentityProposal)]
 pub struct WasmAccessSubIdentityProposal(pub(crate) Rc<RwLock<Proposal<AccessSubIdentity>>>);
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = AccessSubIdentityProposal)]
 impl WasmAccessSubIdentityProposal {
   fn new(proposal: Proposal<AccessSubIdentity>) -> Self {
     Self(Rc::new(RwLock::new(proposal)))

@@ -57,7 +57,6 @@ impl WasmStorageSigner {
       .await
       .wasm_result()
       .and_then(|pk| WasmPublicKey::try_from(&pk))
-      .inspect(|wasm_pk| console_log!("WasmStorageSigner's PK: {:?}", &wasm_pk.to_raw_bytes()))
   }
 
   #[wasm_bindgen(js_name = iotaPublicKeyBytes)]

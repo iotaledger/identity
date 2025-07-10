@@ -423,27 +423,18 @@ mod client_document {
       data: &IotaObjectData,
       allow_empty: bool,
     ) -> Result<IotaDocument> {
-      let unpacked = unpack_identity_data(did, data).map_err(|_| {
-        Error::InvalidDoc(identity_document::Error::InvalidDocument(
-          "could not unpack identity data from IotaObjectData",
-          None,
-        ))
-      })?;
       let IdentityData {
         multicontroller,
         legacy_id,
         created,
         updated,
         ..
-      } = match unpacked {
-        Some(data) => data,
-        None => {
-          return Err(Error::InvalidDoc(identity_document::Error::InvalidDocument(
-            "given IotaObjectData did not contain a document",
-            None,
-          )));
-        }
-      };
+      } = unpack_identity_data(data.clone()).map_err(|_| {
+        Error::InvalidDoc(identity_document::Error::InvalidDocument(
+          "could not unpack identity data from IotaObjectData",
+          None,
+        ))
+      })?;
       let did_network = did
         .network_str()
         .to_string()

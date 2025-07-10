@@ -2,12 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Transaction, TransactionBuilder } from "@iota/iota-interaction-ts/transaction_internal";
-import { ConfigChange, ControllerToken, IdentityClient, OnChainIdentity, SendAction, UpdateDid } from "~identity_wasm";
+import {
+    AccessSubIdentity,
+    Borrow,
+    ConfigChange,
+    ControllerExecution,
+    ControllerToken,
+    OnChainIdentity,
+    SendAction,
+    UpdateDid,
+} from "~identity_wasm";
 
-export type Action = UpdateDid | SendAction | ConfigChange;
+export type Action = UpdateDid | SendAction | ConfigChange | Borrow | ControllerExecution;
 export type ProposalOutput<A extends Action> = A extends UpdateDid ? void
     : A extends SendAction ? void
     : A extends ConfigChange ? void
+    : A extends Borrow ? void
+    : A extends ControllerExecution ? void
     : never;
 export type ProposalResult<A extends Action> = ProposalOutput<A> | Proposal<A>;
 
@@ -24,5 +35,31 @@ export interface Proposal<A extends Action> {
         identity: OnChainIdentity,
         controllerToken: ControllerToken,
     ) => TransactionBuilder<ApproveProposal>;
-    intoTx: (controllerToken: ControllerToken) => TransactionBuilder<ExecuteProposal<A>>;
+    intoTx: (identity: OnChainIdentity, controllerToken: ControllerToken) => TransactionBuilder<ExecuteProposal<A>>;
+}
+
+export type SubAccessFn<Tx extends Transaction<unknown>> = (
+    subIdentity: OnChainIdentity,
+    token: ControllerToken,
+) => Promise<Tx>;
+
+// Augment Identity to properly support accessSubIdentity
+declare module "~identity_wasm" {
+    interface OnChainIdentity {
+        accessSubIdentity<Tx extends Transaction<unknown>>(
+            controllerToken: ControllerToken,
+            subIdentity: OnChainIdentity,
+            subFn?: SubAccessFn<Tx>,
+            expiration?: bigint,
+        ): TransactionBuilder<Transaction<AccessSubIdentityProposal | Awaited<ReturnType<Tx["apply"]>>>>;
+    }
+
+    interface AccessSubIdentityProposal {
+        intoTx<Tx extends Transaction<unknown>>(
+            identity: OnChainIdentity,
+            identityToken: ControllerToken,
+            subIdentity: OnChainIdentity,
+            subAccessFn: SubAccessFn<Tx>
+        ): TransactionBuilder<Tx>;
+    }
 }

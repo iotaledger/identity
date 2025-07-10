@@ -278,7 +278,6 @@ impl WasmAccessSubIdentityTx {
 
   #[wasm_bindgen(js_name = buildProgrammableTransaction)]
   pub async fn build_programmable_transaction(&self, client: &WasmCoreClientReadOnly) -> Result<Vec<u8>, JsError> {
-    console_log!("inside AccessSubIdentityTx::build_programmable_transaction");
     let managed_client = WasmManagedCoreClientReadOnly::from_wasm(client)
       .map_err(|_| JsError::new("failed to create a managed client from CoreClientReadOnly"))?;
     let mut identity_mut = self.identity.0.write().await;
@@ -301,10 +300,7 @@ impl WasmAccessSubIdentityTx {
         .await?
       }
       TxKind::Execute { proposal, sub_fn } => {
-        console_log!("TxKind execute");
         let sub_access_fn = sub_fn.to_sub_access_fn();
-        console_log!("wrapped access_fn");
-
         if let Some(proposal) = proposal {
           proposal
             .0
@@ -327,12 +323,10 @@ impl WasmAccessSubIdentityTx {
         }
         .into_inner()
         .build_programmable_transaction(&managed_client)
-        .await
-        .inspect_err(|e| console_log!("{e}"))?
+        .await?
       }
     };
 
-    console_log!("AccessSubIdentityTx::build_programmable_transaction DONE");
     Ok(bcs::to_bytes(&pt)?)
   }
 
@@ -420,7 +414,6 @@ impl WasmSubAccessFn {
   ) -> impl SubAccessFnT<'sub, Error = Box<dyn std::error::Error + Send + Sync>, Tx = WasmTransaction> {
     let wasm_sub_fn = self.clone();
     move |sub_identity: &'sub mut OnChainIdentity, sub_identity_token: ControllerToken| async move {
-      console_log!("inside the wrapped sub fn");
       let wasm_sub_identity = WasmOnChainIdentity::new(sub_identity.clone());
       let wasm_sub_identity_token = WasmControllerToken(sub_identity_token);
 
@@ -441,13 +434,10 @@ impl WasmSubAccessFn {
             js_value.js_typeof().as_string().as_deref().unwrap_or("unknown"),
           )
         })?;
-      console_log!("called WASM sub fn to get promise");
 
       let wasm_transaction = wasm_bindgen_futures::JsFuture::from(promise)
         .await
-        .inspect(|v| console_log!("awaited promise and got js value {v:?}"))
         .map_err(|js_value| {
-          console_log!("awaiting promise failed with value {js_value:?}");
           js_value
             .dyn_into::<js_sys::Error>()
             .ok()
@@ -455,13 +445,6 @@ impl WasmSubAccessFn {
             .unwrap_or_else(|| "failed to resolve promise returned by user-defined JS SubAccessFn".to_owned())
         })?
         .unchecked_into::<WasmTransaction>();
-      // .map_err(|js_value| {
-      //   console_log!("value returned by promise is not a WASM transaction");
-      //   format!(
-      //     "expected `Transaction` but found `{}`",
-      //     js_value.js_typeof().as_string().as_deref().unwrap_or("unknown")
-      //   )
-      // })?;
 
       Ok(wasm_transaction)
     }

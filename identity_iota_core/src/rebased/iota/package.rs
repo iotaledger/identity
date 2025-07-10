@@ -146,7 +146,7 @@ where
 
 #[cfg(test)]
 mod tests {
-  use iota_sdk::IotaClientBuilder;
+  use iota_interaction::IotaClientBuilder;
 
   use crate::rebased::client::IdentityClientReadOnly;
 

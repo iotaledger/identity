@@ -9,11 +9,11 @@ use crate::rebased::iota::move_calls;
 
 use crate::rebased::iota::package::identity_package_id;
 use crate::rebased::proposals::AccessSubIdentityBuilder;
+use iota_interaction::types::error::IotaObjectResponseError;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::IotaKeySignature;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;
 use iota_interaction::OptionalSync;
-use iota_sdk::types::error::IotaObjectResponseError;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
@@ -179,7 +179,7 @@ impl OnChainIdentity {
   pub async fn get_controller_token_for_address(
     &self,
     address: IotaAddress,
-    client: &(impl CoreClientReadOnly + Sync),
+    client: &(impl CoreClientReadOnly + OptionalSync),
   ) -> Result<Option<ControllerToken>, Error> {
     let maybe_controller_cap = client
       .find_object_for_address::<ControllerCap, _>(address, |token| token.controller_of() == self.id())
@@ -201,7 +201,7 @@ impl OnChainIdentity {
   /// [None] is returned if `client`'s sender address doesn't own a valid [ControllerToken].
   pub async fn get_controller_token<S: Signer<IotaKeySignature> + OptionalSync>(
     &self,
-    client: &(impl CoreClient<S> + Sync),
+    client: &(impl CoreClient<S> + OptionalSync),
   ) -> Result<Option<ControllerToken>, Error> {
     self
       .get_controller_token_for_address(client.sender_address(), client)

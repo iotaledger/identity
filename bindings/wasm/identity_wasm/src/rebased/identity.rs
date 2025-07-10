@@ -13,7 +13,6 @@ use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
-use iota_interaction_ts::error::WasmResult as _;
 use js_sys::Object;
 use product_common::bindings::core_client::WasmManagedCoreClientReadOnly;
 use product_common::bindings::transaction::WasmTransactionBuilder;
@@ -25,6 +24,7 @@ use crate::error::wasm_error;
 use crate::error::Result;
 use crate::error::WasmResult;
 use crate::iota::WasmIotaDocument;
+use crate::rebased::proposals::WasmAccessSubIdentityTx;
 use crate::rebased::proposals::WasmCreateBorrowProposal;
 use crate::rebased::proposals::WasmCreateConfigChangeProposal;
 use crate::rebased::proposals::WasmCreateControllerExecutionProposal;
@@ -36,6 +36,7 @@ use super::proposals::WasmBorrowFn;
 use super::proposals::WasmConfigChange;
 use super::proposals::WasmControllerExecutionFn;
 use super::proposals::WasmCreateSendProposal;
+use super::proposals::WasmSubAccessFn;
 use super::WasmControllerCap;
 use super::WasmControllerToken;
 use super::WasmDelegationToken;
@@ -220,7 +221,7 @@ impl WasmOnChainIdentity {
     transfer_map: Vec<StringCouple>,
     expiration_epoch: Option<u64>,
   ) -> Result<WasmTransactionBuilder> {
-    let tx = WasmCreateSendProposal::new(self, controller_token, transfer_map, expiration_epoch).wasm_result()?;
+    let tx = WasmCreateSendProposal::new(self, controller_token, transfer_map, expiration_epoch)?;
     Ok(WasmTransactionBuilder::new(JsValue::from(tx).unchecked_into()))
   }
 
@@ -301,6 +302,23 @@ impl WasmOnChainIdentity {
       expiration_epoch,
     ));
     Ok(WasmTransactionBuilder::new(tx.unchecked_into()))
+  }
+
+  #[wasm_bindgen(js_name = accessSubIdentity, skip_typescript)]
+  pub fn access_sub_identity(
+    &self,
+    controller_token: &WasmControllerToken,
+    sub_identity: &WasmOnChainIdentity,
+    sub_access_fn: Option<WasmSubAccessFn>,
+    expiration: Option<u64>,
+  ) -> WasmTransactionBuilder {
+    let wasm_tx: JsValue = if let Some(sub_fn) = sub_access_fn {
+      WasmAccessSubIdentityTx::execute(self, sub_identity, controller_token, sub_fn, None).into()
+    } else {
+      WasmAccessSubIdentityTx::create(self, sub_identity, controller_token, expiration).into()
+    };
+
+    WasmTransactionBuilder::new(wasm_tx.unchecked_into())
   }
 }
 

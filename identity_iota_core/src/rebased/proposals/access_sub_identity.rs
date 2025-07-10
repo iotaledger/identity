@@ -1,22 +1,23 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
+use std::convert::Infallible;
 use std::future::Future;
 use std::marker::PhantomData;
 
 use async_trait::async_trait;
+use iota_interaction::rpc_types::IotaEvent;
+use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
+use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
+use iota_interaction::rpc_types::IotaTransactionBlockEvents;
+use iota_interaction::rpc_types::IotaTransactionBlockResponseOptions;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::types::TypeTag;
 use iota_interaction::MoveType;
 use iota_interaction::OptionalSend;
 use iota_interaction::OptionalSync;
-use iota_sdk::rpc_types::IotaEvent;
-use iota_sdk::rpc_types::IotaExecutionStatus;
-use iota_sdk::rpc_types::IotaTransactionBlockEffectsAPI as _;
-use iota_sdk::rpc_types::IotaTransactionBlockEvents;
-use iota_sdk::rpc_types::IotaTransactionBlockResponseOptions;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::transaction::transaction_builder::Transaction;
 use product_common::transaction::transaction_builder::TransactionBuilder;
@@ -37,10 +38,9 @@ use super::ProposedTxResult;
 type BoxedStdError = Box<dyn std::error::Error + Send + Sync>;
 
 /// Trait describing the function used to define what operation to perform on a sub-identity.
-#[cfg(feature = "send-sync")]
 pub trait SubAccessFnT<'a>: FnOnce(&'a mut OnChainIdentity, ControllerToken) -> Self::Future {
   /// The [Future] type returned by the closure.
-  type Future: Future<Output = Result<Self::IntoTx, Self::Error>> + Send + 'a;
+  type Future: Future<Output = Result<Self::IntoTx, Self::Error>> + OptionalSend + 'a;
   /// An [IntoTransaction] type.
   type IntoTx: IntoTransaction<Tx = Self::Tx>;
   /// The [Transaction] that encodes the operation to be performed on the sub-identity.
@@ -52,7 +52,7 @@ pub trait SubAccessFnT<'a>: FnOnce(&'a mut OnChainIdentity, ControllerToken) -> 
 impl<'a, F, Fut, IntoTx, Tx, E> SubAccessFnT<'a> for F
 where
   F: FnOnce(&'a mut OnChainIdentity, ControllerToken) -> Fut,
-  Fut: Future<Output = Result<IntoTx, E>> + Send + 'a,
+  Fut: Future<Output = Result<IntoTx, E>> + OptionalSend + 'a,
   IntoTx: IntoTransaction<Tx = Tx>,
   Tx: Transaction + 'a,
   E: Into<BoxedStdError>,
@@ -63,17 +63,39 @@ where
   type Error = E;
 }
 
-#[cfg(not(feature = "send-sync"))]
-pub(crate) trait SubAccessFnT<Tx>
-where
-  Tx: Transaction,
-  Self: AsyncFnOnce(&mut OnChainIdentity, &ControllerToken) -> Tx,
-{
+/// A type implenting [Transansaction] that doesn't return anything meaningful.
+///
+/// Used to encode `sub_tx` in [AccessSubIdentityTx] when no sub_tx is present (create proposal).
+#[derive(Debug)]
+pub struct NeverTx;
+
+#[cfg_attr(feature = "send-sync", async_trait)]
+#[cfg_attr(not(feature = "send-sync"), async_trait(?Send))]
+impl Transaction for NeverTx {
+  type Output = ();
+  type Error = Infallible;
+
+  async fn build_programmable_transaction<C>(&self, _client: &C) -> Result<ProgrammableTransaction, Self::Error>
+  where
+    C: CoreClientReadOnly + OptionalSync,
+  {
+    Ok(ProgrammableTransaction {
+      inputs: vec![],
+      commands: vec![],
+    })
+  }
+
+  async fn apply<C>(self, _effects: &mut IotaTransactionBlockEffects, _client: &C) -> Result<Self::Output, Self::Error>
+  where
+    C: CoreClientReadOnly + OptionalSync,
+  {
+    Ok(())
+  }
 }
 
 /// An action for accessing an [OnChainIdentity] that is owned by another
 /// [OnChainIdentity].
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct AccessSubIdentity {
   /// ID of the Identity whose token will be used to access the sub-Identity.
@@ -141,32 +163,24 @@ impl<'i, 'sub, F> AccessSubIdentityBuilder<'i, 'sub, F> {
       sub_action: Some(f),
     }
   }
-}
 
-impl<'i, 'sub, F> AccessSubIdentityBuilder<'i, 'sub, F>
-where
-  F: SubAccessFnT<'sub>,
-  F::Tx: Transaction + Send + Sync,
-{
-  /// Consumes this builder returning a [TransactionBuilder] wrapping a [AccessSubIdentityTx] created
-  /// with the supplied data.
-  pub async fn finish(
-    self,
-    client: &(impl CoreClientReadOnly + Sync),
-  ) -> Result<TransactionBuilder<AccessSubIdentityTx<'i, 'sub, F::Tx>>, AccessSubIdentityBuilderError> {
+  async fn validate<C>(&self, client: &C) -> Result<ControllerToken, AccessSubIdentityBuilderErrorKind>
+  where
+    C: CoreClientReadOnly + OptionalSync,
+  {
     // Make sure `identity_token` grants access to `identity`.
     if self.identity.id() != self.identity_token.controller_of() {
       return Err(
         AccessSubIdentityBuilderErrorKind::Unauthorized(InvalidControllerTokenForIdentity {
           identity: self.identity.id(),
-          controller_token: self.identity_token,
+          controller_token: self.identity_token.clone(),
         })
         .into(),
       );
     }
 
     // Retrieve from `identity` owned asset any token granting access to `sub_identity`.
-    let sub_identity_token = self
+    self
       .sub_identity
       .get_controller_token_for_address(self.identity.id().into(), client)
       .await
@@ -177,7 +191,50 @@ where
           identity: self.identity.id(),
           sub_identity: self.sub_identity.id(),
         },
-      ))?;
+      ))
+  }
+}
+
+impl<'i, 'sub> AccessSubIdentityBuilder<'i, 'sub, ()> {
+  /// Consumes this builder returning a [TransactionBuilder] wrapping a [AccessSubIdentityTx] created
+  /// with the supplied data.
+  pub async fn finish<C>(
+    self,
+    client: &C,
+  ) -> Result<TransactionBuilder<AccessSubIdentityTx<'i, 'sub, NeverTx>>, AccessSubIdentityBuilderError>
+  where
+    C: CoreClientReadOnly + OptionalSync,
+  {
+    let _ = self.validate(client).await?;
+    let tx_kind = TxKind::Create {
+      expiration: self.expiration,
+    };
+
+    Ok(TransactionBuilder::new(AccessSubIdentityTx {
+      identity: self.identity,
+      identity_token: self.identity_token,
+      sub_identity: self.sub_identity.id(),
+      tx_kind,
+      _sub: PhantomData,
+    }))
+  }
+}
+
+impl<'i, 'sub, F> AccessSubIdentityBuilder<'i, 'sub, F>
+where
+  F: SubAccessFnT<'sub>,
+  F::Tx: Transaction + OptionalSend + OptionalSync,
+{
+  /// Consumes this builder returning a [TransactionBuilder] wrapping a [AccessSubIdentityTx] created
+  /// with the supplied data.
+  pub async fn finish<C>(
+    self,
+    client: &C,
+  ) -> Result<TransactionBuilder<AccessSubIdentityTx<'i, 'sub, F::Tx>>, AccessSubIdentityBuilderError>
+  where
+    C: CoreClientReadOnly + OptionalSync,
+  {
+    let sub_identity_token = self.validate(client).await?;
 
     // `true` if this operation can also be executed in the same transaction.
     let can_execute = self
@@ -233,8 +290,8 @@ impl Proposal<AccessSubIdentity> {
   ) -> Result<TransactionBuilder<AccessSubIdentityTx<'i, 'sub, F::Tx>>, AccessSubIdentityBuilderError>
   where
     F: SubAccessFnT<'sub>,
-    F::Tx: Transaction + Sync + Send,
-    C: CoreClientReadOnly + Sync,
+    F::Tx: Transaction + OptionalSync + OptionalSend,
+    C: CoreClientReadOnly + OptionalSync,
   {
     // Re-use builder's error-handling.
     let mut tx = identity
@@ -342,7 +399,7 @@ where
 {
   async fn build_pt_impl<C>(&self, client: &C) -> Result<ProgrammableTransaction, AccessSubIdentityErrorKind>
   where
-    C: CoreClientReadOnly + Sync,
+    C: CoreClientReadOnly + OptionalSync,
   {
     // Query the indexer for inputs' refs.
     let identity = client
@@ -423,10 +480,11 @@ where
   }
 }
 
-#[async_trait]
+#[cfg_attr(feature = "send-sync", async_trait)]
+#[cfg_attr(not(feature = "send-sync"), async_trait(?Send))]
 impl<'i, 'sub, Tx> Transaction for AccessSubIdentityTx<'i, 'sub, Tx>
 where
-  Tx: Transaction + Sync + OptionalSend,
+  Tx: Transaction + OptionalSync + OptionalSend,
 {
   type Error = AccessSubIdentityError;
   type Output = ProposedTxResult<Proposal<AccessSubIdentity>, Tx::Output>;
@@ -451,10 +509,7 @@ where
     let tx_block = client
       .client_adapter()
       .read_api()
-      .get_transaction_with_options(
-        *tx_digest,
-        IotaTransactionBlockResponseOptions::default().with_events(),
-      )
+      .get_transaction_with_options(*tx_digest, IotaTransactionBlockResponseOptions::default().with_events())
       .await
       .map_err(|e| AccessSubIdentityError {
         identity: self.identity.id(),

@@ -5,12 +5,14 @@ mod borrow;
 mod config_change;
 mod controller_execution;
 mod send;
+mod sub_access;
 mod update_did;
 
 pub use borrow::*;
 pub use config_change::*;
 pub use controller_execution::*;
 pub use send::*;
+pub use sub_access::*;
 pub use update_did::*;
 
 use std::collections::HashMap;
@@ -26,15 +28,15 @@ use wasm_bindgen::JsValue;
 
 #[wasm_bindgen]
 extern "C" {
-  #[derive(Clone)]
   #[wasm_bindgen(typescript_type = "Set<string>")]
+  #[derive(Clone)]
   pub type StringSet;
 
   #[wasm_bindgen(typescript_type = "[string, string]")]
   pub type StringCouple;
 
-  #[derive(Clone)]
   #[wasm_bindgen(typescript_type = "Map<string, number>")]
+  #[derive(Clone)]
   pub type MapStringNumber;
 }
 

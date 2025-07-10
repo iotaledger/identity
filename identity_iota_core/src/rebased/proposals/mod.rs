@@ -89,7 +89,6 @@ pub trait ProposalT: Sized {
 
 impl<A> Proposal<A>
 where
-  Proposal<A>: ProposalT<Action = A>,
   A: MoveType + OptionalSend + OptionalSync,
 {
   /// Creates a new [ApproveProposal] for the provided [`Proposal`].
@@ -366,7 +365,6 @@ impl<A: MoveType> ApproveProposal<'_, '_, A> {
 #[cfg_attr(feature = "send-sync", async_trait)]
 impl<A> Transaction for ApproveProposal<'_, '_, A>
 where
-  Proposal<A>: ProposalT<Action = A>,
   A: MoveType + OptionalSend + OptionalSync,
 {
   type Output = ();

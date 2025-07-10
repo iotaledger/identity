@@ -2,9 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Transaction, TransactionBuilder } from "@iota/iota-interaction-ts/transaction_internal";
-import { Borrow, ConfigChange, ControllerExecution, ControllerToken, OnChainIdentity, SendAction, UpdateDid } from "~identity_wasm";
+import {
+    AccessSubIdentity,
+    Borrow,
+    ConfigChange,
+    ControllerExecution,
+    ControllerToken,
+    OnChainIdentity,
+    SendAction,
+    UpdateDid,
+} from "~identity_wasm";
 
-export type Action = UpdateDid | SendAction | ConfigChange | Borrow | ControllerExecution;
+export type Action = UpdateDid | SendAction | ConfigChange | Borrow | ControllerExecution | AccessSubIdentity;
 export type ProposalOutput<A extends Action> = A extends UpdateDid ? void
     : A extends SendAction ? void
     : A extends ConfigChange ? void
@@ -26,5 +35,22 @@ export interface Proposal<A extends Action> {
         identity: OnChainIdentity,
         controllerToken: ControllerToken,
     ) => TransactionBuilder<ApproveProposal>;
-    intoTx: (controllerToken: ControllerToken) => TransactionBuilder<ExecuteProposal<A>>;
+    intoTx: (identity: OnChainIdentity, controllerToken: ControllerToken) => TransactionBuilder<ExecuteProposal<A>>;
+}
+
+export type SubAccessFn<Tx extends Transaction<unknown>> = (
+    subIdentity: OnChainIdentity,
+    token: ControllerToken,
+) => Promise<Tx>;
+
+// Augment Identity to properly support accessSubIdentity
+declare module "~identity_wasm" {
+    interface OnChainIdentity {
+        accessSubIdentity<Tx extends Transaction<unknown>>(
+            controllerToken: ControllerToken,
+            subIdentity: OnChainIdentity,
+            subFn?: SubAccessFn<Tx>,
+            expiration?: bigint,
+        ): TransactionBuilder<Transaction<Proposal<AccessSubIdentity> | Awaited<ReturnType<Tx["apply"]>>>>;
+    }
 }

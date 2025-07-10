@@ -51,8 +51,8 @@ opt-level = 's'
 #       If yes, describe the helping effect in the comment above
 # debug = true
 
-[patch."https://github.com/iotaledger/product-core.git"]
-iota_interaction = { path = "../product-core/iota_interaction" }
-iota_interaction_ts = { path = "../product-core/bindings/wasm/iota_interaction_ts" }
-iota_interaction_rust = { path = "../product-core/iota_interaction_rust" }
-product_common = { path = "../product-core/product_common" }
+# [patch."https://github.com/iotaledger/product-core.git"]
+# iota_interaction = { path = "../product-core/iota_interaction" }
+# iota_interaction_ts = { path = "../product-core/bindings/wasm/iota_interaction_ts" }
+# iota_interaction_rust = { path = "../product-core/iota_interaction_rust" }
+# product_common = { path = "../product-core/product_common" }

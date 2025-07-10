@@ -10,9 +10,9 @@ use std::collections::VecDeque;
 
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::Argument;
+use iota_interaction::types::transaction::CallArg;
 use iota_interaction::types::transaction::Command;
 use iota_interaction::types::transaction::ProgrammableTransaction;
-use iota_sdk::types::transaction::CallArg;
 
 pub(crate) fn ptb_merge_tx_with_inputs_replacement(
   ptb: &mut Ptb,

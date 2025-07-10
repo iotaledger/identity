@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use iota_interaction::ident_str;
+use iota_interaction::rpc_types::OwnedObjectRef;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::ProgrammableTransactionBcs;
-use iota_sdk::rpc_types::OwnedObjectRef;
 
 use crate::rebased::iota::move_calls::utils;
 use crate::rebased::iota::move_calls::ControllerTokenRef;

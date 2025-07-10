@@ -594,9 +594,10 @@ impl MoveType for AccessSubIdentity {
 }
 
 /// Type of failures that can be encountered when executing a [AccessSubIdentityTx].
+// TODO: Expose this type after transation building/execution has been reworked throughout the library.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
-pub enum AccessSubIdentityErrorKind {
+enum AccessSubIdentityErrorKind {
   /// An RPC request to an IOTA Node failed.
   #[error("RPC request failed")]
   RpcError(#[source] Box<dyn std::error::Error + Send + Sync>),
@@ -616,7 +617,7 @@ pub enum AccessSubIdentityErrorKind {
 
 /// Error type returned by executing an [AccessSubIdentityTx].
 #[derive(Debug, thiserror::Error)]
-#[error("failed to access Identity `{sub_identity}` through Identity `{identity}`")]
+#[error("transaction to access Identity `{sub_identity}` through Identity `{identity}` failed")]
 #[non_exhaustive]
 pub struct AccessSubIdentityError {
   /// ID of the base-Identity.
@@ -625,5 +626,5 @@ pub struct AccessSubIdentityError {
   pub sub_identity: ObjectID,
   /// Type of failure.
   #[source]
-  pub kind: AccessSubIdentityErrorKind,
+  kind: AccessSubIdentityErrorKind,
 }

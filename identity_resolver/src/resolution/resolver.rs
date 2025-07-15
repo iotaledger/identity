@@ -21,7 +21,7 @@ use super::commands::Command;
 use super::commands::SendSyncCommand;
 use super::commands::SingleThreadedCommand;
 
-/// Convenience type for resolving DID documents from different DID methods.   
+/// Convenience type for resolving DID documents from different DID methods.
 ///
 /// # Configuration
 ///
@@ -281,7 +281,7 @@ impl<DOC: From<CoreDocument> + 'static> Resolver<DOC, SendSyncCommand<DOC>> {
   }
 }
 
-#[cfg(feature = "iota")]
+#[cfg(all(feature = "iota", not(target_arch = "wasm32")))]
 mod iota_handler {
   use crate::ErrorCause;
 
@@ -289,81 +289,86 @@ mod iota_handler {
   use identity_document::document::CoreDocument;
   use identity_iota_core::IotaDID;
   use identity_iota_core::IotaDocument;
-  use identity_iota_core::IotaIdentityClientExt;
-  use std::collections::HashMap;
   use std::sync::Arc;
 
-  impl<DOC> Resolver<DOC>
-  where
-    DOC: From<IotaDocument> + AsRef<CoreDocument> + 'static,
-  {
-    /// Convenience method for attaching a new handler responsible for resolving IOTA DIDs.
-    ///
-    /// See also [`attach_handler`](Self::attach_handler).
-    pub fn attach_iota_handler<CLI>(&mut self, client: CLI)
+  mod iota_specific {
+    use identity_iota_core::DidResolutionHandler;
+    use std::collections::HashMap;
+
+    use super::*;
+
+    impl<DOC> Resolver<DOC>
     where
-      CLI: IotaIdentityClientExt + Send + Sync + 'static,
+      DOC: From<IotaDocument> + AsRef<CoreDocument> + 'static,
     {
-      let arc_client: Arc<CLI> = Arc::new(client);
+      /// Convenience method for attaching a new handler responsible for resolving IOTA DIDs.
+      ///
+      /// See also [`attach_handler`](Self::attach_handler).
+      pub fn attach_iota_handler<CLI>(&mut self, client: CLI)
+      where
+        CLI: DidResolutionHandler + Send + Sync + 'static,
+      {
+        let arc_client: Arc<CLI> = Arc::new(client);
 
-      let handler = move |did: IotaDID| {
-        let future_client = arc_client.clone();
-        async move { future_client.resolve_did(&did).await }
-      };
+        let handler = move |did: IotaDID| {
+          let future_client = arc_client.clone();
+          async move { future_client.resolve_did(&did).await }
+        };
 
-      self.attach_handler(IotaDID::METHOD.to_owned(), handler);
-    }
+        self.attach_handler(IotaDID::METHOD.to_owned(), handler);
+      }
 
-    /// Convenience method for attaching multiple handlers responsible for resolving IOTA DIDs
-    /// on multiple networks.
-    ///
-    ///
-    /// # Arguments
-    ///
-    /// * `clients` - A collection of tuples where each tuple contains the name of the network name and its
-    ///   corresponding client.
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// // Assume `smr_client` and `iota_client` are instances IOTA clients `iota_sdk::client::Client`.
-    /// attach_multiple_iota_handlers(vec![("smr", smr_client), ("iota", iota_client)]);
-    /// ```
-    ///
-    /// # See Also
-    /// - [`attach_handler`](Self::attach_handler).
-    ///
-    /// # Note
-    ///
-    /// - Using `attach_iota_handler` or `attach_handler` for the IOTA method would override all previously added
-    ///   clients.
-    /// - This function does not validate the provided configuration. Ensure that the provided network name corresponds
-    ///   with the client, possibly by using `client.network_name()`.
-    pub fn attach_multiple_iota_handlers<CLI, I>(&mut self, clients: I)
-    where
-      CLI: IotaIdentityClientExt + Send + Sync + 'static,
-      I: IntoIterator<Item = (&'static str, CLI)>,
-    {
-      let arc_clients = Arc::new(clients.into_iter().collect::<HashMap<&'static str, CLI>>());
+      /// Convenience method for attaching multiple handlers responsible for resolving IOTA DIDs
+      /// on multiple networks.
+      ///
+      ///
+      /// # Arguments
+      ///
+      /// * `clients` - A collection of tuples where each tuple contains the name of the network name and its
+      ///   corresponding client.
+      ///
+      /// # Examples
+      ///
+      /// ```ignore
+      /// // Assume `client1` and `client2` are instances of identity clients `IdentityClientReadOnly`.
+      /// attach_multiple_iota_handlers(vec![("client1", client1), ("client2", client2)]);
+      /// ```
+      ///
+      /// # See Also
+      /// - [`attach_handler`](Self::attach_handler).
+      ///
+      /// # Note
+      ///
+      /// - Using `attach_iota_handler` or `attach_handler` for the IOTA method would override all previously added
+      ///   clients.
+      /// - This function does not validate the provided configuration. Ensure that the provided network name
+      ///   corresponds with the client, possibly by using `client.network_name()`.
+      pub fn attach_multiple_iota_handlers<CLI, I>(&mut self, clients: I)
+      where
+        CLI: DidResolutionHandler + Send + Sync + 'static,
+        I: IntoIterator<Item = (&'static str, CLI)>,
+      {
+        let arc_clients = Arc::new(clients.into_iter().collect::<HashMap<&'static str, CLI>>());
 
-      let handler = move |did: IotaDID| {
-        let future_client = arc_clients.clone();
-        async move {
-          let did_network = did.network_str();
-          let client: &CLI =
-            future_client
-              .get(did_network)
-              .ok_or(crate::Error::new(ErrorCause::UnsupportedNetwork(
-                did_network.to_string(),
-              )))?;
-          client
-            .resolve_did(&did)
-            .await
-            .map_err(|err| crate::Error::new(ErrorCause::HandlerError { source: Box::new(err) }))
-        }
-      };
+        let handler = move |did: IotaDID| {
+          let future_client = arc_clients.clone();
+          async move {
+            let did_network = did.network_str();
+            let client: &CLI =
+              future_client
+                .get(did_network)
+                .ok_or(crate::Error::new(ErrorCause::UnsupportedNetwork(
+                  did_network.to_string(),
+                )))?;
+            client
+              .resolve_did(&did)
+              .await
+              .map_err(|err| crate::Error::new(ErrorCause::HandlerError { source: Box::new(err) }))
+          }
+        };
 
-      self.attach_handler(IotaDID::METHOD.to_owned(), handler);
+        self.attach_handler(IotaDID::METHOD.to_owned(), handler);
+      }
     }
   }
 }
@@ -392,42 +397,28 @@ where
 
 #[cfg(test)]
 mod tests {
-  use identity_iota_core::block::output::AliasId;
-  use identity_iota_core::block::output::AliasOutput;
-  use identity_iota_core::block::output::OutputId;
-  use identity_iota_core::block::protocol::ProtocolParameters;
+  use identity_iota_core::DidResolutionHandler;
   use identity_iota_core::IotaDID;
   use identity_iota_core::IotaDocument;
-  use identity_iota_core::IotaIdentityClient;
-  use identity_iota_core::IotaIdentityClientExt;
 
   use super::*;
 
   struct DummyClient(IotaDocument);
 
   #[async_trait::async_trait]
-  impl IotaIdentityClient for DummyClient {
-    async fn get_alias_output(&self, _id: AliasId) -> identity_iota_core::Result<(OutputId, AliasOutput)> {
-      unreachable!()
-    }
-    async fn get_protocol_parameters(&self) -> identity_iota_core::Result<ProtocolParameters> {
-      unreachable!()
-    }
-  }
-
-  #[async_trait::async_trait]
-  impl IotaIdentityClientExt for DummyClient {
+  impl DidResolutionHandler for DummyClient {
     async fn resolve_did(&self, did: &IotaDID) -> identity_iota_core::Result<IotaDocument> {
       if self.0.id().as_str() == did.as_str() {
         Ok(self.0.clone())
       } else {
         Err(identity_iota_core::Error::DIDResolutionError(
-          iota_sdk::client::error::Error::NoOutput(did.to_string()),
+          "DID not found".to_string(),
         ))
       }
     }
   }
 
+  #[cfg(feature = "iota")]
   #[tokio::test]
   async fn test_multiple_handlers() {
     let did1 =

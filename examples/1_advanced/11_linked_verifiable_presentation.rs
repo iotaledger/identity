@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Context;
-use examples::create_did;
-use examples::random_stronghold_path;
+
+use examples::create_did_document;
+use examples::get_funded_client;
+use examples::get_memstorage;
 use examples::MemStorage;
-use examples::API_ENDPOINT;
+use examples::TEST_GAS_BUDGET;
+
 use identity_eddsa_verifier::EdDSAJwsVerifier;
 use identity_iota::core::FromJson;
 use identity_iota::core::Object;
@@ -26,45 +29,27 @@ use identity_iota::did::CoreDID;
 use identity_iota::did::DIDUrl;
 use identity_iota::did::DID;
 use identity_iota::document::verifiable::JwsVerificationOptions;
-use identity_iota::iota::IotaClientExt;
 use identity_iota::iota::IotaDID;
 use identity_iota::iota::IotaDocument;
-use identity_iota::iota::IotaIdentityClientExt;
 use identity_iota::resolver::Resolver;
 use identity_iota::storage::JwkDocumentExt;
-use identity_iota::storage::JwkMemStore;
 use identity_iota::storage::JwsSignatureOptions;
-use identity_iota::storage::KeyIdMemstore;
-use iota_sdk::client::secret::stronghold::StrongholdSecretManager;
-use iota_sdk::client::secret::SecretManager;
-use iota_sdk::client::Client;
-use iota_sdk::client::Password;
-use iota_sdk::types::block::address::Address;
-use iota_sdk::types::block::output::AliasOutput;
-use iota_sdk::types::block::output::AliasOutputBuilder;
-use iota_sdk::types::block::output::RentStructure;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-  // Create a new client to interact with the IOTA ledger.
-  let client: Client = Client::builder()
-    .with_primary_node(API_ENDPOINT, None)?
-    .finish()
-    .await?;
-  let stronghold_path = random_stronghold_path();
+  // ===========================================================================
+  // Step 1: Create identities and Client
+  // ===========================================================================
 
-  println!("Using stronghold path: {stronghold_path:?}");
-  // Create a new secret manager backed by a Stronghold.
-  let mut secret_manager: SecretManager = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password".to_owned()))
-      .build(stronghold_path)?,
-  );
+  let storage = get_memstorage()?;
 
-  // Create a DID for the entity that will be the holder of the Verifiable Presentation.
-  let storage: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-  let (_, mut did_document, fragment): (Address, IotaDocument, String) =
-    create_did(&client, &mut secret_manager, &storage).await?;
+  let identity_client = get_funded_client(&storage).await?;
+
+  // create new DID document and publish it
+  let (mut did_document, fragment) = create_did_document(&identity_client, &storage).await?;
+
+  println!("Published DID document: {did_document:#}");
+
   let did: IotaDID = did_document.id().clone();
 
   // =====================================================
@@ -85,7 +70,10 @@ async fn main() -> anyhow::Result<()> {
   let linked_verifiable_presentation_service =
     LinkedVerifiablePresentationService::new(service_url, verifiable_presentation_urls, Object::new())?;
   did_document.insert_service(linked_verifiable_presentation_service.into())?;
-  let updated_did_document: IotaDocument = publish_document(client.clone(), secret_manager, did_document).await?;
+
+  let updated_did_document: IotaDocument = identity_client
+    .publish_did_document_update(did_document, TEST_GAS_BUDGET)
+    .await?;
 
   println!("DID document with linked verifiable presentation service: {updated_did_document:#}");
 
@@ -95,7 +83,7 @@ async fn main() -> anyhow::Result<()> {
 
   // Init a resolver for resolving DID Documents.
   let mut resolver: Resolver<IotaDocument> = Resolver::new();
-  resolver.attach_iota_handler(client.clone());
+  resolver.attach_iota_handler((*identity_client).clone());
 
   // Resolve the DID Document of the DID that issued the credential.
   let did_document: IotaDocument = resolver.resolve(&did).await?;
@@ -107,6 +95,7 @@ async fn main() -> anyhow::Result<()> {
     .cloned()
     .filter_map(|service| LinkedVerifiablePresentationService::try_from(service).ok())
     .collect();
+
   assert_eq!(linked_verifiable_presentation_services.len(), 1);
 
   // Get the VPs included in the service.
@@ -137,25 +126,6 @@ async fn main() -> anyhow::Result<()> {
   assert!(validation_result.is_ok());
 
   Ok(())
-}
-
-async fn publish_document(
-  client: Client,
-  secret_manager: SecretManager,
-  document: IotaDocument,
-) -> anyhow::Result<IotaDocument> {
-  // Resolve the latest output and update it with the given document.
-  let alias_output: AliasOutput = client.update_did_output(document.clone()).await?;
-
-  // Because the size of the DID document increased, we have to increase the allocated storage deposit.
-  // This increases the deposit amount to the new minimum.
-  let rent_structure: RentStructure = client.get_rent_structure().await?;
-  let alias_output: AliasOutput = AliasOutputBuilder::from(&alias_output)
-    .with_minimum_storage_deposit(rent_structure)
-    .finish()?;
-
-  // Publish the updated Alias Output.
-  Ok(client.publish_did_output(&secret_manager, alias_output).await?)
 }
 
 async fn make_vp_jwt(did_doc: &IotaDocument, storage: &MemStorage, fragment: &str) -> anyhow::Result<Jwt> {

@@ -1,0 +1,91 @@
+{
+  "name": "@iota/identity-wasm",
+  "version": "1.6.0-beta.4",
+  "author": "IOTA Foundation <info@iota.org>",
+  "description": "WASM bindings for IOTA Identity - A Self Sovereign Identity Framework implementing the DID and VC standards from W3C. To be used in JavaScript/TypeScript",
+  "homepage": "https://www.iota.org",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iotaledger/identity.git"
+  },
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "build:src": "cargo build --lib --release --target wasm32-unknown-unknown --target-dir ../target",
+    "build:src:nodejs": "cargo build --lib --release --target wasm32-unknown-unknown --target-dir ../target --features keytool",
+    "prebundle:nodejs": "rimraf node",
+    "bundle:nodejs": "wasm-bindgen ../target/wasm32-unknown-unknown/release/identity_wasm.wasm --typescript --weak-refs --target nodejs --out-dir node && node ../build/node identity_wasm && tsc --project ./lib/tsconfig.json && node ../build/replace_paths ./lib/tsconfig.json node identity_wasm",
+    "prebundle:web": "rimraf web",
+    "bundle:web": "wasm-bindgen ../target/wasm32-unknown-unknown/release/identity_wasm.wasm --typescript --target web --out-dir web && node ../build/web identity_wasm && tsc --project ./lib/tsconfig.web.json && node ../build/replace_paths ./lib/tsconfig.web.json web identity_wasm",
+    "build:nodejs": "npm run build:src:nodejs && npm run bundle:nodejs && wasm-opt -O node/identity_wasm_bg.wasm -o node/identity_wasm_bg.wasm",
+    "build:web": "npm run build:src && npm run bundle:web && wasm-opt -O web/identity_wasm_bg.wasm -o web/identity_wasm_bg.wasm",
+    "build:docs": "typedoc && npm run fix_docs",
+    "build:examples:web": "tsc --project ./examples/tsconfig.web.json || node ../build/replace_paths ./tsconfig.web.json dist identity_wasm/examples resolve",
+    "build": "npm run build:web && npm run build:nodejs && npm run build:docs",
+    "example:node": "ts-node --project tsconfig.node.json -r tsconfig-paths/register ./examples/src/main.ts",
+    "example:web": "npm i --prefix ./cypress/app/ && npm run dev --prefix ./cypress/app/ -- --host",
+    "test": "npm run test:unit:node && npm run test:readme && npm run test:node && npm run test:browser:parallel",
+    "test:node": "ts-mocha -r tsconfig-paths/register -p tsconfig.node.json ./examples/src/tests/*.ts --parallel --jobs 4 --retries 3 --timeout 180000 --exit",
+    "test:browser": "start-server-and-test example:web http://0.0.0.0:5173 'cypress run --headless'",
+    "test:browser:firefox": "start-server-and-test example:web http://0.0.0.0:5173 'cypress run --headless --browser firefox'",
+    "test:browser:chrome": "start-server-and-test example:web http://0.0.0.0:5173 'cypress run --headless --browser chrome'",
+    "test:readme": "mocha ./tests/txm_readme.js --retries 3 --timeout 180000 --exit",
+    "test:readme:rust": "mocha ./tests/txm_readme_rust.js --retries 3 --timeout 360000 --exit",
+    "test:unit:node": "ts-mocha -p tsconfig.node.json ./tests/*.ts --parallel --exit",
+    "cypress": "cypress open",
+    "fmt": "dprint fmt",
+    "fix_docs": "find ./docs/wasm/ -type f -name '*.md' -exec sed -E -i.bak -e 's/(\\.md?#([^#]*)?)#/\\1/' {} ';' -exec rm {}.bak ';'"
+  },
+  "config": {
+    "CYPRESS_VERIFY_TIMEOUT": 100000
+  },
+  "bugs": {
+    "url": "https://github.com/iotaledger/identity/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "web/*",
+    "node/*"
+  ],
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/mocha": "^9.1.0",
+    "@types/node": "^22.0.0",
+    "big-integer": "^1.6.51",
+    "copy-webpack-plugin": "^7.0.0",
+    "cypress": "^14.2.0",
+    "dprint": "^0.33.0",
+    "fs-extra": "^10.1.0",
+    "jsdoc-to-markdown": "^7.1.1",
+    "mocha": "^9.2.0",
+    "rimraf": "^6.0.1",
+    "start-server-and-test": "^2.0.11",
+    "ts-mocha": "^9.0.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.1.0",
+    "txm": "^8.1.0",
+    "typedoc": "^0.27.6",
+    "typedoc-plugin-markdown": "^4.4.1",
+    "typescript": "^5.7.3",
+    "wasm-opt": "^1.4.0"
+  },
+  "dependencies": {
+    "@iota/iota-interaction-ts": "^0.5.1",
+    "@noble/ed25519": "^1.7.3",
+    "@noble/hashes": "^1.4.0",
+    "@types/node-fetch": "^2.6.2",
+    "base64-arraybuffer": "^1.0.2",
+    "jose": "^5.9.6",
+    "node-fetch": "^2.6.7"
+  },
+  "peerDependencies": {
+    "@iota/iota-sdk": "^1.2.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

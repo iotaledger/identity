@@ -17,6 +17,8 @@
   clippy::missing_errors_doc
 )]
 
+pub use iota_interaction;
+
 pub mod core {
   //! Core Traits and Types
 
@@ -77,15 +79,9 @@ pub mod prelude {
   pub use identity_iota_core::IotaDID;
   pub use identity_iota_core::IotaDocument;
 
-  #[cfg(feature = "iota-client")]
-  #[cfg_attr(docsrs, doc(cfg(feature = "iota-client")))]
-  pub use identity_iota_core::IotaClientExt;
-  #[cfg(feature = "client")]
-  #[cfg_attr(docsrs, doc(cfg(feature = "client")))]
-  pub use identity_iota_core::IotaIdentityClient;
-  #[cfg(feature = "client")]
-  #[cfg_attr(docsrs, doc(cfg(feature = "client")))]
-  pub use identity_iota_core::IotaIdentityClientExt;
+  #[cfg(all(feature = "resolver", not(target_arch = "wasm32")))]
+  #[cfg_attr(docsrs, doc(cfg(all(feature = "resolver", not(target_arch = "wasm32")))))]
+  pub use identity_iota_core::DidResolutionHandler;
 
   #[cfg(feature = "resolver")]
   #[cfg_attr(docsrs, doc(cfg(feature = "resolver")))]

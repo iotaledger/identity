@@ -1,4 +1,4 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
 //!  This example shows how to create a Verifiable Presentation and validate it.
@@ -9,8 +9,9 @@
 
 use std::collections::HashMap;
 
-use examples::create_did;
-use examples::MemStorage;
+use examples::create_did_document;
+use examples::get_funded_client;
+use examples::get_memstorage;
 use identity_eddsa_verifier::EdDSAJwsVerifier;
 use identity_iota::core::Object;
 use identity_iota::credential::DecodedJwtCredential;
@@ -26,17 +27,8 @@ use identity_iota::credential::PresentationBuilder;
 use identity_iota::did::CoreDID;
 use identity_iota::document::verifiable::JwsVerificationOptions;
 use identity_iota::storage::JwkDocumentExt;
-use identity_iota::storage::JwkMemStore;
 use identity_iota::storage::JwsSignatureOptions;
-use identity_iota::storage::KeyIdMemstore;
-use iota_sdk::client::secret::stronghold::StrongholdSecretManager;
-use iota_sdk::client::secret::SecretManager;
-use iota_sdk::client::Client;
-use iota_sdk::client::Password;
-use iota_sdk::types::block::address::Address;
 
-use examples::random_stronghold_path;
-use examples::API_ENDPOINT;
 use identity_iota::core::json;
 use identity_iota::core::Duration;
 use identity_iota::core::FromJson;
@@ -59,31 +51,20 @@ async fn main() -> anyhow::Result<()> {
   // Step 1: Create identities for the issuer and the holder.
   // ===========================================================================
 
-  // Create a new client to interact with the IOTA ledger.
-  let client: Client = Client::builder()
-    .with_primary_node(API_ENDPOINT, None)?
-    .finish()
-    .await?;
+  // create new issuer account with did document
+  let issuer_storage = get_memstorage()?;
+  let issuer_identity_client = get_funded_client(&issuer_storage).await?;
+  let (issuer_document, issuer_vm_fragment) = create_did_document(&issuer_identity_client, &issuer_storage).await?;
 
-  // Create an identity for the issuer with one verification method `key-1`.
-  let mut secret_manager_issuer: SecretManager = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_1".to_owned()))
-      .build(random_stronghold_path())?,
-  );
-  let storage_issuer: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-  let (_, issuer_document, fragment_issuer): (Address, IotaDocument, String) =
-    create_did(&client, &mut secret_manager_issuer, &storage_issuer).await?;
+  // create new holder account with did document
+  let holder_storage = get_memstorage()?;
+  let holder_identity_client = get_funded_client(&holder_storage).await?;
+  let (holder_document, holder_vm_fragment) = create_did_document(&holder_identity_client, &holder_storage).await?;
 
-  // Create an identity for the holder, in this case also the subject.
-  let mut secret_manager_alice: SecretManager = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_2".to_owned()))
-      .build(random_stronghold_path())?,
-  );
-  let storage_alice: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-  let (_, alice_document, fragment_alice): (Address, IotaDocument, String) =
-    create_did(&client, &mut secret_manager_alice, &storage_alice).await?;
+  // create new client for verifier
+  // new client actually not necessary, but shows, that client is independent from issuer and holder
+  let verifier_storage = &get_memstorage()?;
+  let verifier_client = get_funded_client(verifier_storage).await?;
 
   // ===========================================================================
   // Step 2: Issuer creates and signs a Verifiable Credential.
@@ -91,7 +72,7 @@ async fn main() -> anyhow::Result<()> {
 
   // Create a credential subject indicating the degree earned by Alice.
   let subject: Subject = Subject::from_json_value(json!({
-    "id": alice_document.id().as_str(),
+    "id": holder_document.id().as_str(),
     "name": "Alice",
     "degree": {
       "type": "BachelorDegree",
@@ -111,8 +92,8 @@ async fn main() -> anyhow::Result<()> {
   let credential_jwt: Jwt = issuer_document
     .create_credential_jwt(
       &credential,
-      &storage_issuer,
-      &fragment_issuer,
+      &issuer_storage,
+      &issuer_vm_fragment,
       &JwsSignatureOptions::default(),
       None,
     )
@@ -156,17 +137,17 @@ async fn main() -> anyhow::Result<()> {
 
   // Create an unsigned Presentation from the previously issued Verifiable Credential.
   let presentation: Presentation<Jwt> =
-    PresentationBuilder::new(alice_document.id().to_url().into(), Default::default())
+    PresentationBuilder::new(holder_document.id().to_url().into(), Default::default())
       .credential(credential_jwt)
       .build()?;
 
   // Create a JWT verifiable presentation using the holder's verification method
   // and include the requested challenge and expiry timestamp.
-  let presentation_jwt: Jwt = alice_document
+  let presentation_jwt: Jwt = holder_document
     .create_presentation_jwt(
       &presentation,
-      &storage_alice,
-      &fragment_alice,
+      &holder_storage,
+      &holder_vm_fragment,
       &JwsSignatureOptions::default().nonce(challenge.to_owned()),
       &JwtPresentationOptions::default().expiration_date(expires),
     )
@@ -191,7 +172,7 @@ async fn main() -> anyhow::Result<()> {
     JwsVerificationOptions::default().nonce(challenge.to_owned());
 
   let mut resolver: Resolver<IotaDocument> = Resolver::new();
-  resolver.attach_iota_handler(client);
+  resolver.attach_iota_handler((*verifier_client).clone());
 
   // Resolve the holder's document.
   let holder_did: CoreDID = JwtPresentationValidatorUtils::extract_holder(&presentation_jwt)?;
@@ -231,7 +212,7 @@ async fn main() -> anyhow::Result<()> {
   // Since no errors were thrown by `verify_presentation` we know that the validation was successful.
   println!("VP successfully validated: {:#?}", presentation.presentation);
 
-  // Note that we did not declare a latest allowed issuance date for credentials. This is because we only want to check
-  // that the credentials do not have an issuance date in the future which is a default check.
+  // Note that we did not declare a latest allowed issuance date for credentials. This is because we only want to
+  // check // that the credentials do not have an issuance date in the future which is a default check.
   Ok(())
 }

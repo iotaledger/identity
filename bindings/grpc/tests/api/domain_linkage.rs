@@ -69,7 +69,7 @@ async fn prepare_test() -> anyhow::Result<(TestServer, Url, Url, String, Jwt)> {
   let service_url: DIDUrl = did.clone().join("#domain-linkage")?;
   let linked_domain_service: LinkedDomainService = LinkedDomainService::new(service_url, domains, Object::new())?;
   issuer
-    .update_document(&api_client, |mut doc| {
+    .update_document(api_client, |mut doc| {
       doc.insert_service(linked_domain_service.into()).ok().map(|_| doc)
     })
     .await?;
@@ -101,8 +101,8 @@ async fn prepare_test() -> anyhow::Result<(TestServer, Url, Url, String, Jwt)> {
   let jwt: Jwt = updated_did_document
     .create_credential_jwt(
       &domain_linkage_credential,
-      &issuer.storage(),
-      &issuer
+      issuer.storage(),
+      issuer
         .fragment()
         .ok_or_else(|| anyhow::anyhow!("no fragment for issuer"))?,
       &JwsSignatureOptions::default(),
@@ -125,16 +125,25 @@ async fn can_validate_domain() -> anyhow::Result<()> {
       did_configuration: configuration_resource.to_string(),
     })
     .await?;
-  let did_id = IotaDocument::from_json(&did)?.id().to_string();
+
+  // created and updated are retrieved directly from the contract and not from the given DID document,
+  // so we'll replace them with values from the result for the check here
+  let validated_did_response = response.into_inner();
+  let mut did_document: IotaDocument = IotaDocument::from_json(&did)?;
+  let did_id = did_document.id().to_string();
+  let response_did_document: IotaDocument =
+    serde_json::from_str(&validated_did_response.linked_dids.as_ref().unwrap().valid[0].did).unwrap();
+  did_document.metadata.created = response_did_document.metadata.created;
+  did_document.metadata.updated = response_did_document.metadata.updated;
 
   assert_eq!(
-    response.into_inner(),
+    validated_did_response,
     ValidateDomainResponse {
       linked_dids: Some(LinkedDids {
         invalid: vec![],
         valid: vec![ValidDid {
           service_id: did_id,
-          did: did.to_string().clone(),
+          did: did_document.to_string().clone(),
           credential: jwt.as_str().to_string(),
         }]
       }),

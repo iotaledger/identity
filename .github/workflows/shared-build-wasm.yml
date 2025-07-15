@@ -23,7 +23,7 @@ jobs:
   build-wasm:
     defaults:
       run:
-        working-directory: bindings/wasm
+        working-directory: bindings/wasm/
         shell: bash
     runs-on: ubuntu-latest
     strategy:
@@ -46,6 +46,7 @@ jobs:
         with:
           os: ${{ runner.os }}
           job: ${{ github.job }}
+          target: wasm32-unknown-unknown
           cargo-cache-enabled: true
           target-cache-enabled: true
           sccache-enabled: true
@@ -70,13 +71,16 @@ jobs:
 
       - name: Install JS dependencies
         run: npm ci
+        working-directory: bindings/wasm/identity_wasm
 
       - name: Build WASM bindings
         run: npm run build
+        working-directory: bindings/wasm/identity_wasm
 
       - name: Run Node unit tests
         if: ${{ inputs.run-unit-tests }}
         run: npm run test:unit:node
+        working-directory: bindings/wasm/identity_wasm
 
       - name: Stop sccache
         uses: './.github/actions/rust/sccache/stop-sccache'
@@ -88,9 +92,9 @@ jobs:
         with:
           name: ${{ inputs.output-artifact-name }}
           path: |
-            bindings/wasm/node
-            bindings/wasm/web
-            bindings/wasm/examples/dist
-            bindings/wasm/docs
+            bindings/wasm/identity_wasm/node
+            bindings/wasm/identity_wasm/web
+            bindings/wasm/identity_wasm/examples/dist
+            bindings/wasm/identity_wasm/docs
           if-no-files-found: error
           retention-days: 1

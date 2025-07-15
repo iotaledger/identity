@@ -62,8 +62,8 @@ async fn credential_validation() -> anyhow::Result<()> {
     .unwrap()
     .create_credential_jwt(
       &credential,
-      &issuer.storage(),
-      &issuer.fragment().unwrap(),
+      issuer.storage(),
+      issuer.fragment().unwrap(),
       &JwsSignatureOptions::default(),
       None,
     )
@@ -128,8 +128,8 @@ async fn revoked_credential_validation() -> anyhow::Result<()> {
     .unwrap()
     .create_credential_jwt(
       &credential,
-      &issuer.storage(),
-      &issuer.fragment().unwrap(),
+      issuer.storage(),
+      issuer.fragment().unwrap(),
       &JwsSignatureOptions::default(),
       None,
     )

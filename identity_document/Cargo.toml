@@ -1,6 +1,6 @@
 [package]
 name = "identity_document"
-version = "1.5.1"
+version = "1.6.0-beta"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -12,9 +12,9 @@ description = "Method-agnostic implementation of the Decentralized Identifiers (
 
 [dependencies]
 did_url_parser = { version = "0.2.0", features = ["std", "serde"] }
-identity_core = { version = "=1.5.1", path = "../identity_core", default-features = false }
-identity_did = { version = "=1.5.1", path = "../identity_did" }
-identity_verification = { version = "=1.5.1", path = "../identity_verification", default-features = false }
+identity_core = { version = "=1.6.0-beta", path = "../identity_core", default-features = false }
+identity_did = { version = "=1.6.0-beta", path = "../identity_did" }
+identity_verification = { version = "=1.6.0-beta", path = "../identity_verification", default-features = false }
 indexmap = { version = "2.0", default-features = false, features = ["std", "serde"] }
 serde.workspace = true
 strum.workspace = true

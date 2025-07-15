@@ -15,8 +15,8 @@ runs:
         brew update --auto-update
         brew install sccache
 
-    - name: Install sccache (ubuntu-latest)
-      if: inputs.os == 'ubuntu-latest'
+    - name: Install sccache (ubuntu)
+      if: ${{ startsWith(inputs.os, 'ubuntu-') }}
       shell: bash
       run: |
         SCCACHE_DOWNLOAD_LINK=https://github.com/mozilla/sccache/releases/download
@@ -42,5 +42,6 @@ runs:
     - name: Start sccache
       shell: bash
       run: |
+        echo "starting sccache on ${{ inputs.os }}"
         sccache --start-server
         sccache -s

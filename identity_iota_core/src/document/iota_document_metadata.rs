@@ -23,12 +23,6 @@ pub struct IotaDocumentMetadata {
   /// Signals whether the document is deactivated.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub deactivated: Option<bool>,
-  /// Bech32-encoded address of the governor unlock condition.
-  #[serde(rename = "governorAddress", skip_serializing_if = "Option::is_none")]
-  pub governor_address: Option<String>,
-  /// Bech32-encoded address of the state controller unlock condition.
-  #[serde(rename = "stateControllerAddress", skip_serializing_if = "Option::is_none")]
-  pub state_controller_address: Option<String>,
   #[serde(flatten)]
   properties: Object,
 }
@@ -42,8 +36,6 @@ impl IotaDocumentMetadata {
       created: Some(now),
       updated: Some(now),
       deactivated: None,
-      governor_address: None,
-      state_controller_address: None,
       properties: Object::default(),
     }
   }

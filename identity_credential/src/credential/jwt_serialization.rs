@@ -27,6 +27,19 @@ use crate::credential::Subject;
 use crate::Error;
 use crate::Result;
 
+/// A JWT representing a Verifiable Credential.
+#[derive(Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct JwtCredential(CredentialJwtClaims<'static>);
+
+#[cfg(feature = "validator")]
+impl TryFrom<JwtCredential> for Credential {
+  type Error = Error;
+  fn try_from(value: JwtCredential) -> std::result::Result<Self, Self::Error> {
+    value.0.try_into_credential()
+  }
+}
+
 /// Implementation of JWT Encoding/Decoding according to [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
 ///
 /// This type is opinionated in the following ways:

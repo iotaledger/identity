@@ -7,7 +7,7 @@ on:
   pull_request:
     branches:
       - main
-      - 'epic/**'
+      - 'feat/**'
       - 'support/**'
     paths:
       - '.github/workflows/format.yml'
@@ -45,8 +45,8 @@ jobs:
       - name: core fmt check
         run: cargo +nightly fmt --all -- --check
 
-      - name: wasm fmt check
-        run: cargo +nightly fmt --manifest-path ./bindings/wasm/Cargo.toml --all -- --check
+      - name: wasm fmt check identity_wasm
+        run: cargo +nightly fmt --manifest-path ./bindings/wasm/identity_wasm/Cargo.toml --all -- --check
 
       - name: Cargo.toml fmt check
         run:

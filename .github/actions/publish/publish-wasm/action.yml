@@ -30,7 +30,7 @@ runs:
       uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.input-artifact-name }}
-        path: bindings/wasm
+        path: bindings/wasm/identity_wasm
 
     - name: Publish WASM bindings to NPM
       shell: sh

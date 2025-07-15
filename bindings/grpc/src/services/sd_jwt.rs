@@ -20,7 +20,7 @@ use identity_iota::iota::IotaDocument;
 use identity_iota::resolver::Resolver;
 use identity_iota::sd_jwt_payload::SdJwt;
 use identity_iota::sd_jwt_payload::SdObjectDecoder;
-use iota_sdk::client::Client;
+use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use serde::Deserialize;
 use serde::Serialize;
 use thiserror::Error;
@@ -91,7 +91,7 @@ pub struct SdJwtService {
 }
 
 impl SdJwtService {
-  pub fn new(client: &Client) -> Self {
+  pub fn new(client: &IdentityClientReadOnly) -> Self {
     let mut resolver = Resolver::new();
     resolver.attach_iota_handler(client.clone());
     Self { resolver }
@@ -159,6 +159,6 @@ impl Verification for SdJwtService {
   }
 }
 
-pub fn service(client: &Client) -> VerificationServer<SdJwtService> {
+pub fn service(client: &IdentityClientReadOnly) -> VerificationServer<SdJwtService> {
   VerificationServer::new(SdJwtService::new(client))
 }

@@ -1,13 +1,13 @@
 // Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use health_check::health_check_client::HealthCheckClient;
-use health_check::HealthCheckRequest;
-use health_check::HealthCheckResponse;
+use _health_check::health_check_client::HealthCheckClient;
+use _health_check::HealthCheckRequest;
+use _health_check::HealthCheckResponse;
 
 use crate::helpers::TestServer;
 
-mod health_check {
+mod _health_check {
   tonic::include_proto!("health_check");
 }
 

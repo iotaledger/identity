@@ -1,0 +1,49 @@
+name: 'load-keytool'
+description: 'Load Keytool'
+inputs:
+  network:
+    description: 'Network to configure'
+    required: true
+  pk:
+    description: 'Private key to load into Keytool'
+    required: true
+  faucet:
+    description: "Whether to faucet"
+    required: true
+    
+runs:
+  using: "composite"
+  steps:
+    - name: Load PK into Keytool
+      shell: bash
+      run: |
+        iota keytool import $(iota keytool convert ${{inputs.pk}} --json | jq -r '.bech32WithFlag') ed25519 --alias deploy-key
+        
+        case ${{inputs.network}} in
+          devnet)
+            RPC=https://api.devnet.iota.cafe
+            ;;
+
+          testnet)
+            RPC=https://api.testnet.iota.cafe
+            ;;
+
+          mainnet)
+            RPC=https://api.mainnet.iota.cafe
+            ;;
+
+          *)
+            echo "unknown network ${{inputs.network}}"
+            exit 1
+            ;;
+        esac
+
+        iota client new-env --alias ${{inputs.network}} --rpc $RPC
+        iota client switch --env ${{inputs.network}}
+        iota client switch --address deploy-key
+
+        if [ ${{inputs.faucet}} == "true" ]; then
+          iota client faucet
+          # wait up tp 5min for Gas to be available
+          timeout 5m bash -c "until (( $(iota client gas --json | jq -r 'first | .nanosBalance') > 0 )); do sleep 10; done"
+        fi

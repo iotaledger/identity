@@ -120,7 +120,7 @@ mod __fetch_configuration {
   use reqwest::Client;
 
   impl DomainLinkageConfiguration {
-    /// Fetches the the DID Configuration resource via a GET request at the
+    /// Fetches the DID Configuration resource via a GET request at the
     /// well-known location: "`domain`/.well-known/did-configuration.json".
     ///
     /// The maximum size of the domain linkage configuration that can be retrieved with this method is 1 MiB.

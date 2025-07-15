@@ -5,8 +5,8 @@ syntax = "proto3";
 package document;
 
 message CreateDIDRequest {
-    // An IOTA's bech32 encoded address.
-    string bech32_address = 1;
+    // KeyID for getting the public key from stronghold.
+    string key_id = 1;
 }
 
 message CreateDIDResponse {

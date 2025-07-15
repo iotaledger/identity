@@ -9,7 +9,7 @@ use identity_iota::core::ToJson;
 use identity_iota::credential::CredentialBuilder;
 use identity_iota::did::DID;
 use identity_stronghold::StrongholdStorage;
-use iota_sdk::Url;
+use iota_sdk_legacy::Url;
 use serde_json::json;
 
 use crate::helpers::make_stronghold;

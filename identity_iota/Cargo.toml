@@ -1,6 +1,6 @@
 [package]
 name = "identity_iota"
-version = "1.5.1"
+version = "1.6.0-beta"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -11,29 +11,39 @@ repository.workspace = true
 description = "Framework for Self-Sovereign Identity with IOTA DID."
 
 [dependencies]
-identity_core = { version = "=1.5.1", path = "../identity_core", default-features = false }
-identity_credential = { version = "=1.5.1", path = "../identity_credential", features = ["validator"], default-features = false }
-identity_did = { version = "=1.5.1", path = "../identity_did", default-features = false }
-identity_document = { version = "=1.5.1", path = "../identity_document", default-features = false }
-identity_iota_core = { version = "=1.5.1", path = "../identity_iota_core", default-features = false }
-identity_resolver = { version = "=1.5.1", path = "../identity_resolver", default-features = false, optional = true }
-identity_storage = { version = "=1.5.1", path = "../identity_storage", default-features = false, features = ["iota-document"] }
-identity_verification = { version = "=1.5.1", path = "../identity_verification", default-features = false }
+identity_core = { version = "=1.6.0-beta", path = "../identity_core", default-features = false }
+identity_credential = { version = "=1.6.0-beta", path = "../identity_credential", features = ["validator"], default-features = false }
+identity_did = { version = "=1.6.0-beta", path = "../identity_did", default-features = false }
+identity_document = { version = "=1.6.0-beta", path = "../identity_document", default-features = false }
+identity_iota_core = { version = "=1.6.0-beta", path = "../identity_iota_core", default-features = false }
+identity_resolver = { version = "=1.6.0-beta", path = "../identity_resolver", default-features = false, optional = true }
+identity_storage = { version = "=1.6.0-beta", path = "../identity_storage", default-features = false, features = ["iota-document"] }
+identity_verification = { version = "=1.6.0-beta", path = "../identity_verification", default-features = false }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+iota_interaction.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.2.1", package = "iota_interaction", default-features = false }
 
 [dev-dependencies]
+# required for doc test
 anyhow = "1.0.64"
-iota-sdk = { version = "1.1.5", default-features = false, features = ["tls", "client"] }
+identity_iota = { version = "=1.6.0-beta", path = "./", features = ["memstore"] }
+iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v0.12.0-rc" }
 rand = "0.8.5"
-tokio = { version = "1.29.0", features = ["full"] }
+secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag = "v0.3.0" }
+tokio = { version = "1.43", features = ["full"] }
 
 [features]
-default = ["revocation-bitmap", "client", "iota-client", "resolver"]
+default = ["revocation-bitmap", "iota-client", "send-sync", "resolver"]
 
-# Exposes the `IotaIdentityClient` and `IotaIdentityClientExt` traits.
-client = ["identity_iota_core/client"]
-
-# Enables the iota-client integration, the client trait implementations for it, and the `IotaClientExt` trait.
-iota-client = ["identity_iota_core/iota-client", "identity_resolver/iota"]
+# Enables the IOTA client integration, and the `DidResolutionHandler` trait.
+iota-client = [
+  "identity_iota_core/iota-client",
+  "identity_resolver/iota",
+  "identity_storage/storage-signer",
+]
 
 # Enables revocation with `RevocationBitmap2022`.
 revocation-bitmap = [
@@ -47,8 +57,12 @@ status-list-2021 = ["revocation-bitmap", "identity_credential/status-list-2021"]
 # Enables support for the `Resolver`.
 resolver = ["dep:identity_resolver"]
 
+# Enables `Send` + `Sync` bounds for the storage and client interaction traits.
+send-sync = ["send-sync-storage", "send-sync-client", "identity_iota_core/send-sync"]
 # Enables `Send` + `Sync` bounds for the storage traits.
-send-sync-storage = ["identity_storage/send-sync-storage"]
+send-sync-storage = ["identity_storage/send-sync-storage", "identity_iota_core/send-sync-storage"]
+# Enables `Send` + `Sync` bounds for IOTA client interaction traits.
+send-sync-client = ["identity_iota_core/send-sync-client-ext"]
 
 # Enables domain linkage support.
 domain-linkage = ["identity_credential/domain-linkage"]
@@ -75,6 +89,8 @@ pqc-liboqs = ["identity_storage/pqc-liboqs"]
 # Enables PQ/T Hybrid
 hybrid = ["identity_storage/hybrid", "identity_credential/hybrid"]
 hybrid-liboqs = ["identity_storage/hybrid-liboqs", "identity_credential/hybrid"]
+# Enables integration with IOTA Keytool.
+keytool = ["identity_iota_core/keytool", "identity_storage/keytool"]
 
 [package.metadata.docs.rs]
 # To build locally:

@@ -1,25 +1,42 @@
 [package]
 name = "examples"
-version = "1.5.1"
+version = "1.6.0-beta"
 authors = ["IOTA Stiftung"]
 edition = "2021"
 publish = false
 
 [dependencies]
 anyhow = "1.0.62"
-bls12_381_plus.workspace = true
-identity_eddsa_verifier = { path = "../identity_eddsa_verifier", default-features = false }
-identity_iota = { path = "../identity_iota", default-features = false, features = ["iota-client", "client", "memstore", "domain-linkage", "revocation-bitmap", "status-list-2021", "jpt-bbs-plus", "hybrid-liboqs", "resolver"] }
-identity_stronghold = { path = "../identity_stronghold", default-features = false, features = ["bbs-plus"] }
-iota-sdk = { version = "1.0", default-features = false, features = ["tls", "client", "stronghold"] }
+identity_eddsa_verifier = { path = "../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
+identity_storage = { path = "../identity_storage" }
+identity_stronghold = { path = "../identity_stronghold", default-features = false, features = ["send-sync-storage"] }
+iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v0.12.0-rc" }
+iota-sdk-legacy = { package = "iota-sdk", version = "1.0", default-features = false, features = ["tls", "client", "stronghold"] }
 json-proof-token.workspace = true
-primitive-types = "0.12.1"
+product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.2.1", package = "product_common", features = ["core-client", "transaction"] }
 rand = "0.8.5"
 sd-jwt-payload = { version = "0.2.1", default-features = false, features = ["sha"] }
+secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag = "v0.3.0" }
 serde_json = { version = "1.0", default-features = false }
-tokio = { version = "1.29", default-features = false, features = ["rt"] }
+tokio = { version = "1.43", default-features = false, features = ["rt", "macros"] }
 identity_pqc_verifier = { path = "../identity_pqc_verifier", default-features = true }
-serde.workspace = true
+
+[dependencies.identity_iota]
+path = "../identity_iota"
+default-features = false
+features = [
+  "domain-linkage",
+  "jpt-bbs-plus",
+  "iota-client",
+  "send-sync",
+  "memstore",
+  "resolver",
+  "revocation-bitmap",
+  "sd-jwt",
+  "status-list-2021",
+  "keytool",
+  "hybrid-liboqs",
+]
 
 [lib]
 path = "utils/utils.rs"
@@ -57,28 +74,12 @@ path = "0_basic/7_revoke_vc.rs"
 name = "7_revoke_vc"
 
 [[example]]
-path = "0_basic/8_stronghold.rs"
-name = "8_stronghold"
+path = "0_basic/8_legacy_stronghold.rs"
+name = "8_legacy_stronghold"
 
 [[example]]
-path = "1_advanced/0_did_controls_did.rs"
-name = "0_did_controls_did"
-
-[[example]]
-path = "1_advanced/1_did_issues_nft.rs"
-name = "1_did_issues_nft"
-
-[[example]]
-path = "1_advanced/2_nft_owns_did.rs"
-name = "2_nft_owns_did"
-
-[[example]]
-path = "1_advanced/3_did_issues_tokens.rs"
-name = "3_did_issues_tokens"
-
-[[example]]
-path = "1_advanced/4_alias_output_history.rs"
-name = "4_alias_output_history"
+path = "1_advanced/4_identity_history.rs"
+name = "4_identity_history"
 
 [[example]]
 path = "1_advanced/5_custom_resolution.rs"
@@ -115,3 +116,11 @@ name = "pq"
 [[example]]
 path = "1_advanced/hybrid.rs"
 name = "hybrid"
+
+[[example]]
+path = "1_advanced/12_advanced_transactions.rs"
+name = "12_advanced_transactions"
+
+[[example]]
+path = "1_advanced/13_iota_keytool_integration.rs"
+name = "13_iota_keytool_integration"

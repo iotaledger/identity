@@ -24,7 +24,7 @@ pub(crate) fn expand_p256_jwk(jwk: &Jwk) -> (SecretKey, PublicKey) {
   }
 
   let sk_bytes = params.d.as_ref().map(jwu::decode_b64).unwrap().unwrap();
-  let sk = SecretKey::from_be_bytes(&sk_bytes).unwrap();
+  let sk = SecretKey::from_slice(&sk_bytes).unwrap();
 
   // Transformation according to section 2.3.3 from http://www.secg.org/sec1-v2.pdf.
   let pk_bytes: Vec<u8> = [0x04]

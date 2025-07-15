@@ -12,7 +12,7 @@ use identity_iota::storage::JwkDocumentExt;
 use identity_iota::storage::JwsSignatureOptions;
 use identity_iota::storage::Storage;
 use identity_stronghold::StrongholdStorage;
-use iota_sdk::client::Client;
+use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use tonic::Request;
 use tonic::Response;
 use tonic::Status;
@@ -31,7 +31,7 @@ pub struct JwtService {
 }
 
 impl JwtService {
-  pub fn new(client: &Client, stronghold: &StrongholdStorage) -> Self {
+  pub fn new(client: &IdentityClientReadOnly, stronghold: &StrongholdStorage) -> Self {
     let mut resolver = Resolver::new();
     resolver.attach_iota_handler(client.clone());
     Self {
@@ -80,6 +80,6 @@ impl JwtSvc for JwtService {
   }
 }
 
-pub fn service(client: &Client, stronghold: &StrongholdStorage) -> JwtServer<JwtService> {
+pub fn service(client: &IdentityClientReadOnly, stronghold: &StrongholdStorage) -> JwtServer<JwtService> {
   JwtServer::new(JwtService::new(client, stronghold))
 }

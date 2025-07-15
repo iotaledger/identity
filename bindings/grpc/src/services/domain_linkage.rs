@@ -29,7 +29,7 @@ use identity_iota::did::CoreDID;
 use identity_iota::iota::IotaDID;
 use identity_iota::iota::IotaDocument;
 use identity_iota::resolver::Resolver;
-use iota_sdk::client::Client;
+use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use serde::Deserialize;
 use serde::Serialize;
 use thiserror::Error;
@@ -109,7 +109,7 @@ pub struct DomainLinkageService {
 }
 
 impl DomainLinkageService {
-  pub fn new(client: &Client) -> Self {
+  pub fn new(client: &IdentityClientReadOnly) -> Self {
     let mut resolver = Resolver::new();
     resolver.attach_iota_handler(client.clone());
     Self { resolver }
@@ -421,6 +421,6 @@ impl DomainLinkage for DomainLinkageService {
   }
 }
 
-pub fn service(client: &Client) -> DomainLinkageServer<DomainLinkageService> {
+pub fn service(client: &IdentityClientReadOnly) -> DomainLinkageServer<DomainLinkageService> {
   DomainLinkageServer::new(DomainLinkageService::new(client))
 }

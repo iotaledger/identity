@@ -1,0 +1,119 @@
+name: "iota-private-network setup"
+description: "Setup IOTA Sandbox"
+
+inputs:
+  platform:
+    description: "Platform to download binary for (linux or macos)"
+    required: true
+    default: "linux"
+  logfile:
+    description: "Optional log file to store server log as workflow artifact"
+    required: false
+    default: ""
+  iota-version:
+    description: "IOTA version to pull from GitHub releases, recognizes well known networks (mainnet, testnet, devnet), defaults to 'testnet'"
+    required: false
+    default: ""
+  start-sandbox:
+    description: "Wether to start the sandbox or just install"
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up IOTA Node
+      shell: bash
+      run: |
+        set -e
+        mkdir -p iota
+        cd iota
+
+        # Default
+        VERSION="${{ inputs.iota-version }}"
+        if [[ "$VERSION" = "" ]]; then
+          VERSION="testnet"
+        fi
+        
+        if [ "$VERSION" = "mainnet" ]; then
+          VERSION_SEARCH_STRING="[Mainnet]"
+        elif [ "$VERSION" = "testnet" ]; then
+          VERSION_SEARCH_STRING="[Testnet]"
+        elif [ "$VERSION" = "devnet" ]; then
+          VERSION_SEARCH_STRING="[Devnet]"
+        else
+          VERSION_SEARCH_STRING=$VERSION
+        fi
+        
+        echo "Looking for version: $VERSION_SEARCH_STRING"
+
+        PLATFORM="${{ inputs.platform }}"
+
+        if [ "$PLATFORM" = "linux" ]; then
+          PLATFORM_TRIPLET="linux-x86_64"
+        elif [ "$PLATFORM" = "macos" ]; then
+          PLATFORM_TRIPLET="macos-arm64"
+          brew install postgresql
+          brew reinstall libpq
+        else
+          echo "not binaries for platform: $PLATFORM"
+          exit 1
+        fi
+        
+        echo "Looking for platform: $PLATFORM_TRIPLET"
+
+        curl "https://api.github.com/repos/iotaledger/iota/releases" \
+           --header 'authorization: Bearer ${{ github.token }}' > releases.json
+
+        {
+          # Note: Releases might be visible before all binaries are available
+          DOWNLOAD_URL=$(cat releases.json | jq -r 'map(select(.name | contains('\"$VERSION_SEARCH_STRING\"'))) | first | .assets | .[] | select(.browser_download_url | contains('\"$PLATFORM_TRIPLET\"')) | .browser_download_url')
+        } || {
+          # log releases in case of failure
+          cat releases.json
+          echo "could not parse release"
+          exit 1
+        }
+
+        # Download and extract
+        echo "Downloading from: $DOWNLOAD_URL"
+        curl -L -o iota.tar.gz $DOWNLOAD_URL
+        tar -xzf iota.tar.gz
+
+        echo "$PWD" >> $GITHUB_PATH
+        export PATH="$PWD:$PATH"
+
+        which iota || echo "iota not found in PATH"
+        ls -la "$PWD"
+    - name: Start the Network
+      shell: bash
+      working-directory: iota
+      if: ${{ inputs.start-sandbox == 'true' }}
+      run: |
+        # Clear previous configuration
+        rm -rf ~/.iota || true 
+
+        # Check log file arg
+        LOGFILE="${{ inputs.logfile }}"
+        echo "Starting server with log file: $LOGFILE"
+
+        # Start the network
+        iota start --with-faucet ${{ inputs.logfile && format('> {0} 2>&1', inputs.logfile) || '' }} &
+    - name: Setup TOML CLI utils
+      shell: bash
+      run: |
+        set -e
+        mkdir -p toml-cli
+        cd toml-cli
+
+        DOWNLOAD_URL=https://github.com/gnprice/toml-cli/releases/download/v0.2.3/toml-0.2.3-x86_64-linux.tar.gz
+        echo "Downloading from: $DOWNLOAD_URL"
+        curl -L -o toml-cli.tar.gz $DOWNLOAD_URL
+        tar -xzf toml-cli.tar.gz
+        cd $(ls -d */|head -n 1)
+
+        echo "$PWD" >> $GITHUB_PATH
+        export PATH="$PWD:$PATH"
+
+        which toml || echo "toml not found in PATH"
+        ls -la "$PWD"

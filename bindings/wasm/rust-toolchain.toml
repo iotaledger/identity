@@ -1,6 +1,0 @@
-[toolchain]
-# @itsyaasir - Update to latest stable version when wasm-bindgen is updated
-channel = "stable"
-components = ["rustfmt"]
-targets = ["wasm32-unknown-unknown"]
-profile = "minimal"

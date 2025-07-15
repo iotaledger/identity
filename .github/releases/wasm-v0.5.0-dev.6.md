@@ -1,4 +1,4 @@
-This release introduces preliminary Stronghold storage bindings for Node.js. Stronghold offers best-effort secure software storage for cryptographic keys, written in Rust. To use the Stronghold storage package install `@iota/identity-stronghold-nodejs` and follow the instructions of the package [README](https://github.com/iotaledger/identity.rs/tree/dev/bindings/stronghold-nodejs). 
+This release introduces preliminary Stronghold storage bindings for Node.js. Stronghold offers best-effort secure software storage for cryptographic keys, written in Rust. To use the Stronghold storage package install `@iota/identity-stronghold-nodejs` and follow the instructions of the package [README](https://github.com/iotaledger/identity/tree/dev/bindings/stronghold-nodejs). 
 
 Note that all features related to diff chain updates are now marked as deprecated. Diff chains are a useful optimisation when publishing many updates to a DID Document. However, their design may be incompatible with upcoming changes to the IOTA network and should be considered unstable.
 

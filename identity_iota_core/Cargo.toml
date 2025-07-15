@@ -1,38 +1,77 @@
 [package]
 name = "identity_iota_core"
-version = "1.5.1"
+version = "1.6.0-beta"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
-keywords = ["iota", "tangle", "utxo", "shimmer", "identity"]
+keywords = ["iota", "tangle", "utxo", "identity"]
 license.workspace = true
 readme = "./README.md"
 repository.workspace = true
 description = "An IOTA Ledger integration for the IOTA DID Method."
 
 [dependencies]
-async-trait = { version = "0.1.56", default-features = false, optional = true }
+anyhow = "1.0.75"
+async-trait = { version = "0.1.81", default-features = false, optional = true }
+cfg-if = "1.0.0"
 futures = { version = "0.3", default-features = false }
-identity_core = { version = "=1.5.1", path = "../identity_core", default-features = false }
-identity_credential = { version = "=1.5.1", path = "../identity_credential", default-features = false, features = ["validator"] }
-identity_did = { version = "=1.5.1", path = "../identity_did", default-features = false }
-identity_document = { version = "=1.5.1", path = "../identity_document", default-features = false }
-identity_verification = { version = "=1.5.1", path = "../identity_verification", default-features = false }
-iota-sdk = { version = "1.1.5", default-features = false, features = ["serde", "std"], optional = true }
+identity_core = { version = "=1.6.0-beta", path = "../identity_core", default-features = false }
+identity_credential = { version = "=1.6.0-beta", path = "../identity_credential", default-features = false, features = ["validator"] }
+identity_did = { version = "=1.6.0-beta", path = "../identity_did", default-features = false }
+identity_document = { version = "=1.6.0-beta", path = "../identity_document", default-features = false }
+identity_verification = { version = "=1.6.0-beta", path = "../identity_verification", default-features = false }
 num-derive = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false, features = ["std"] }
 once_cell = { version = "1.18", default-features = false, features = ["std"] }
 prefix-hex = { version = "0.7", default-features = false }
+product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.2.1", package = "product_common", default-features = false }
 ref-cast = { version = "1.0.14", default-features = false }
 serde.workspace = true
+serde_json.workspace = true
 strum.workspace = true
 thiserror.workspace = true
 
+# for feature `iota-client`
+bcs = { version = "0.1.4", optional = true }
+fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "2f502fd8570fe4e9cff36eea5bbd6fef22002898", package = "fastcrypto", optional = true }
+identity_eddsa_verifier = { version = "=1.6.0-beta", path = "../identity_eddsa_verifier", optional = true }
+identity_jose = { version = "=1.6.0-beta", path = "../identity_jose", optional = true }
+iota-crypto = { version = "0.23", optional = true }
+itertools = { version = "0.13.0", optional = true }
+phf = { version = "0.11.2", features = ["macros"] }
+
+rand = { version = "0.8.5", optional = true }
+secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag = "v0.3.0", default-features = false, optional = true }
+serde-aux = { version = "4.5.0", optional = true }
+toml = "0.8.22"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+iota-config = { git = "https://github.com/iotaledger/iota.git", package = "iota-config", tag = "v0.12.0-rc", optional = true }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.2.1", package = "iota_interaction", optional = true }
+iota_interaction_rust = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.2.1", package = "iota_interaction_rust", optional = true }
+iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v0.12.0-rc", optional = true }
+move-core-types = { git = "https://github.com/iotaledger/iota.git", package = "move-core-types", tag = "v0.12.0-rc", optional = true }
+shared-crypto = { git = "https://github.com/iotaledger/iota.git", package = "shared-crypto", tag = "v0.12.0-rc", optional = true }
+tokio = { version = "1.43", default-features = false, features = ["macros", "sync", "rt", "process"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.2.1", package = "iota_interaction", default-features = false, optional = true }
+
+# Dependency iota_interaction_ts is always used on wasm32 platform. It is not controlled by the "iota-client" feature
+# because it's unclear how to implement this. wasm32 build will most probably always use the "iota-client" feature
+# so this seems to be tolerable for now.
+iota_interaction_ts.workspace = true
+tokio = { version = "1.43", default-features = false, features = ["sync"] }
+
 [dev-dependencies]
-anyhow = { version = "1.0.57" }
-iota-crypto = { version = "0.23.2", default-features = false, features = ["bip39", "bip39-en"] }
+iota-crypto = { version = "0.23", default-features = false, features = ["bip39", "bip39-en"] }
 proptest = { version = "1.0.0", default-features = false, features = ["std"] }
-tokio = { version = "1.29.0", default-features = false, features = ["rt-multi-thread", "macros"] }
+
+# for feature iota-client tests
+identity_iota_core = { path = ".", features = ["iota-client", "keytool"] } # enable for e2e tests
+identity_storage = { path = "../identity_storage", features = ["send-sync-storage", "storage-signer", "keytool"] }
+lazy_static = "1.5.0"
+serial_test = "3.1.1"
 
 [package.metadata.docs.rs]
 # To build locally:
@@ -41,17 +80,47 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["client", "iota-client", "revocation-bitmap", "send-sync-client-ext"]
-# Exposes the IotaIdentityClient and IotaIdentityClientExt traits.
-client = ["dep:async-trait", "iota-sdk"]
-# Enables the implementation of the extension traits on the iota-sdk's Client.
-iota-client = ["client", "iota-sdk/client", "iota-sdk/tls"]
+default = ["iota-client", "revocation-bitmap", "send-sync"]
+# Enables the IOTA Client related components, and dependencies.
+iota-client = [
+  "dep:async-trait",
+  "dep:bcs",
+  "dep:fastcrypto",
+  "dep:identity_eddsa_verifier",
+  "dep:identity_jose",
+  "dep:iota-config",
+  "dep:iota-crypto",
+  "dep:iota_interaction",
+  "dep:iota_interaction_rust",
+  "dep:iota-sdk",
+  "dep:itertools",
+  "dep:move-core-types",
+  "dep:rand",
+  "dep:secret-storage",
+  "dep:serde-aux",
+  "product_common/transaction",
+]
+
 # Enables revocation with `RevocationBitmap2022`.
 revocation-bitmap = ["identity_credential/revocation-bitmap"]
-# Adds Send bounds on the futures produces by the client extension traits.
+
+# Enables `Send` + `Sync` bounds for the storage and client interaction traits.
+send-sync = [
+  "send-sync-storage",
+  "send-sync-client-ext",
+  "iota_interaction/send-sync-transaction",
+  "product_common/send-sync",
+]
+# Enables `Send` + `Sync` bounds for the storage traits.
+send-sync-storage = ["secret-storage?/send-sync-storage"]
+# Enables `Send` + `Sync` bounds for IOTA client interaction traits.
 send-sync-client-ext = []
-# Disables the blanket implementation of `IotaIdentityClientExt`.
-test = ["client"]
+keytool = [
+  "iota_interaction/keytool",
+  "identity_storage/keytool",
+  "iota_interaction_ts/keytool",
+  "iota-client",
+]
 
 [lints]
 workspace = true

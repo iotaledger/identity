@@ -38,5 +38,5 @@ jobs:
           dry-run: ${{ github.event.inputs.dry-run }}
           input-artifact-name: identity-wasm-bindings-build
           npm-token: ${{ secrets.NPM_TOKEN }}
-          working-directory: iota_interaction_ts
+          working-directory: ./bindings/wasm/iota_interaction_ts
           tag: ${{ github.event.inputs.tag }}

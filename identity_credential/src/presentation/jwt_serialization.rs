@@ -117,7 +117,7 @@ where
   types: Cow<'presentation, OneOrMany<String>>,
   /// Credential(s) expressing the claims of the `Presentation`.
   #[serde(default = "Default::default", rename = "verifiableCredential")]
-  pub(crate) verifiable_credential: Cow<'presentation, Vec<CRED>>,
+  pub(crate) verifiable_credential: Cow<'presentation, [CRED]>,
   /// The entity that generated the `Presentation`.
   #[serde(skip_serializing_if = "Option::is_none")]
   holder: Option<Url>,

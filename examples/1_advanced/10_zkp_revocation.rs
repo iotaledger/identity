@@ -1,11 +1,10 @@
 // Copyright 2020-2024 IOTA Stiftung, Fondazione Links
 // SPDX-License-Identifier: Apache-2.0
 
-use examples::get_address_with_funds;
-use examples::random_stronghold_path;
+use examples::get_funded_client;
 use examples::MemStorage;
-use examples::API_ENDPOINT;
-use examples::FAUCET_ENDPOINT;
+use examples::TEST_GAS_BUDGET;
+
 use identity_eddsa_verifier::EdDSAJwsVerifier;
 use identity_iota::core::json;
 use identity_iota::core::Duration;
@@ -46,10 +45,10 @@ use identity_iota::did::DIDUrl;
 use identity_iota::did::DID;
 use identity_iota::document::verifiable::JwsVerificationOptions;
 use identity_iota::document::Service;
-use identity_iota::iota::IotaClientExt;
+use identity_iota::iota::rebased::client::IdentityClient;
+use identity_iota::iota::rebased::client::IotaKeySignature;
 use identity_iota::iota::IotaDocument;
-use identity_iota::iota::IotaIdentityClientExt;
-use identity_iota::iota::NetworkName;
+use identity_iota::iota_interaction::OptionalSync;
 use identity_iota::resolver::Resolver;
 use identity_iota::storage::JwkDocumentExt;
 use identity_iota::storage::JwkMemStore;
@@ -60,43 +59,39 @@ use identity_iota::storage::KeyType;
 use identity_iota::storage::TimeframeRevocationExtension;
 use identity_iota::verification::jws::JwsAlgorithm;
 use identity_iota::verification::MethodScope;
-use iota_sdk::client::secret::stronghold::StrongholdSecretManager;
-use iota_sdk::client::secret::SecretManager;
-use iota_sdk::client::Client;
-use iota_sdk::client::Password;
-use iota_sdk::types::block::address::Address;
-use iota_sdk::types::block::output::AliasOutput;
-use iota_sdk::types::block::output::AliasOutputBuilder;
-use iota_sdk::types::block::output::RentStructure;
+use identity_storage::Storage;
 use jsonprooftoken::jpa::algs::ProofAlgorithm;
+use product_common::network_name::NetworkName;
+use product_common::transaction::TransactionOutput;
+use secret_storage::Signer;
 use std::thread;
 use std::time::Duration as SleepDuration;
 
-async fn create_did(
-  client: &Client,
-  secret_manager: &SecretManager,
-  storage: &MemStorage,
+async fn create_did<K, I, S>(
+  identity_client: &IdentityClient<S>,
+  storage: &Storage<K, I>,
   key_type: KeyType,
   alg: Option<JwsAlgorithm>,
   proof_alg: Option<ProofAlgorithm>,
-) -> anyhow::Result<(Address, IotaDocument, String)> {
-  // Get an address with funds for testing.
-  let address: Address = get_address_with_funds(client, secret_manager, FAUCET_ENDPOINT).await?;
-
-  // Get the Bech32 human-readable part (HRP) of the network.
-  let network_name: NetworkName = client.network_name().await?;
+) -> anyhow::Result<(IotaDocument, String)>
+where
+  K: identity_storage::JwkStorage + identity_storage::JwkStorageBbsPlusExt,
+  I: identity_storage::KeyIdStorage,
+  S: Signer<IotaKeySignature> + OptionalSync,
+{
+  // Get the network name.
+  let network_name: &NetworkName = identity_client.network();
 
   // Create a new DID document with a placeholder DID.
-  // The DID will be derived from the Alias Id of the Alias Output after publishing.
-  let mut document: IotaDocument = IotaDocument::new(&network_name);
+  let mut unpublished: IotaDocument = IotaDocument::new(network_name);
 
   // New Verification Method containing a BBS+ key
   let fragment = if let Some(alg) = alg {
-    document
+    unpublished
       .generate_method(storage, key_type, alg, None, MethodScope::VerificationMethod)
       .await?
   } else if let Some(proof_alg) = proof_alg {
-    let fragment = document
+    let fragment = unpublished
       .generate_method_jwp(storage, key_type, proof_alg, None, MethodScope::VerificationMethod)
       .await?;
 
@@ -104,55 +99,43 @@ async fn create_did(
     let revocation_bitmap: RevocationBitmap = RevocationBitmap::new();
 
     // Add the revocation bitmap to the DID document of the issuer as a service.
-    let service_id: DIDUrl = document.id().to_url().join("#my-revocation-service")?;
+    let service_id: DIDUrl = unpublished.id().to_url().join("#my-revocation-service")?;
     let service: Service = revocation_bitmap.to_service(service_id)?;
 
-    assert!(document.insert_service(service).is_ok());
+    assert!(unpublished.insert_service(service).is_ok());
 
     fragment
   } else {
     return Err(anyhow::Error::msg("You have to pass at least one algorithm"));
   };
 
-  // Construct an Alias Output containing the DID document, with the wallet address
-  // set as both the state controller and governor.
-  let alias_output: AliasOutput = client.new_did_output(address, document, None).await?;
-
-  // Publish the Alias Output and get the published DID document.
-  let document: IotaDocument = client.publish_did_output(secret_manager, alias_output).await?;
-  println!("Published DID document: {document:#}");
-
-  Ok((address, document, fragment))
-}
-
-/// Demonstrates how to create an Anonymous Credential with BBS+.
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-  // Create a new client to interact with the IOTA ledger.
-  let client: Client = Client::builder()
-    .with_primary_node(API_ENDPOINT, None)?
-    .finish()
+  let TransactionOutput::<IotaDocument> { output: document, .. } = identity_client
+    .publish_did_document(unpublished)
+    .with_gas_budget(TEST_GAS_BUDGET)
+    .build_and_execute(identity_client)
     .await?;
 
-  let secret_manager_issuer = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_1".to_owned()))
-      .build(random_stronghold_path())?,
-  );
+  println!("Published DID document: {document:#}");
 
+  Ok((document, fragment))
+}
+
+/// Demonstrates how to revoke a credential.
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+  // ===========================================================================
+  // Step 1: Create identities and for the issuer and the holder.
+  // ===========================================================================
   let storage_issuer: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-
-  let secret_manager_holder = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_2".to_owned()))
-      .build(random_stronghold_path())?,
-  );
 
   let storage_holder: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
 
-  let (_, mut issuer_document, fragment_issuer): (Address, IotaDocument, String) = create_did(
-    &client,
-    &secret_manager_issuer,
+  let issuer_identity_client = get_funded_client(&storage_issuer).await?;
+
+  let holder_identity_client = get_funded_client(&storage_holder).await?;
+
+  let (mut issuer_document, fragment_issuer): (IotaDocument, String) = create_did(
+    &issuer_identity_client,
     &storage_issuer,
     JwkMemStore::BLS12381G2_KEY_TYPE,
     None,
@@ -160,9 +143,8 @@ async fn main() -> anyhow::Result<()> {
   )
   .await?;
 
-  let (_, holder_document, fragment_holder): (Address, IotaDocument, String) = create_did(
-    &client,
-    &secret_manager_holder,
+  let (holder_document, fragment_holder): (IotaDocument, String) = create_did(
+    &holder_identity_client,
     &storage_holder,
     JwkMemStore::ED25519_KEY_TYPE,
     Some(JwsAlgorithm::EdDSA),
@@ -414,7 +396,7 @@ async fn main() -> anyhow::Result<()> {
     JwsVerificationOptions::default().nonce(challenge.to_owned());
 
   let mut resolver: Resolver<IotaDocument> = Resolver::new();
-  resolver.attach_iota_handler(client.clone());
+  resolver.attach_iota_handler((*holder_identity_client).clone());
 
   // Resolve the holder's document.
   let holder_did: CoreDID = JwtPresentationValidatorUtils::extract_holder(&presentation_jwt)?;
@@ -515,12 +497,9 @@ async fn main() -> anyhow::Result<()> {
   issuer_document.revoke_credentials("my-revocation-service", &[credential_index])?;
 
   // Publish the changes.
-  let alias_output: AliasOutput = client.update_did_output(issuer_document.clone()).await?;
-  let rent_structure: RentStructure = client.get_rent_structure().await?;
-  let alias_output: AliasOutput = AliasOutputBuilder::from(&alias_output)
-    .with_minimum_storage_deposit(rent_structure)
-    .finish()?;
-  issuer_document = client.publish_did_output(&secret_manager_issuer, alias_output).await?;
+  issuer_identity_client
+    .publish_did_document_update(issuer_document.clone(), TEST_GAS_BUDGET)
+    .await?;
 
   // Holder checks if his credential has been revoked by the Issuer
   let revocation_result = JptCredentialValidatorUtils::check_revocation_with_validity_timeframe_2024(
@@ -529,6 +508,7 @@ async fn main() -> anyhow::Result<()> {
     StatusCheck::Strict,
   );
   assert!(revocation_result.is_err_and(|e| matches!(e, JwtValidationError::Revoked)));
+
   println!("Credential Revoked!");
   Ok(())
 }

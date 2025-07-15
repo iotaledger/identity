@@ -7,9 +7,11 @@ use identity_iota::credential::RevocationBitmap;
 use identity_iota::credential::RevocationBitmapStatus;
 use identity_iota::credential::{self};
 use identity_iota::did::DID;
+use identity_stronghold::StrongholdStorage;
 use serde_json::json;
 
 use crate::credential_revocation_check::credentials::RevocationCheckRequest;
+use crate::helpers::make_stronghold;
 use crate::helpers::Entity;
 use crate::helpers::TestServer;
 
@@ -21,7 +23,10 @@ mod credentials {
 async fn checking_status_of_credential_works() -> anyhow::Result<()> {
   let server = TestServer::new().await;
   let client = server.client();
-  let mut issuer = Entity::new();
+
+  let stronghold = StrongholdStorage::new(make_stronghold());
+
+  let mut issuer = Entity::new_with_stronghold(stronghold);
   issuer.create_did(client).await?;
 
   let mut subject = Entity::new();
@@ -61,7 +66,7 @@ async fn checking_status_of_credential_works() -> anyhow::Result<()> {
 
   // Revoke credential
   issuer
-    .update_document(&client, |mut doc| {
+    .update_document(client, |mut doc| {
       doc.revoke_credentials("my-revocation-service", &[3]).ok().map(|_| doc)
     })
     .await?;

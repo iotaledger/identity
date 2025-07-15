@@ -1,0 +1,11 @@
+{
+  "name": "@iota/identity-wasm API documentation",
+  "extends": [
+    "../typedoc.json"
+  ],
+  "entryPoints": [
+    "./node/"
+  ],
+  "tsconfig": "./tsconfig.typedoc.json",
+  "out": "./docs/wasm"
+}

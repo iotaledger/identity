@@ -6,11 +6,10 @@
 //!
 //! cargo run --release --example 7_sd_jwt
 
-use examples::create_did;
+use examples::create_did_document;
+use examples::get_funded_client;
+use examples::get_memstorage;
 use examples::pretty_print_json;
-use examples::random_stronghold_path;
-use examples::MemStorage;
-use examples::API_ENDPOINT;
 use identity_eddsa_verifier::EdDSAJwsVerifier;
 use identity_iota::core::json;
 use identity_iota::core::FromJson;
@@ -27,16 +26,8 @@ use identity_iota::credential::KeyBindingJWTValidationOptions;
 use identity_iota::credential::SdJwtCredentialValidator;
 use identity_iota::credential::Subject;
 use identity_iota::did::DID;
-use identity_iota::iota::IotaDocument;
 use identity_iota::storage::JwkDocumentExt;
-use identity_iota::storage::JwkMemStore;
 use identity_iota::storage::JwsSignatureOptions;
-use identity_iota::storage::KeyIdMemstore;
-use iota_sdk::client::secret::stronghold::StrongholdSecretManager;
-use iota_sdk::client::secret::SecretManager;
-use iota_sdk::client::Client;
-use iota_sdk::client::Password;
-use iota_sdk::types::block::address::Address;
 use sd_jwt_payload::KeyBindingJwtClaims;
 use sd_jwt_payload::SdJwt;
 use sd_jwt_payload::SdObjectDecoder;
@@ -49,31 +40,15 @@ async fn main() -> anyhow::Result<()> {
   // Step 1: Create identities for the issuer and the holder.
   // ===========================================================================
 
-  // Create a new client to interact with the IOTA ledger.
-  let client: Client = Client::builder()
-    .with_primary_node(API_ENDPOINT, None)?
-    .finish()
-    .await?;
-
   // Create an identity for the issuer with one verification method `key-1`.
-  let mut secret_manager_issuer: SecretManager = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_1".to_owned()))
-      .build(random_stronghold_path())?,
-  );
-  let issuer_storage: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-  let (_, issuer_document, fragment): (Address, IotaDocument, String) =
-    create_did(&client, &mut secret_manager_issuer, &issuer_storage).await?;
+  let issuer_storage = get_memstorage()?;
+  let issuer_identity_client = get_funded_client(&issuer_storage).await?;
+  let (issuer_document, issuer_vm_fragment) = create_did_document(&issuer_identity_client, &issuer_storage).await?;
 
   // Create an identity for the holder, in this case also the subject.
-  let mut secret_manager_alice: SecretManager = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_2".to_owned()))
-      .build(random_stronghold_path())?,
-  );
-  let alice_storage: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-  let (_, alice_document, alice_fragment): (Address, IotaDocument, String) =
-    create_did(&client, &mut secret_manager_alice, &alice_storage).await?;
+  let holder_storage = get_memstorage()?;
+  let holder_identity_client = get_funded_client(&holder_storage).await?;
+  let (holder_document, holder_vm_fragment) = create_did_document(&holder_identity_client, &holder_storage).await?;
 
   // ===========================================================================
   // Step 2: Issuer creates and signs a selectively disclosable JWT verifiable credential.
@@ -81,7 +56,7 @@ async fn main() -> anyhow::Result<()> {
 
   // Create an address credential subject.
   let subject: Subject = Subject::from_json_value(json!({
-    "id": alice_document.id().as_str(),
+    "id": holder_document.id().as_str(),
     "name": "Alice",
     "address": {
       "locality": "Maxstadt",
@@ -128,7 +103,7 @@ async fn main() -> anyhow::Result<()> {
   let jwt: Jws = issuer_document
     .create_jws(
       &issuer_storage,
-      &fragment,
+      &issuer_vm_fragment,
       encoded_payload.as_bytes(),
       &JwsSignatureOptions::default(),
     )
@@ -183,8 +158,13 @@ async fn main() -> anyhow::Result<()> {
   let options = JwsSignatureOptions::new().typ(KeyBindingJwtClaims::KB_JWT_HEADER_TYP);
 
   // Create the KB-JWT.
-  let kb_jwt: Jws = alice_document
-    .create_jws(&alice_storage, &alice_fragment, binding_claims.as_bytes(), &options)
+  let kb_jwt: Jws = holder_document
+    .create_jws(
+      &holder_storage,
+      &holder_vm_fragment,
+      binding_claims.as_bytes(),
+      &options,
+    )
     .await?;
 
   // Create the final SD-JWT.
@@ -219,7 +199,7 @@ async fn main() -> anyhow::Result<()> {
 
   // Verify the Key Binding JWT.
   let options = KeyBindingJWTValidationOptions::new().nonce(nonce).aud(VERIFIER_DID);
-  let _kb_validation = validator.validate_key_binding_jwt(&sd_jwt_obj, &alice_document, &options)?;
+  let _kb_validation = validator.validate_key_binding_jwt(&sd_jwt_obj, &holder_document, &options)?;
 
   println!("Key Binding JWT successfully validated");
 

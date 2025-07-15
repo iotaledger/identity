@@ -6,19 +6,20 @@ const path = require("path");
  * If more than one path is defined. The second path is used. Otherwise the first path.
  * @param {string} tsconfig - Path to tsconfig that should be processed
  * @param {string} dist - Folder of files that should be processed
+ * @param {string} artifact - Name of the artifact folder. Example: "indentity_wasm"
  * @param {'resolve'=} mode - In "resolve" mode relative paths will be replaced paths relative to the processed file. Note: `basePath` in the tsconfig will not be considered.
  */
 
-function replace(tsconfig, dist, mode) {
+function replace(tsconfig, dist, artifact, mode) {
     // Read tsconfig file.
-    const tsconfigPath = path.join(__dirname, "..", tsconfig);
+    const tsconfigPath = path.join(__dirname, "..", artifact, tsconfig);
     console.log(`\n using ${tsconfigPath}`);
-    let data = JSON.parse(fs.readFileSync(path.join(__dirname, "..", tsconfig), "utf8"));
+    let data = JSON.parse(fs.readFileSync(tsconfigPath, "utf8"));
     let a = data.compilerOptions.paths;
     let keys = Object.keys(a);
 
     // Get `.js` and `.ts` file names from directory.
-    const distPath = path.join(__dirname, `../${dist}`);
+    const distPath = path.join(__dirname, "..", artifact, dist);
     console.log(`\n working in ${distPath}`);
     let files = readdirSync(distPath);
     files = files.filter((fileName) => fileName.endsWith(".ts") || fileName.endsWith(".js"));
@@ -38,6 +39,11 @@ function replace(tsconfig, dist, mode) {
                 value = path.relative(absoluteFilePath, absoluteIncludePath).replace(/\\/g, "/");
             }
 
+            if(key.endsWith('*')) {
+                console.log(`\t dropping '*' from ${key}`);
+                key = key.slice(0, -1);
+            }
+
             console.log(`\t replace ${key} with ${value}`);
             fileData = fileData.replaceAll(key, value);
         }
@@ -52,4 +58,4 @@ const readdirSync = (p, a = []) => {
     return a;
 };
 
-replace(process.argv[2], process.argv[3], process.argv[4]);
+replace(process.argv[2], process.argv[3], process.argv[4], process.argv[5]);

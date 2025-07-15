@@ -1,0 +1,89 @@
+name: Deploy Move package
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Name of branch to checkout'
+        required: true
+      network:
+        description: 'Network to deploy to (devnet, testnet, mainnet)'
+        required: true
+      faucet:
+        description: 'Whether to faucet'
+        type: boolean
+        required: true
+        default: true
+      script-path:
+        description: 'Script to run'
+        required: true
+      dry-run:
+        description: 'Run in dry-run mode'
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  deploy-move-package:
+    environment: release
+    name: Deploy Move package and create PR to bump references.
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Check out the repo
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.branch }}
+
+    - name: Start iota sandbox
+      uses: './.github/actions/iota-rebase-sandbox/setup'
+      with:
+        platform: 'linux'
+        iota-version: ${{ github.event.inputs.network }}
+        start-sandbox: false
+
+    - name: Setup Keytool
+      uses: './.github/actions/iota-rebase-sandbox/load-keytool'
+      with:
+        network: ${{ github.event.inputs.network }}
+        pk: ${{secrets.TRUST_FRAMEWORK_PRODUCTS_PRIVATE_KEY}}
+        faucet: ${{ github.event.inputs.faucet }}
+
+    - name: Import GPG key
+      id: import-gpg
+      uses: crazy-max/ghaction-import-gpg@cb4264d3319acaa2bea23d51ef67f80b4f775013
+      with:
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        passphrase: ${{ secrets.GPG_PASSPHRASE }}
+        git_user_signingkey: true
+        git_commit_gpgsign: true
+        git_tag_gpgsign: true
+
+    - name: Run script
+      if: ${{ github.event.inputs.dry-run == 'false' }}
+      run: |
+        bash ${{ github.event.inputs.script-path}}
+
+    - name: Commit changes
+      if: ${{ github.event.inputs.dry-run == 'false' }}
+      run: |
+        git add .
+        if [[ $(git diff --stat --staged) == '' ]]; then
+          echo 'repository unmodified'
+          exit 1
+        fi
+        git commit -m "bump version"
+        
+    - name: Create Pull Request
+      uses: peter-evans/create-pull-request@67df31e08a133c6a77008b89689677067fef169e
+      if: ${{ github.event.inputs.dry-run == 'false' }}
+      with:
+        committer: GitHub <noreply@github.com>
+        author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+        branch: chore/deploy-${{ github.event.inputs.network }} 
+        delete-branch: true
+        title: 'Deploy ${{ github.event.inputs.network }}'
+        body: |
+          This PR contains changes running ${{ github.event.inputs.script-path }} on branch:${{ github.event.inputs.branch }} and network:${{ github.event.inputs.network }}
+        labels: |
+          No changelog

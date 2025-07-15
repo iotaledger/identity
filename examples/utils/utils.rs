@@ -4,70 +4,49 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-
-use identity_iota::iota::block::output::AliasOutput;
-use identity_iota::iota::IotaClientExt;
 use identity_iota::iota::IotaDocument;
-use identity_iota::iota::IotaIdentityClientExt;
-use identity_iota::iota::NetworkName;
+use identity_iota::iota_interaction::OptionalSync;
 use identity_iota::storage::JwkDocumentExt;
 use identity_iota::storage::JwkMemStore;
 use identity_iota::storage::KeyIdMemstore;
 use identity_iota::storage::Storage;
+use identity_iota::verification::jws::JwsAlgorithm;
 use identity_iota::verification::MethodScope;
 
-use identity_iota::verification::jws::JwsAlgorithm;
-use iota_sdk::client::api::GetAddressesOptions;
-use iota_sdk::client::node_api::indexer::query_parameters::QueryParameter;
-use iota_sdk::client::secret::SecretManager;
-use iota_sdk::client::Client;
-use iota_sdk::crypto::keys::bip39;
-use iota_sdk::types::block::address::Address;
-use iota_sdk::types::block::address::Bech32Address;
-use iota_sdk::types::block::address::Hrp;
+use identity_iota::iota::rebased::client::IdentityClient;
+use identity_iota::iota::rebased::client::IdentityClientReadOnly;
+use identity_iota::iota::rebased::client::IotaKeySignature;
+use identity_iota::iota::rebased::utils::request_funds;
+use identity_storage::JwkStorage;
+use identity_storage::KeyIdStorage;
+use identity_storage::KeyType;
+use identity_storage::StorageSigner;
+use identity_stronghold::StrongholdStorage;
+use iota_sdk::types::base_types::IotaAddress;
+use iota_sdk::IotaClientBuilder;
+use iota_sdk::IOTA_LOCAL_NETWORK_URL;
+use iota_sdk_legacy::client::secret::stronghold::StrongholdSecretManager;
+use iota_sdk_legacy::client::Password;
 use rand::distributions::DistString;
+use secret_storage::Signer;
 use serde_json::Value;
 
-pub static API_ENDPOINT: &str = "http://localhost";
-pub static FAUCET_ENDPOINT: &str = "http://localhost/faucet/api/enqueue";
+pub const TEST_GAS_BUDGET: u64 = 50_000_000;
 
 pub type MemStorage = Storage<JwkMemStore, KeyIdMemstore>;
 
-/// Creates a DID Document and publishes it in a new Alias Output.
-///
-/// Its functionality is equivalent to the "create DID" example
-/// and exists for convenient calling from the other examples.
-pub async fn create_did(
-  client: &Client,
-  secret_manager: &mut SecretManager,
-  storage: &MemStorage,
-) -> anyhow::Result<(Address, IotaDocument, String)> {
-  let address: Address = get_address_with_funds(client, secret_manager, FAUCET_ENDPOINT)
-    .await
-    .context("failed to get address with funds")?;
-
-  let network_name: NetworkName = client.network_name().await?;
-
-  let (document, fragment): (IotaDocument, String) = create_did_document(&network_name, storage).await?;
-
-  let alias_output: AliasOutput = client.new_did_output(address, document, None).await?;
-
-  let document: IotaDocument = client.publish_did_output(secret_manager, alias_output).await?;
-
-  Ok((address, document, fragment))
-}
-
-/// Creates an example DID document with the given `network_name`.
-///
-/// Its functionality is equivalent to the "create DID" example
-/// and exists for convenient calling from the other examples.
-pub async fn create_did_document(
-  network_name: &NetworkName,
-  storage: &MemStorage,
-) -> anyhow::Result<(IotaDocument, String)> {
-  let mut document: IotaDocument = IotaDocument::new(network_name);
-
-  let fragment: String = document
+pub async fn create_did_document<K, I, S>(
+  identity_client: &IdentityClient<S>,
+  storage: &Storage<K, I>,
+) -> anyhow::Result<(IotaDocument, String)>
+where
+  K: identity_storage::JwkStorage,
+  I: identity_storage::KeyIdStorage,
+  S: Signer<IotaKeySignature> + OptionalSync,
+{
+  // Create a new DID document with a placeholder DID.
+  let mut unpublished: IotaDocument = IotaDocument::new(identity_client.network());
+  let verification_method_fragment = unpublished
     .generate_method(
       storage,
       JwkMemStore::ED25519_KEY_TYPE,
@@ -77,95 +56,14 @@ pub async fn create_did_document(
     )
     .await?;
 
-  Ok((document, fragment))
-}
+  let document = identity_client
+    .publish_did_document(unpublished)
+    .with_gas_budget(TEST_GAS_BUDGET)
+    .build_and_execute(identity_client)
+    .await?
+    .output;
 
-/// Generates an address from the given [`SecretManager`] and adds funds from the faucet.
-pub async fn get_address_with_funds(
-  client: &Client,
-  stronghold: &SecretManager,
-  faucet_endpoint: &str,
-) -> anyhow::Result<Address> {
-  let address: Bech32Address = get_address(client, stronghold).await?;
-
-  request_faucet_funds(client, address, faucet_endpoint)
-    .await
-    .context("failed to request faucet funds")?;
-
-  Ok(*address)
-}
-
-/// Initializes the [`SecretManager`] with a new mnemonic, if necessary,
-/// and generates an address from the given [`SecretManager`].
-pub async fn get_address(client: &Client, secret_manager: &SecretManager) -> anyhow::Result<Bech32Address> {
-  let random: [u8; 32] = rand::random();
-  let mnemonic = bip39::wordlist::encode(random.as_ref(), &bip39::wordlist::ENGLISH)
-    .map_err(|err| anyhow::anyhow!(format!("{err:?}")))?;
-
-  if let SecretManager::Stronghold(ref stronghold) = secret_manager {
-    match stronghold.store_mnemonic(mnemonic).await {
-      Ok(()) => (),
-      Err(iota_sdk::client::stronghold::Error::MnemonicAlreadyStored) => (),
-      Err(err) => anyhow::bail!(err),
-    }
-  } else {
-    anyhow::bail!("expected a `StrongholdSecretManager`");
-  }
-
-  let bech32_hrp: Hrp = client.get_bech32_hrp().await?;
-  let address: Bech32Address = secret_manager
-    .generate_ed25519_addresses(
-      GetAddressesOptions::default()
-        .with_range(0..1)
-        .with_bech32_hrp(bech32_hrp),
-    )
-    .await?[0];
-
-  Ok(address)
-}
-
-/// Requests funds from the faucet for the given `address`.
-async fn request_faucet_funds(client: &Client, address: Bech32Address, faucet_endpoint: &str) -> anyhow::Result<()> {
-  iota_sdk::client::request_funds_from_faucet(faucet_endpoint, &address).await?;
-
-  tokio::time::timeout(std::time::Duration::from_secs(45), async {
-    loop {
-      tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-
-      let balance = get_address_balance(client, &address)
-        .await
-        .context("failed to get address balance")?;
-      if balance > 0 {
-        break;
-      }
-    }
-    Ok::<(), anyhow::Error>(())
-  })
-  .await
-  .context("maximum timeout exceeded")??;
-
-  Ok(())
-}
-
-/// Returns the balance of the given Bech32-encoded `address`.
-async fn get_address_balance(client: &Client, address: &Bech32Address) -> anyhow::Result<u64> {
-  let output_ids = client
-    .basic_output_ids(vec![
-      QueryParameter::Address(address.to_owned()),
-      QueryParameter::HasExpiration(false),
-      QueryParameter::HasTimelock(false),
-      QueryParameter::HasStorageDepositReturn(false),
-    ])
-    .await?;
-
-  let outputs = client.get_outputs(&output_ids).await?;
-
-  let mut total_amount = 0;
-  for output_response in outputs {
-    total_amount += output_response.output().amount();
-  }
-
-  Ok(total_amount)
+  Ok((document, verification_method_fragment))
 }
 
 /// Creates a random stronghold path in the temporary directory, whose exact location is OS-dependent.
@@ -177,11 +75,77 @@ pub fn random_stronghold_path() -> PathBuf {
   file.to_owned()
 }
 
+pub async fn get_read_only_client() -> anyhow::Result<IdentityClientReadOnly> {
+  let api_endpoint = std::env::var("API_ENDPOINT").unwrap_or_else(|_| IOTA_LOCAL_NETWORK_URL.to_string());
+  let iota_client = IotaClientBuilder::default()
+    .build(&api_endpoint)
+    .await
+    .map_err(|err| anyhow::anyhow!(format!("failed to connect to network; {}", err)))?;
+  let package_id = std::env::var("IOTA_IDENTITY_PKG_ID")
+    .map_err(|e| {
+      anyhow::anyhow!("env variable IOTA_IDENTITY_PKG_ID must be set in order to run the examples").context(e)
+    })
+    .and_then(|pkg_str| pkg_str.parse().context("invalid package id"))?;
+
+  IdentityClientReadOnly::new_with_pkg_id(iota_client, package_id)
+    .await
+    .context("failed to create a read-only IdentityClient")
+}
+
+pub async fn get_funded_client<K, I>(
+  storage: &Storage<K, I>,
+) -> Result<IdentityClient<StorageSigner<K, I>>, anyhow::Error>
+where
+  K: JwkStorage,
+  I: KeyIdStorage,
+{
+  // generate new key
+  let generate = storage
+    .key_storage()
+    .generate(KeyType::new("Ed25519"), JwsAlgorithm::EdDSA)
+    .await?;
+  let public_key_jwk = generate.jwk.to_public().expect("public components should be derivable");
+  let signer = StorageSigner::new(storage, generate.key_id, public_key_jwk);
+  let sender_address = IotaAddress::from(&Signer::public_key(&signer).await?);
+
+  request_funds(&sender_address).await?;
+
+  let read_only_client = get_read_only_client().await?;
+  let identity_client = IdentityClient::new(read_only_client, signer).await?;
+
+  Ok(identity_client)
+}
+
+pub fn get_memstorage() -> Result<MemStorage, anyhow::Error> {
+  Ok(MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new()))
+}
+
+pub fn get_stronghold_storage(
+  path: Option<PathBuf>,
+) -> Result<Storage<StrongholdStorage, StrongholdStorage>, anyhow::Error> {
+  // Stronghold snapshot path.
+  let path = path.unwrap_or_else(random_stronghold_path);
+
+  // Stronghold password.
+  let password = Password::from("secure_password".to_owned());
+
+  let stronghold = StrongholdSecretManager::builder()
+    .password(password.clone())
+    .build(path.clone())?;
+
+  // Create a `StrongholdStorage`.
+  // `StrongholdStorage` creates internally a `SecretManager` that can be
+  // referenced to avoid creating multiple instances around the same stronghold snapshot.
+  let stronghold_storage = StrongholdStorage::new(stronghold);
+
+  Ok(Storage::new(stronghold_storage.clone(), stronghold_storage.clone()))
+}
+
 pub fn pretty_print_json(label: &str, value: &str) {
   let data: Value = serde_json::from_str(value).unwrap();
   let pretty_json = serde_json::to_string_pretty(&data).unwrap();
   println!("--------------------------------------");
-  println!("{}:", label);
+  println!("{label}:");
   println!("--------------------------------------");
-  println!("{} \n", pretty_json);
+  println!("{pretty_json} \n");
 }

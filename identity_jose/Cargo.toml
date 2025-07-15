@@ -1,6 +1,6 @@
 [package]
 name = "identity_jose"
-version = "1.5.1"
+version = "1.6.0-beta"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -11,20 +11,29 @@ repository.workspace = true
 description = "A library for JOSE (JSON Object Signing and Encryption)"
 
 [dependencies]
+anyhow = { version = "1", optional = true }
 bls12_381_plus.workspace = true
-identity_core = { version = "=1.5.1", path = "../identity_core" }
-iota-crypto = { version = "0.23.2", default-features = false, features = ["ed25519", "std", "sha"] }
+fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "2f502fd8570fe4e9cff36eea5bbd6fef22002898", package = "fastcrypto", optional = true }
+identity_core = { version = "=1.6.0-beta", path = "../identity_core" }
+iota-crypto = { version = "0.23.2", default-features = false, features = ["std", "sha"] }
 json-proof-token.workspace = true
+k256 = { version = "0.13.3", default-features = false, features = ["std", "ecdsa", "ecdsa-core", "jwk"], optional = true }
+p256 = { version = "0.13.2", default-features = false, features = ["std", "ecdsa", "ecdsa-core", "jwk"], optional = true }
 serde.workspace = true
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
-subtle = { version = "2.5", default-features = false }
 thiserror.workspace = true
 zeroize = { version = "1.6", default-features = false, features = ["std", "zeroize_derive"] }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.2.1", package = "iota_interaction" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.2.1", package = "iota_interaction", default-features = false }
+
 [dev-dependencies]
-anyhow = "1"
-iota-crypto = { version = "0.23.2", features = ["ed25519", "random", "hmac"] }
-p256 = { version = "0.12.0", default-features = false, features = ["std", "ecdsa", "ecdsa-core"] }
+iota-crypto = { version = "0.23", features = ["ed25519", "random", "hmac"] }
+p256 = { version = "0.13.0", default-features = false, features = ["std", "ecdsa", "ecdsa-core"] }
+rand = { version = "0.8.5", default-features = false, features = ["std", "std_rng"] }
 signature = { version = "2", default-features = false }
 
 [[example]]
@@ -35,7 +44,9 @@ test = true
 workspace = true
 
 [features]
+default = []
 custom_alg = []
+jwk-conversion = ["dep:anyhow", "dep:k256", "dep:p256", "fastcrypto/copy_key"]
 
 [[test]]
 name = "custom_alg"

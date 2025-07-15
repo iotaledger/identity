@@ -82,9 +82,7 @@ async fn status_list_2021_credential_update() -> anyhow::Result<()> {
 
   status_list_credential.update(|status_list| {
     for idx in entries_to_set {
-      if let Err(e) = status_list.set_entry(idx as usize, true) {
-        return Err(e);
-      }
+      status_list.set_entry(idx as usize, true)?
     }
     Ok(())
   })?;

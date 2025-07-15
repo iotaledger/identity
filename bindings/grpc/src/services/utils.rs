@@ -8,6 +8,7 @@ use _utils::DataSigningResponse;
 use identity_iota::storage::JwkStorage;
 use identity_iota::storage::KeyId;
 use identity_iota::storage::KeyStorageError;
+use identity_stronghold::StrongholdKeyType;
 use identity_stronghold::StrongholdStorage;
 use tonic::Request;
 use tonic::Response;
@@ -51,7 +52,11 @@ impl SigningSvc for SigningService {
   async fn sign(&self, req: Request<DataSigningRequest>) -> Result<Response<DataSigningResponse>, Status> {
     let DataSigningRequest { data, key_id } = req.into_inner();
     let key_id = KeyId::new(key_id);
-    let public_key_jwk = self.storage.get_public_key(&key_id).await.map_err(Error)?;
+    let public_key_jwk = self
+      .storage
+      .get_public_key_with_type(&key_id, StrongholdKeyType::Ed25519)
+      .await
+      .map_err(Error)?;
     let signature = self
       .storage
       .sign(&key_id, &data, &public_key_jwk)

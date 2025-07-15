@@ -1,6 +1,6 @@
 [package]
 name = "identity_core"
-version = "1.5.1"
+version = "1.6.0-beta"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -11,14 +11,17 @@ repository.workspace = true
 description = "The core traits and types for the identity-rs library."
 
 [dependencies]
+# pin dependency of `time` and limit range, as `0.4.1` has impl for `usize: PartialOrd<_>`
+# that conflicts with `iota-sdk`s `core` impl, leading to errors in `iota-sdk` crate
+deranged = { version = ">=0.4.0, <0.4.1", default-features = false }
 multibase = { version = "0.9", default-features = false, features = ["std"] }
+product_common.workspace = true
 serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
 strum.workspace = true
 thiserror.workspace = true
 time = { version = "0.3.23", default-features = false, features = ["std", "serde", "parsing", "formatting"] }
 url = { version = "2.4", default-features = false, features = ["serde"] }
-zeroize = { version = "1.6", default-features = false }
 
 [target.'cfg(all(target_arch = "wasm32", not(target_os = "wasi")))'.dependencies]
 js-sys = { version = "0.3.55", default-features = false, optional = true }

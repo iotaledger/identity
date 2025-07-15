@@ -1,11 +1,10 @@
 // Copyright 2020-2024 IOTA Stiftung, Fondazione Links
 // SPDX-License-Identifier: Apache-2.0
 
-use examples::get_address_with_funds;
-use examples::random_stronghold_path;
-use examples::MemStorage;
-use examples::API_ENDPOINT;
-use examples::FAUCET_ENDPOINT;
+use examples::get_funded_client;
+
+use examples::get_memstorage;
+use examples::TEST_GAS_BUDGET;
 use identity_iota::core::json;
 use identity_iota::core::FromJson;
 use identity_iota::core::Object;
@@ -26,81 +25,63 @@ use identity_iota::credential::SelectiveDisclosurePresentation;
 use identity_iota::credential::Subject;
 use identity_iota::did::CoreDID;
 use identity_iota::did::DID;
-use identity_iota::iota::IotaClientExt;
+use identity_iota::iota_interaction::OptionalSync;
+
 use identity_iota::iota::IotaDocument;
-use identity_iota::iota::IotaIdentityClientExt;
-use identity_iota::iota::NetworkName;
 use identity_iota::resolver::Resolver;
 use identity_iota::storage::JwkMemStore;
 use identity_iota::storage::JwpDocumentExt;
-use identity_iota::storage::KeyIdMemstore;
 use identity_iota::storage::KeyType;
 use identity_iota::verification::MethodScope;
-use iota_sdk::client::secret::stronghold::StrongholdSecretManager;
-use iota_sdk::client::secret::SecretManager;
-use iota_sdk::client::Client;
-use iota_sdk::client::Password;
-use iota_sdk::types::block::address::Address;
-use iota_sdk::types::block::output::AliasOutput;
+
+use identity_iota::iota::rebased::client::IdentityClient;
+use identity_iota::iota::rebased::client::IotaKeySignature;
+use identity_storage::Storage;
 use jsonprooftoken::jpa::algs::ProofAlgorithm;
+use product_common::transaction::TransactionOutput;
+use secret_storage::Signer;
 
 // Creates a DID with a JWP verification method.
-async fn create_did(
-  client: &Client,
-  secret_manager: &SecretManager,
-  storage: &MemStorage,
+pub async fn create_did<K, I, S>(
+  identity_client: &IdentityClient<S>,
+  storage: &Storage<K, I>,
   key_type: KeyType,
   alg: ProofAlgorithm,
-) -> anyhow::Result<(Address, IotaDocument, String)> {
-  // Get an address with funds for testing.
-  let address: Address = get_address_with_funds(client, secret_manager, FAUCET_ENDPOINT).await?;
-
-  // Get the Bech32 human-readable part (HRP) of the network.
-  let network_name: NetworkName = client.network_name().await?;
-
+) -> anyhow::Result<(IotaDocument, String)>
+where
+  K: identity_storage::JwkStorage + identity_storage::JwkStorageBbsPlusExt,
+  I: identity_storage::KeyIdStorage,
+  S: Signer<IotaKeySignature> + OptionalSync,
+{
   // Create a new DID document with a placeholder DID.
-  // The DID will be derived from the Alias Id of the Alias Output after publishing.
-  let mut document: IotaDocument = IotaDocument::new(&network_name);
+  let mut unpublished: IotaDocument = IotaDocument::new(identity_client.network());
 
-  let fragment = document
+  let verification_method_fragment = unpublished
     .generate_method_jwp(storage, key_type, alg, None, MethodScope::VerificationMethod)
     .await?;
 
-  // Construct an Alias Output containing the DID document, with the wallet address
-  // set as both the state controller and governor.
-  let alias_output: AliasOutput = client.new_did_output(address, document, None).await?;
+  let TransactionOutput::<IotaDocument> { output: document, .. } = identity_client
+    .publish_did_document(unpublished)
+    .with_gas_budget(TEST_GAS_BUDGET)
+    .build_and_execute(identity_client)
+    .await?;
 
-  // Publish the Alias Output and get the published DID document.
-  let document: IotaDocument = client.publish_did_output(secret_manager, alias_output).await?;
-  println!("Published DID document: {document:#}");
-
-  Ok((address, document, fragment))
+  Ok((document, verification_method_fragment))
 }
 
 /// Demonstrates how to create an Anonymous Credential with BBS+.
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
   // ===========================================================================
-  // Step 1: Create identity for the issuer.
+  // Step 1: Create identities and Client
   // ===========================================================================
 
-  // Create a new client to interact with the IOTA ledger.
-  let client: Client = Client::builder()
-    .with_primary_node(API_ENDPOINT, None)?
-    .finish()
-    .await?;
+  let storage_issuer = get_memstorage()?;
 
-  let secret_manager_issuer = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_1".to_owned()))
-      .build(random_stronghold_path())?,
-  );
+  let identity_client = get_funded_client(&storage_issuer).await?;
 
-  let storage_issuer: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-
-  let (_, issuer_document, fragment_issuer): (Address, IotaDocument, String) = create_did(
-    &client,
-    &secret_manager_issuer,
+  let (issuer_document, fragment_issuer): (IotaDocument, String) = create_did(
+    &identity_client,
     &storage_issuer,
     JwkMemStore::BLS12381G2_KEY_TYPE,
     ProofAlgorithm::BBS,
@@ -165,7 +146,7 @@ async fn main() -> anyhow::Result<()> {
   // ============================================================================================
 
   let mut resolver: Resolver<IotaDocument> = Resolver::new();
-  resolver.attach_iota_handler(client);
+  resolver.attach_iota_handler((*identity_client).clone());
 
   // Holder resolves issuer's DID
   let issuer: CoreDID = JptCredentialValidatorUtils::extract_issuer_from_issued_jpt(&credential_jpt).unwrap();

@@ -18,6 +18,8 @@ mod pqc_jws_document_ext;
 
 mod did_jwk_document_ext;
 
+#[cfg(feature = "storage-signer")]
+mod storage_signer;
 #[cfg(all(test, feature = "memstore"))]
 pub(crate) mod tests;
 
@@ -27,6 +29,8 @@ pub use jwk_document_ext::*;
 #[cfg(feature = "jpt-bbs-plus")]
 pub use jwp_document_ext::*;
 pub use signature_options::*;
+#[cfg(feature = "storage-signer")]
+pub use storage_signer::*;
 #[cfg(feature = "jpt-bbs-plus")]
 pub use timeframe_revocation_ext::*;
 #[cfg(feature = "hybrid")]
@@ -63,3 +67,21 @@ impl<K, I> Storage<K, I> {
     &self.key_id_storage
   }
 }
+
+#[cfg(feature = "keytool")]
+mod keytool {
+  use super::Storage;
+  use iota_interaction::KeytoolStorage as Keytool;
+
+  /// An unsecure [Storage] that leverages IOTA Keytool.
+  pub type KeytoolStorage = Storage<Keytool, Keytool>;
+
+  impl From<Keytool> for KeytoolStorage {
+    fn from(keytool: Keytool) -> Self {
+      KeytoolStorage::new(keytool.clone(), keytool)
+    }
+  }
+}
+
+#[cfg(feature = "keytool")]
+pub use keytool::*;

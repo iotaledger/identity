@@ -1,6 +1,6 @@
 [package]
 name = "identity_resolver"
-version = "1.5.1"
+version = "1.6.0-beta"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -8,37 +8,36 @@ keywords = ["iota", "did", "identity", "resolver", "resolution"]
 license.workspace = true
 readme = "./README.md"
 repository.workspace = true
-description = "DID Resolution utilities for the identity.rs library."
+description = "DID Resolution utilities for the IOTA Identity library."
 
 [dependencies]
 # This is currently necessary for the ResolutionHandler trait. This can be made an optional dependency if alternative ways of attaching handlers are introduced.
 async-trait = { version = "0.1", default-features = false }
 futures = { version = "0.3" }
-identity_core = { version = "=1.5.1", path = "../identity_core", default-features = false }
-identity_credential = { version = "=1.5.1", path = "../identity_credential", default-features = false, features = ["validator"] }
-identity_did = { version = "=1.5.1", path = "../identity_did", default-features = false }
-identity_document = { version = "=1.5.1", path = "../identity_document", default-features = false }
+identity_core = { version = "=1.6.0-beta", path = "../identity_core", default-features = false }
+identity_credential = { version = "=1.6.0-beta", path = "../identity_credential", default-features = false, features = ["validator"] }
+identity_did = { version = "=1.6.0-beta", path = "../identity_did", default-features = false }
+identity_document = { version = "=1.6.0-beta", path = "../identity_document", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["std", "derive"] }
 strum.workspace = true
 thiserror = { version = "1.0", default-features = false }
 
 [dependencies.identity_iota_core]
-version = "=1.5.1"
+version = "=1.6.0-beta"
 path = "../identity_iota_core"
 default-features = false
-features = ["send-sync-client-ext", "iota-client"]
+features = ["iota-client"]
 optional = true
 
 [dev-dependencies]
-identity_iota_core = { path = "../identity_iota_core", features = ["test"] }
-iota-sdk = { version = "1.1.5" }
-tokio = { version = "1.29.0", default-features = false, features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.43", default-features = false, features = ["rt-multi-thread", "macros"] }
 
 [features]
-default = ["revocation-bitmap", "iota"]
+default = ["revocation-bitmap", "iota", "send-sync-client"]
 revocation-bitmap = ["identity_credential/revocation-bitmap", "identity_iota_core?/revocation-bitmap"]
 # Enables the IOTA integration for the resolver.
 iota = ["dep:identity_iota_core"]
+send-sync-client = ["identity_iota_core?/send-sync"]
 
 [lints]
 workspace = true

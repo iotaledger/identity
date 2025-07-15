@@ -41,7 +41,7 @@ pub enum Error {
   #[error("attempt to parse an unregistered jws algorithm")]
   JwsAlgorithmParsingError,
   /// Caused by an error during signature verification.
-  #[error("signature verification error")]
+  #[error("signature verification error; {0}")]
   SignatureVerificationError(#[source] crate::jws::SignatureVerificationError),
   /// Caused by a missing header.
   #[error("missing header")]
@@ -49,4 +49,10 @@ pub enum Error {
   /// Caused by a missing `alg` claim in the protected header.
   #[error("missing alg in protected header")]
   ProtectedHeaderWithoutAlg,
+  /// Caused by converting keys to different types.
+  #[error("failed to convert key: `{0}`")]
+  KeyConversion(String),
+  /// Key type not supported.
+  #[error("key type not supported; {0}")]
+  UnsupportedKeyType(String),
 }

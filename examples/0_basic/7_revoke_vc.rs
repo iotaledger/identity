@@ -11,10 +11,10 @@
 //! cargo run --release --example 7_revoke_vc
 
 use anyhow::anyhow;
-use examples::create_did;
-use examples::random_stronghold_path;
-use examples::MemStorage;
-use examples::API_ENDPOINT;
+use examples::create_did_document;
+use examples::get_funded_client;
+use examples::get_memstorage;
+use examples::TEST_GAS_BUDGET;
 use identity_eddsa_verifier::EdDSAJwsVerifier;
 use identity_iota::core::json;
 use identity_iota::core::FromJson;
@@ -37,23 +37,11 @@ use identity_iota::credential::Subject;
 use identity_iota::did::DIDUrl;
 use identity_iota::did::DID;
 use identity_iota::document::Service;
-use identity_iota::iota::IotaClientExt;
 use identity_iota::iota::IotaDocument;
-use identity_iota::iota::IotaIdentityClientExt;
 use identity_iota::prelude::IotaDID;
 use identity_iota::resolver::Resolver;
 use identity_iota::storage::JwkDocumentExt;
-use identity_iota::storage::JwkMemStore;
 use identity_iota::storage::JwsSignatureOptions;
-use identity_iota::storage::KeyIdMemstore;
-use iota_sdk::client::secret::stronghold::StrongholdSecretManager;
-use iota_sdk::client::secret::SecretManager;
-use iota_sdk::client::Client;
-use iota_sdk::client::Password;
-use iota_sdk::types::block::address::Address;
-use iota_sdk::types::block::output::AliasOutput;
-use iota_sdk::types::block::output::AliasOutputBuilder;
-use iota_sdk::types::block::output::RentStructure;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -61,32 +49,15 @@ async fn main() -> anyhow::Result<()> {
   // Create a Verifiable Credential.
   // ===========================================================================
 
-  // Create a new client to interact with the IOTA ledger.
-  let client: Client = Client::builder()
-    .with_primary_node(API_ENDPOINT, None)?
-    .finish()
-    .await?;
+  // create new issuer account with did document
+  let issuer_storage = get_memstorage()?;
+  let issuer_identity_client = get_funded_client(&issuer_storage).await?;
+  let (mut issuer_document, issuer_vm_fragment) = create_did_document(&issuer_identity_client, &issuer_storage).await?;
 
-  let mut secret_manager_issuer: SecretManager = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_1".to_owned()))
-      .build(random_stronghold_path())?,
-  );
-
-  // Create an identity for the issuer with one verification method `key-1`.
-  let storage_issuer: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-  let (_, mut issuer_document, fragment_issuer): (Address, IotaDocument, String) =
-    create_did(&client, &mut secret_manager_issuer, &storage_issuer).await?;
-
-  // Create an identity for the holder, in this case also the subject.
-  let mut secret_manager_alice: SecretManager = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_2".to_owned()))
-      .build(random_stronghold_path())?,
-  );
-  let storage_alice: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-  let (_, alice_document, _): (Address, IotaDocument, String) =
-    create_did(&client, &mut secret_manager_alice, &storage_alice).await?;
+  // create new holder account with did document
+  let holder_storage = get_memstorage()?;
+  let holder_identity_client = get_funded_client(&holder_storage).await?;
+  let (holder_document, _) = create_did_document(&holder_identity_client, &holder_storage).await?;
 
   // Create a new empty revocation bitmap. No credential is revoked yet.
   let revocation_bitmap: RevocationBitmap = RevocationBitmap::new();
@@ -98,23 +69,15 @@ async fn main() -> anyhow::Result<()> {
   assert!(issuer_document.insert_service(service).is_ok());
 
   // Resolve the latest output and update it with the given document.
-  let alias_output: AliasOutput = client.update_did_output(issuer_document.clone()).await?;
-
-  // Because the size of the DID document increased, we have to increase the allocated storage deposit.
-  // This increases the deposit amount to the new minimum.
-  let rent_structure: RentStructure = client.get_rent_structure().await?;
-  let alias_output: AliasOutput = AliasOutputBuilder::from(&alias_output)
-    .with_minimum_storage_deposit(rent_structure)
-    .finish()?;
-
-  // Publish the updated Alias Output.
-  issuer_document = client.publish_did_output(&secret_manager_issuer, alias_output).await?;
+  issuer_document = issuer_identity_client
+    .publish_did_document_update(issuer_document.clone(), TEST_GAS_BUDGET)
+    .await?;
 
   println!("DID Document > {issuer_document:#}");
 
   // Create a credential subject indicating the degree earned by Alice.
   let subject: Subject = Subject::from_json_value(json!({
-    "id": alice_document.id().as_str(),
+    "id": holder_document.id().as_str(),
     "name": "Alice",
     "degree": {
       "type": "BachelorDegree",
@@ -129,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
   let credential_index: u32 = 5;
   let status: Status = RevocationBitmapStatus::new(service_url, credential_index).into();
 
-  // Build credential using subject above, status, and issuer.
+  // Build credential using subject above and issuer.
   let credential: Credential = CredentialBuilder::default()
     .id(Url::parse("https://example.edu/credentials/3732")?)
     .issuer(Url::parse(issuer_document.id().as_str())?)
@@ -143,8 +106,8 @@ async fn main() -> anyhow::Result<()> {
   let credential_jwt: Jwt = issuer_document
     .create_credential_jwt(
       &credential,
-      &storage_issuer,
-      &fragment_issuer,
+      &issuer_storage,
+      &issuer_vm_fragment,
       &JwsSignatureOptions::default(),
       None,
     )
@@ -169,12 +132,9 @@ async fn main() -> anyhow::Result<()> {
   issuer_document.revoke_credentials("my-revocation-service", &[credential_index])?;
 
   // Publish the changes.
-  let alias_output: AliasOutput = client.update_did_output(issuer_document.clone()).await?;
-  let rent_structure: RentStructure = client.get_rent_structure().await?;
-  let alias_output: AliasOutput = AliasOutputBuilder::from(&alias_output)
-    .with_minimum_storage_deposit(rent_structure)
-    .finish()?;
-  issuer_document = client.publish_did_output(&secret_manager_issuer, alias_output).await?;
+  issuer_document = issuer_identity_client
+    .publish_did_document_update(issuer_document.clone(), TEST_GAS_BUDGET)
+    .await?;
 
   let validation_result: std::result::Result<DecodedJwtCredential, CompoundCredentialValidationError> = validator
     .validate(
@@ -197,7 +157,7 @@ async fn main() -> anyhow::Result<()> {
   // By removing the verification method, that signed the credential, from the issuer's DID document,
   // we effectively revoke the credential, as it will no longer be possible to validate the signature.
   let original_method: DIDUrl = issuer_document
-    .resolve_method(&fragment_issuer, None)
+    .resolve_method(&issuer_vm_fragment, None)
     .ok_or_else(|| anyhow!("expected method to exist"))?
     .id()
     .clone();
@@ -206,13 +166,13 @@ async fn main() -> anyhow::Result<()> {
     .ok_or_else(|| anyhow!("expected method to exist"))?;
 
   // Publish the changes.
-  let alias_output: AliasOutput = client.update_did_output(issuer_document.clone()).await?;
-  let alias_output: AliasOutput = AliasOutputBuilder::from(&alias_output).finish()?;
-  client.publish_did_output(&secret_manager_issuer, alias_output).await?;
+  issuer_identity_client
+    .publish_did_document_update(issuer_document.clone(), TEST_GAS_BUDGET)
+    .await?;
 
   // We expect the verifiable credential to be revoked.
   let mut resolver: Resolver<IotaDocument> = Resolver::new();
-  resolver.attach_iota_handler(client);
+  resolver.attach_iota_handler((*holder_identity_client).clone());
   let resolved_issuer_did: IotaDID = JwtCredentialValidatorUtils::extract_issuer_from_jwt(&credential_jwt)?;
   let resolved_issuer_doc: IotaDocument = resolver.resolve(&resolved_issuer_did).await?;
 

@@ -1,7 +1,7 @@
-# Identity.rs gRPC Bindings
-This project provides the functionalities of [Identity.rs](https://github.com/iotaledger/identity.rs) in a language-agnostic way through a [gRPC](https://grpc.io) server.
+# Identity gRPC Bindings
+This project provides the functionalities of [Identity](https://github.com/iotaledger/identity) in a language-agnostic way through a [gRPC](https://grpc.io) server.
 
-The server can easily be run with docker using [this dockerfile](https://github.com/iotaledger/identity.rs/blob/main/bindings/grpc/Dockerfile).
+The server can easily be run with docker using [this dockerfile](https://github.com/iotaledger/identity/blob/main/bindings/grpc/Dockerfile).
 
 ## Build
 Run `docker build -f bindings/grpc/Dockerfile -t iotaleger/identity-grpc .` from the project root.
@@ -17,24 +17,24 @@ Make sure to provide a valid stronghold snapshot at the provided `SNAPSHOT_PATH`
 ### Available services
 | Service description                                                            | Service Id                                                               | Proto File                                                                                                                        |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------|
-| Credential Revocation Checking                                                 | `credentials/CredentialRevocation.check`                                 | [credentials.proto](https://github.com/iotaledger/identity.rs/blob/main/bindings/grpc/proto/credentials.proto)           |
-| SD-JWT Validation                                                              | `sd_jwt/Verification.verify`                                             | [sd_jwt.proto](https://github.com/iotaledger/identity.rs/blob/main/bindings/grpc/proto/sd_jwt.proto)                     |
-| Credential JWT creation                                                        | `credentials/Jwt.create`                                                 | [credentials.proto](https://github.com/iotaledger/identity.rs/blob/main/bindings/grpc/proto/credentials.proto)           |
-| Credential JWT validation                                                      | `credentials/VcValidation.validate`                                      | [credentials.proto](https://github.com/iotaledger/identity.rs/blob/main/bindings/grpc/proto/credentials.proto)           |
-| DID Document Creation                                                          | `document/DocumentService.create`                                        | [document.proto](https://github.com/iotaledger/identity.rs/blob/main/bindings/grpc/proto/document.proto)                 |
-| Domain Linkage - validate domain, let server fetch did-configuration           | `domain_linkage/DomainLinkage.validate_domain`                           | [domain_linkage.proto](https://github.com/iotaledger/identity.rs/blob/main/bindings/grpc/proto/domain_linkage.proto)     |
-| Domain Linkage - validate domain, pass did-configuration to service            | `domain_linkage/DomainLinkage.validate_domain_against_did_configuration` | [domain_linkage.proto](https://github.com/iotaledger/identity.rs/blob/main/bindings/grpc/proto/domain_linkage.proto)     |
-| Domain Linkage - validate endpoints in DID, let server fetch did-configuration | `domain_linkage/DomainLinkage.validate_did`                              | [domain_linkage.proto](https://github.com/iotaledger/identity.rs/blob/main/bindings/grpc/proto/domain_linkage.proto)     |
-| Domain Linkage - validate endpoints in DID, pass did-configuration to service  | `domain_linkage/DomainLinkage.validate_did_against_did_configurations`   | [domain_linkage.proto](https://github.com/iotaledger/identity.rs/blob/main/bindings/grpc/proto/domain_linkage.proto)     |
-| `StatusList2021Credential` creation                                            | `status_list_2021/StatusList2021Svc.create`                              | [status_list_2021.proto](https://github.com/iotaledger/identity.rs/blob/main/bindings/grpc/proto/status_list_2021.proto) |
-| `StatusList2021Credential` update                                              | `status_list_2021/StatusList2021Svc.update`                              | [status_list_2021.proto](https://github.com/iotaledger/identity.rs/blob/main/bindings/grpc/proto/status_list_2021.proto) |
+| Credential Revocation Checking                                                 | `credentials/CredentialRevocation.check`                                 | [credentials.proto](https://github.com/iotaledger/identity/blob/main/bindings/grpc/proto/credentials.proto)           |
+| SD-JWT Validation                                                              | `sd_jwt/Verification.verify`                                             | [sd_jwt.proto](https://github.com/iotaledger/identity/blob/main/bindings/grpc/proto/sd_jwt.proto)                     |
+| Credential JWT creation                                                        | `credentials/Jwt.create`                                                 | [credentials.proto](https://github.com/iotaledger/identity/blob/main/bindings/grpc/proto/credentials.proto)           |
+| Credential JWT validation                                                      | `credentials/VcValidation.validate`                                      | [credentials.proto](https://github.com/iotaledger/identity/blob/main/bindings/grpc/proto/credentials.proto)           |
+| DID Document Creation                                                          | `document/DocumentService.create`                                        | [document.proto](https://github.com/iotaledger/identity/blob/main/bindings/grpc/proto/document.proto)                 |
+| Domain Linkage - validate domain, let server fetch did-configuration           | `domain_linkage/DomainLinkage.validate_domain`                           | [domain_linkage.proto](https://github.com/iotaledger/identity/blob/main/bindings/grpc/proto/domain_linkage.proto)     |
+| Domain Linkage - validate domain, pass did-configuration to service            | `domain_linkage/DomainLinkage.validate_domain_against_did_configuration` | [domain_linkage.proto](https://github.com/iotaledger/identity/blob/main/bindings/grpc/proto/domain_linkage.proto)     |
+| Domain Linkage - validate endpoints in DID, let server fetch did-configuration | `domain_linkage/DomainLinkage.validate_did`                              | [domain_linkage.proto](https://github.com/iotaledger/identity/blob/main/bindings/grpc/proto/domain_linkage.proto)     |
+| Domain Linkage - validate endpoints in DID, pass did-configuration to service  | `domain_linkage/DomainLinkage.validate_did_against_did_configurations`   | [domain_linkage.proto](https://github.com/iotaledger/identity/blob/main/bindings/grpc/proto/domain_linkage.proto)     |
+| `StatusList2021Credential` creation                                            | `status_list_2021/StatusList2021Svc.create`                              | [status_list_2021.proto](https://github.com/iotaledger/identity/blob/main/bindings/grpc/proto/status_list_2021.proto) |
+| `StatusList2021Credential` update                                              | `status_list_2021/StatusList2021Svc.update`                              | [status_list_2021.proto](https://github.com/iotaledger/identity/blob/main/bindings/grpc/proto/status_list_2021.proto) |
 
 ## Testing
 
 ### Domain Linkage
 
 #### Http server
-In order to test domain linkage, you need access to a server that is reachable via HTTPS. If you already have one, you can ignore the server setup steps here and and provide the `did-configuration.json` on your server.
+In order to test domain linkage, you need access to a server that is reachable via HTTPS. If you already have one, you can ignore the server setup steps here and provide the `did-configuration.json` on your server.
 
 1. create a folder with did configuration in it, e.g. (you can also use the template in `./tooling/domain-linkage-test-server`)
     ```raw
@@ -62,7 +62,7 @@ In order to test domain linkage, you need access to a server that is reachable v
 1. for convenience, you can find a script to start the HTTP server, that you can adjust in `tooling/start-http-server.sh`, don't forget to insert your static domain or to remove the `--domain` parameter
 
 #### Domain linkage credential
-1. copy the public url and insert it into [6_domain_linkage.rs](https://github.com/iotaledger/identity.rs/blob/main/examples/1_advanced/6_domain_linkage.rs) as domain 1, e.g. `let domain_1: Url = Url::parse("https://0d40-2003-d3-2710-e200-485f-e8bb-7431-79a7.ngrok-free.app")?;`
+1. copy the public url and insert it into [6_domain_linkage.rs](https://github.com/iotaledger/identity/blob/main/examples/1_advanced/6_domain_linkage.rs) as domain 1, e.g. `let domain_1: Url = Url::parse("https://0d40-2003-d3-2710-e200-485f-e8bb-7431-79a7.ngrok-free.app")?;`
 .1 run the example with `cargo run --release --example 6_domain_linkage`
 
 #### GRPC server

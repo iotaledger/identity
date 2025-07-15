@@ -5,8 +5,6 @@
 
 pub use self::context::Context;
 pub use self::key_comparable::KeyComparable;
-pub use self::object::Object;
-pub use self::object::Value;
 pub use self::one_or_many::OneOrMany;
 pub use self::one_or_set::OneOrSet;
 pub use self::ordered_set::OrderedSet;
@@ -14,11 +12,12 @@ pub use self::single_struct_error::*;
 pub use self::timestamp::Duration;
 pub use self::timestamp::Timestamp;
 pub use self::url::Url;
+pub use product_common::object::Object;
+pub use product_common::object::Value;
 pub use string_or_url::StringOrUrl;
 
 mod context;
 mod key_comparable;
-mod object;
 mod one_or_many;
 mod one_or_set;
 mod ordered_set;

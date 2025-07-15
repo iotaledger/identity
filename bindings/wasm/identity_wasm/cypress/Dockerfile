@@ -1,0 +1,23 @@
+FROM cypress/browsers:latest
+
+ARG IOTA_IDENTITY_PKG_ID
+
+ENV IOTA_IDENTITY_PKG_ID=$IOTA_IDENTITY_PKG_ID
+
+ARG NETWORK_NAME_FAUCET
+
+ENV NETWORK_NAME_FAUCET=$NETWORK_NAME_FAUCET
+
+ARG NETWORK_URL
+
+ENV NETWORK_URL=$NETWORK_URL
+
+COPY ./ /e2e
+
+WORKDIR /e2e/identity_wasm
+
+RUN npm ci
+
+RUN npm run build:examples:web
+
+ENTRYPOINT [ "npm", "run" ]

@@ -37,6 +37,7 @@ pub use self::jpt::Jpt;
 pub use self::jwp_credential_options::JwpCredentialOptions;
 pub use self::jws::Jws;
 pub use self::jwt::Jwt;
+pub use self::jwt_serialization::JwtCredential;
 pub use self::linked_domain_service::LinkedDomainService;
 pub use self::linked_verifiable_presentation_service::LinkedVerifiablePresentationService;
 pub use self::policy::Policy;

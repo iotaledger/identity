@@ -36,7 +36,7 @@ secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag
 tokio = { version = "1.43", features = ["full"] }
 
 [features]
-default = ["revocation-bitmap", "iota-client", "send-sync", "resolver", "gas-station", "default-http-client"]
+default = ["revocation-bitmap", "iota-client", "send-sync", "resolver"]
 
 # Enables the IOTA client integration, and the `DidResolutionHandler` trait.
 iota-client = [

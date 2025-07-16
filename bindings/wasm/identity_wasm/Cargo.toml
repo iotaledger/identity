@@ -33,12 +33,12 @@ iota-sdk = { version = "1.1.5", default-features = false, features = [
   "serde",
   "std",
 ] }
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.6.1", package = "iota_interaction", default-features = false }
-iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.6.1", package = "iota_interaction_ts" }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.7.0", package = "iota_interaction", default-features = false }
+iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.7.0", package = "iota_interaction_ts" }
 js-sys = { version = "0.3.61" }
 json-proof-token = "0.3.4"
 proc_typescript = { version = "0.1.0", path = "./proc_typescript" }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.6.1", package = "product_common", features = [
+product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.7.0", package = "product_common", features = [
   "core-client",
   "transaction",
   "bindings",

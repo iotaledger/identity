@@ -1,6 +1,6 @@
 [package]
 name = "identity_pqc_verifier"
-version = "1.5.1"
+version = "1.6.0-beta"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true

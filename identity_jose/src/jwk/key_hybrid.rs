@@ -83,7 +83,7 @@ impl PostQuantumJwk {
       x5c: None,
       x5t: None,
       x5t_s256: None,
-      params: params,
+      params,
     }))
   }
 
@@ -274,7 +274,7 @@ impl TraditionalJwk {
       x5c: None,
       x5t: None,
       x5t_s256: None,
-      params: params,
+      params,
     }))
   }
 

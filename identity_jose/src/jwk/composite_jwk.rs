@@ -1,6 +1,7 @@
 // Copyright 2024 Fondazione Links
 // SPDX-License-Identifier: Apache-2.0
 
+use std::fmt::Display;
 use std::str::FromStr;
 
 use crate::jwk::PostQuantumJwk;
@@ -27,7 +28,7 @@ impl CompositeAlgId {
     }
   }
 
-  /// Returns the CompositeAlgId domain as a byte slice
+  /// Returns the [CompositeAlgId]'s domain as a byte slice.
   pub const fn domain(self) -> &'static [u8] {
     match self {
       Self::IdMldsa44Ed25519 => &[
@@ -40,9 +41,7 @@ impl CompositeAlgId {
   }
 
   /// Returns the prefix used for composite signatures.
-  pub const fn composite_signature_prefix() -> &'static [u8] {
-    b"CompositeAlgorithmSignatures2025"
-  }
+  pub const COMPOSITE_SIGNATURE_PREFIX: &[u8] = b"CompositeAlgorithmSignatures2025";
 }
 
 /// Represent a combination of a traditional public key and a post-quantum public key both in Jwk format.
@@ -78,13 +77,41 @@ impl CompositeJwk {
 }
 
 impl FromStr for CompositeAlgId {
-  type Err = crate::error::Error;
+  type Err = CompositeAlgParsingError;
 
   fn from_str(string: &str) -> std::result::Result<Self, Self::Err> {
     match string {
       "id-MLDSA44-Ed25519" => Ok(Self::IdMldsa44Ed25519),
       "id-MLDSA65-Ed25519" => Ok(Self::IdMldsa65Ed25519),
-      &_ => Err(crate::error::Error::JwsAlgorithmParsingError),
+      invalid => Err(CompositeAlgParsingError {
+        input: invalid.to_owned(),
+      }),
     }
+  }
+}
+
+/// Error that might occure when parsing a [CompositeAlgId] out of a string.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub struct CompositeAlgParsingError {
+  /// The input string.
+  pub input: String,
+}
+
+impl Display for CompositeAlgParsingError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(
+      f,
+      "invalid CompositeAlgId `{}`; valid values are: `{}`, `{}`",
+      self.input,
+      CompositeAlgId::IdMldsa44Ed25519.name(),
+      CompositeAlgId::IdMldsa65Ed25519.name()
+    )
+  }
+}
+
+impl From<CompositeAlgParsingError> for crate::error::Error {
+  fn from(_: CompositeAlgParsingError) -> Self {
+    crate::error::Error::JwsAlgorithmParsingError
   }
 }

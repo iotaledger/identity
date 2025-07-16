@@ -328,7 +328,7 @@ impl JwkDocumentExtHybrid for CoreDocument {
     //let prefix = b"CompositeAlgorithmSignatures2025";
 
     //Prefix: CompositeAlgorithmSignatures2025
-    let mut input = CompositeAlgId::composite_signature_prefix().to_vec();
+    let mut input = CompositeAlgId::COMPOSITE_SIGNATURE_PREFIX.to_vec();
 
     //Domain: id-MLDSA44-Ed25519 or id-MLDSA65-Ed25519
     input.extend_from_slice(domain);
@@ -339,7 +339,7 @@ impl JwkDocumentExtHybrid for CoreDocument {
     //M
     input.extend(jws_encoder.signing_input());
 
-    let signature_t = <K as JwkStorage>::sign(storage.key_storage(), &t_key_id, &input, &t_jwk)
+    let signature_t = <K as JwkStorage>::sign(storage.key_storage(), &t_key_id, &input, t_jwk)
       .await
       .map_err(Error::KeyStorageError)?;
 

@@ -216,7 +216,7 @@ impl<'a> JwsValidationItem<'a> {
 
     // M' = Prefix || Domain || len(ctx) || ctx || M
     //Prefix: CompositeAlgorithmSignatures2025
-    let mut input = CompositeAlgId::composite_signature_prefix().to_vec();
+    let mut input = CompositeAlgId::COMPOSITE_SIGNATURE_PREFIX.to_vec();
 
     //Domain: id-MLDSA44-Ed25519 or id-MLDSA65-Ed25519
     input.extend_from_slice(domain);
@@ -241,7 +241,7 @@ impl<'a> JwsValidationItem<'a> {
 
     // Call the traditional verifier
     traditional_verifier
-      .verify(input1, &traditional_pk)
+      .verify(input1, traditional_pk)
       .map_err(Error::SignatureVerificationError)?;
 
     let input2 = VerificationInput {
@@ -252,7 +252,7 @@ impl<'a> JwsValidationItem<'a> {
 
     // Call the PQ verifier
     pq_verifier
-      .verify(input2, &pq_pk)
+      .verify(input2, pq_pk)
       .map_err(Error::SignatureVerificationError)?;
 
     Ok(DecodedJws {

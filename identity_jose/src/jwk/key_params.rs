@@ -40,7 +40,7 @@ impl JwkParams {
       JwkType::Rsa => Self::Rsa(JwkParamsRsa::new()),
       JwkType::Oct => Self::Oct(JwkParamsOct::new()),
       JwkType::Okp => Self::Okp(JwkParamsOkp::new()),
-      JwkType::Akp => Self::Akp(JwkParamsAkp::new())
+      JwkType::Akp => Self::Akp(JwkParamsAkp::new()),
     }
   }
 
@@ -51,7 +51,7 @@ impl JwkParams {
       Self::Rsa(inner) => inner.kty(),
       Self::Oct(inner) => inner.kty(),
       Self::Okp(inner) => inner.kty(),
-      Self::Akp(_) => JwkType::Akp
+      Self::Akp(_) => JwkType::Akp,
     }
   }
 
@@ -64,7 +64,7 @@ impl JwkParams {
       Self::Ec(inner) => Some(Self::Ec(inner.to_public())),
       Self::Rsa(inner) => Some(Self::Rsa(inner.to_public())),
       Self::Oct(_) => None,
-      Self::Akp(inner) => Some(Self::Akp(inner.to_public()))
+      Self::Akp(inner) => Some(Self::Akp(inner.to_public())),
     }
   }
 
@@ -76,7 +76,7 @@ impl JwkParams {
       Self::Ec(inner) => inner.strip_private(),
       Self::Rsa(inner) => inner.strip_private(),
       Self::Oct(_) => (),
-      Self::Akp(inner) => inner.strip_private()
+      Self::Akp(inner) => inner.strip_private(),
     }
   }
 
@@ -98,7 +98,7 @@ impl JwkParams {
       Self::Ec(value) => value.is_public(),
       Self::Rsa(value) => value.is_public(),
       Self::Oct(value) => value.is_public(),
-      Self::Akp(value) => value.is_public()
+      Self::Akp(value) => value.is_public(),
     }
   }
 }

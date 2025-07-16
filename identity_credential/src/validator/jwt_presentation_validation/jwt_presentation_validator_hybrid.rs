@@ -31,7 +31,8 @@ where
   TRV: JwsVerifier,
   PQV: JwsVerifier,
 {
-  /// Creates a new [`JwtPresentationValidatorHybrid`] using a specific traditional [`JwsVerifier`] and a specific PQ [`JwsVerifier`].
+  /// Creates a new [`JwtPresentationValidatorHybrid`] using a specific traditional [`JwsVerifier`] and a specific PQ
+  /// [`JwsVerifier`].
   pub fn with_signature_verifiers(traditional_signature_verifier: TRV, pq_signature_verifier: PQV) -> Self {
     Self(traditional_signature_verifier, pq_signature_verifier)
   }
@@ -140,7 +141,7 @@ where
       None => None,
     };
 
-    if issuance_date.is_some_and(|iss| iss > options.latest_issuance_date.unwrap_or_default()){
+    if issuance_date.is_some_and(|iss| iss > options.latest_issuance_date.unwrap_or_default()) {
       return Err(CompoundJwtPresentationValidationError::one_presentation_error(
         JwtValidationError::IssuanceDate,
       ));

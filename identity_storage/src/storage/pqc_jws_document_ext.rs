@@ -227,12 +227,17 @@ impl JwsDocumentExtPQC for CoreDocument {
     let jws_encoder: CompactJwsEncoder<'_> = CompactJwsEncoder::new_with_options(payload, &header, encoding_options)
       .map_err(|err| Error::EncodingError(err.into()))?;
 
-    let pq_jwk = PostQuantumJwk::try_from(jwk.clone())
-      .map_err(|err| Error::EncodingError(Box::new(err)))?;
-   
-    let signature = <K as JwkStoragePQ>::pq_sign(storage.key_storage(), &key_id, jws_encoder.signing_input(), &pq_jwk, None)
-      .await
-      .map_err(Error::KeyStorageError)?;
+    let pq_jwk = PostQuantumJwk::try_from(jwk.clone()).map_err(|err| Error::EncodingError(Box::new(err)))?;
+
+    let signature = <K as JwkStoragePQ>::pq_sign(
+      storage.key_storage(),
+      &key_id,
+      jws_encoder.signing_input(),
+      &pq_jwk,
+      None,
+    )
+    .await
+    .map_err(Error::KeyStorageError)?;
     Ok(Jws::new(jws_encoder.into_jws(&signature)))
   }
 

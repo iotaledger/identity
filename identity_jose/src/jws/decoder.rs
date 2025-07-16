@@ -208,7 +208,7 @@ impl<'a> JwsValidationItem<'a> {
     // Extract and validate alg from the protected header.
     let alg: JwsAlgorithm = protected.alg().ok_or(Error::ProtectedHeaderWithoutAlg)?;
 
-    let domain= match alg {
+    let domain = match alg {
       JwsAlgorithm::IdMldsa44Ed25519 => CompositeAlgId::IdMldsa44Ed25519.domain(),
       JwsAlgorithm::IdMldsa65Ed25519 => CompositeAlgId::IdMldsa65Ed25519.domain(),
       _ => return Err(Error::JwsAlgorithmParsingError),
@@ -226,12 +226,11 @@ impl<'a> JwsValidationItem<'a> {
 
     //M
     input.extend(signing_input);
-     
+
     traditional_pk.check_alg(JwsAlgorithm::EdDSA.name())?;
 
-    let (extracted_signature_t, extracted_signature_pq) = decoded_signature.split_at(
-      crypto::signatures::ed25519::Signature::LENGTH
-    );
+    let (extracted_signature_t, extracted_signature_pq) =
+      decoded_signature.split_at(crypto::signatures::ed25519::Signature::LENGTH);
 
     // Construct verification input
     let input1 = VerificationInput {
@@ -250,12 +249,12 @@ impl<'a> JwsValidationItem<'a> {
       signing_input: input.into(),
       decoded_signature: extracted_signature_pq.into(),
     };
-    
+
     // Call the PQ verifier
     pq_verifier
       .verify(input2, &pq_pk)
       .map_err(Error::SignatureVerificationError)?;
-    
+
     Ok(DecodedJws {
       protected,
       unprotected,

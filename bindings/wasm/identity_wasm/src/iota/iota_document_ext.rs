@@ -5,17 +5,6 @@ use std::rc::Rc;
 
 use identity_iota::core::Object;
 
-use identity_iota::credential::Credential;
-use identity_iota::credential::JwtPresentationOptions;
-use identity_iota::credential::Presentation;
-use identity_iota::storage::key_storage::KeyType;
-use identity_iota::storage::storage::JwsSignatureOptions;
-use identity_iota::verification::jose::jws::JwsAlgorithm;
-use identity_iota::verification::MethodScope;
-use js_sys::Promise;
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use wasm_bindgen_futures::future_to_promise;
 use crate::common::PromiseString;
 use crate::common::RecordStringAny;
 use crate::credential::UnknownCredential;
@@ -23,26 +12,36 @@ use crate::credential::WasmCredential;
 use crate::credential::WasmJws;
 use crate::credential::WasmJwt;
 use crate::credential::WasmPresentation;
-use crate::iota::IotaDocumentLock;
 use crate::did::PromiseJws;
 use crate::did::PromiseJwt;
 use crate::error::Result;
 use crate::error::WasmResult;
+use crate::iota::IotaDocumentLock;
+use crate::iota::WasmIotaDocument;
+use crate::jose::WasmCompositeAlgId;
 use crate::jose::WasmJwsAlgorithm;
 use crate::storage::WasmJwsSignatureOptions;
 use crate::storage::WasmJwtPresentationOptions;
 use crate::storage::WasmStorage;
 use crate::storage::WasmStorageInner;
 use crate::verification::WasmMethodScope;
-use crate::jose::WasmCompositeAlgId;
-use crate::iota::WasmIotaDocument;
-use identity_iota::storage::JwsDocumentExtPQC;
+use identity_iota::credential::Credential;
+use identity_iota::credential::JwtPresentationOptions;
+use identity_iota::credential::Presentation;
+use identity_iota::storage::key_storage::KeyType;
+use identity_iota::storage::storage::JwsSignatureOptions;
 use identity_iota::storage::JwkDocumentExtHybrid;
+use identity_iota::storage::JwsDocumentExtPQC;
+use identity_iota::verification::jose::jws::JwsAlgorithm;
 use identity_iota::verification::jwk::CompositeAlgId;
+use identity_iota::verification::MethodScope;
+use js_sys::Promise;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::future_to_promise;
 
 #[wasm_bindgen(js_class = IotaDocument)]
 impl WasmIotaDocument {
-
   /// Generate new PQ key material in the given `storage` and insert a new verification method with the corresponding
   /// public key material into the DID document.
   ///
@@ -65,7 +64,7 @@ impl WasmIotaDocument {
     let document_lock_clone: Rc<IotaDocumentLock> = self.0.clone();
     let storage_clone: Rc<WasmStorageInner> = storage.0.clone();
     let scope: MethodScope = scope.0;
-    
+
     let promise: Promise = future_to_promise(async move {
       let method_fragment: String = document_lock_clone
         .write()
@@ -78,8 +77,8 @@ impl WasmIotaDocument {
     Ok(promise.unchecked_into())
   }
 
-  /// Generate new hybrid key material in the given `storage` and insert a new verification method with the corresponding
-  /// public key material into the DID document.
+  /// Generate new hybrid key material in the given `storage` and insert a new verification method with the
+  /// corresponding public key material into the DID document.
   ///
   /// - If no fragment is given the `kid` of the generated JWK is used, if it is set, otherwise an error is returned.
   /// - The `keyType` must be compatible with the given `storage`. `Storage`s are expected to export key type constants
@@ -99,7 +98,7 @@ impl WasmIotaDocument {
     let document_lock_clone: Rc<IotaDocumentLock> = self.0.clone();
     let storage_clone: Rc<WasmStorageInner> = storage.0.clone();
     let scope: MethodScope = scope.0;
-    
+
     let promise: Promise = future_to_promise(async move {
       let method_fragment: String = document_lock_clone
         .write()
@@ -112,7 +111,8 @@ impl WasmIotaDocument {
     Ok(promise.unchecked_into())
   }
 
-  /// Produces a PQ JWS, from a document with a PQ method, where the payload is produced from the given `fragment` and `payload`.
+  /// Produces a PQ JWS, from a document with a PQ method, where the payload is produced from the given `fragment` and
+  /// `payload`.
   #[wasm_bindgen(js_name = createPqJws)]
   pub fn _create_pq_jws(
     &self,
@@ -136,8 +136,9 @@ impl WasmIotaDocument {
     });
     Ok(promise.unchecked_into())
   }
-  
-  /// Produces an hybrid JWS, from a document with an hybrid method, where the payload is produced from the given `fragment` and `payload`.
+
+  /// Produces an hybrid JWS, from a document with an hybrid method, where the payload is produced from the given
+  /// `fragment` and `payload`.
   #[wasm_bindgen(js_name = createHybridJws)]
   pub fn create_hybrid_jws(
     &self,
@@ -199,8 +200,8 @@ impl WasmIotaDocument {
     Ok(promise.unchecked_into())
   }
 
-  /// Produces an hybrid JWT, from a document with an hybrid method, where the payload is produced from the given `credential`
-  /// in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
+  /// Produces an hybrid JWT, from a document with an hybrid method, where the payload is produced from the given
+  /// `credential` in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
   ///
   /// Unless the `kid` is explicitly set in the options, the `kid` in the protected header is the `id`
   /// of the method identified by `fragment` and the JWS signature will be produced by the corresponding
@@ -275,8 +276,8 @@ impl WasmIotaDocument {
     Ok(promise.unchecked_into())
   }
 
-  /// Produces an hybrid JWT, from a document with an hybrid method, where the payload is produced from the given presentation.
-  /// in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
+  /// Produces an hybrid JWT, from a document with an hybrid method, where the payload is produced from the given
+  /// presentation. in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
   ///
   /// Unless the `kid` is explicitly set in the options, the `kid` in the protected header is the `id`
   /// of the method identified by `fragment` and the JWS signature will be produced by the corresponding
@@ -313,6 +314,4 @@ impl WasmIotaDocument {
     });
     Ok(promise.unchecked_into())
   }
-
 }
-

@@ -6,12 +6,12 @@ use identity_did::CoreDID;
 use identity_did::DIDUrl;
 use identity_document::document::CoreDocument;
 use identity_document::verifiable::JwsVerificationOptions;
+use identity_verification::jwk::CompositeJwk;
 use identity_verification::jwk::PostQuantumJwk;
 use identity_verification::jwk::TraditionalJwk;
 use identity_verification::jws::DecodedJws;
 use identity_verification::jws::JwsValidationItem;
 use identity_verification::jws::JwsVerifier;
-use identity_verification::jwk::CompositeJwk;
 
 use super::CompoundCredentialValidationError;
 use super::DecodedJwtCredential;
@@ -96,8 +96,8 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
   /// The caller must ensure that the DID Documents of the trusted issuers are up-to-date.
   ///
   /// ## Proofs
-  ///  Only the PQ/T JWS signature is verified. If the [`Credential`] contains a `proof` property this will not be verified
-  /// by this method.
+  ///  Only the PQ/T JWS signature is verified. If the [`Credential`] contains a `proof` property this will not be
+  /// verified by this method.
   ///
   /// # Errors
   /// This method immediately returns an error if
@@ -185,7 +185,7 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
   ) -> Result<DecodedJwtCredential<T>, JwtValidationError>
   where
     T: Clone + serde::Serialize + serde::de::DeserializeOwned,
-    DOC: AsRef<CoreDocument>
+    DOC: AsRef<CoreDocument>,
   {
     // Note the below steps are necessary because `CoreDocument::verify_jws` decodes the JWS and then searches for a
     // method with a fragment (or full DID Url) matching `kid` in the given document. We do not want to carry out

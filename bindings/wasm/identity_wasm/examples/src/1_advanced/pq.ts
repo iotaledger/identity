@@ -2,18 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+    CompositeAlgId,
     CoreDID,
     Credential,
     Duration,
     FailFast,
     IotaDocument,
-    IotaIdentityClient,
     JwkPqMemStore,
     JwsAlgorithm,
     JwsSignatureOptions,
     JwsVerificationOptions,
     Jwt,
-    PQJwsVerifier,
     JwtCredentialValidationOptions,
     JwtCredentialValidator,
     JwtPresentationOptions,
@@ -21,61 +20,14 @@ import {
     JwtPresentationValidator,
     KeyIdMemStore,
     MethodScope,
+    PQJwsVerifier,
     Presentation,
     Resolver,
     Storage,
     SubjectHolderRelationship,
     Timestamp,
 } from "@iota/identity-wasm/node";
-import { Address, AliasOutput, Client, MnemonicSecretManager, SecretManager, SecretManagerType, Utils } from "@iota/sdk-wasm/node";
-import { API_ENDPOINT, ensureAddressHasFunds } from "../util";
-
-async function createPQDid(client: Client, secretManager: SecretManagerType, storage: Storage): Promise<{
-    address: Address;
-    document: IotaDocument;
-    fragment: string;
-}> {
-    const didClient = new IotaIdentityClient(client);
-    const networkHrp: string = await didClient.getNetworkHrp();
-
-    const secretManagerInstance = new SecretManager(secretManager);
-    const walletAddressBech32 = (await secretManagerInstance.generateEd25519Addresses({
-        accountIndex: 0,
-        range: {
-            start: 0,
-            end: 1,
-        },
-        bech32Hrp: networkHrp,
-    }))[0];
-
-    console.log("Wallet address Bech32:", walletAddressBech32);
-
-    await ensureAddressHasFunds(client, walletAddressBech32);
-
-    const address: Address = Utils.parseBech32Address(walletAddressBech32);
-
-    // Create a new DID document with a placeholder DID.
-    // The DID will be derived from the Alias Id of the Alias Output after publishing.
-    const document = new IotaDocument(networkHrp);
-    
-    // Create a new method with PQ algorithm.
-    const fragment = await document.generateMethodPQC(
-        storage,
-        JwkPqMemStore.mldsaKeyType(),
-        JwsAlgorithm.MLDSA44,
-        "#0",
-        MethodScope.VerificationMethod(),
-    );
-
-    // Construct an Alias Output containing the DID document, with the wallet address
-    // set as both the state controller and governor.
-    const aliasOutput: AliasOutput = await didClient.newDidOutput(address, document);
-
-    // Publish the Alias Output and get the published DID document.
-    const published = await didClient.publishDidOutput(secretManager, aliasOutput);
-
-    return { address, document: published, fragment };
-}
+import { getFundedClient } from "../util";
 
 /**
  * This example shows how to create a PQ Verifiable Presentation and validate it
@@ -85,40 +37,40 @@ export async function pq() {
     // Step 1: Create identities for the issuer and the holder.
     // ===========================================================================
 
-    const client = new Client({
-        primaryNode: API_ENDPOINT,
-        localPow: true,
-    });
-    const didClient = new IotaIdentityClient(client);
-
-    // Creates a new wallet and identity (see "0_create_did" example).
-    const issuerSecretManager: MnemonicSecretManager = {
-        mnemonic: Utils.generateMnemonic(),
-    };
-    const issuerStorage: Storage = new Storage(
-        new JwkPqMemStore(),
-        new KeyIdMemStore(),
-    );
-    let { document: issuerDocument, fragment: issuerFragment } = await createPQDid(
-        client,
-        issuerSecretManager,
+    const issuerStorage = new Storage(new JwkPqMemStore(), new KeyIdMemStore());
+    const issuerClient = await getFundedClient(issuerStorage);
+    const issuerDocument = new IotaDocument(issuerClient.network());
+    // Create a new method with PQ/T algorithm.
+    const issuerFragment = await issuerDocument.generateMethodPQC(
         issuerStorage,
+        JwkPqMemStore.mldsaKeyType(),
+        JwsAlgorithm.MLDSA44,
+        "#0",
+        MethodScope.VerificationMethod(),
     );
+    const issuerIdentity = await issuerClient
+        .createIdentity(issuerDocument)
+        .finish()
+        .buildAndExecute(issuerClient)
+        .then(res => res.output);
 
-    // Create an identity for the holder, in this case also the subject.
-    const aliceSecretManager: MnemonicSecretManager = {
-        mnemonic: Utils.generateMnemonic(),
-    };
-    const aliceStorage: Storage = new Storage(
-        new JwkPqMemStore(),
-        new KeyIdMemStore(),
-    );
-    let { document: aliceDocument, fragment: aliceFragment } = await createPQDid(
-        client,
-        aliceSecretManager,
+    const aliceStorage = new Storage(new JwkPqMemStore(), new KeyIdMemStore());
+    const aliceClient = await getFundedClient(aliceStorage);
+    const aliceDocument = new IotaDocument(aliceClient.network());
+    // Create a new method with PQ/T algorithm.
+    const aliceFragment = await aliceDocument.generateMethodPQC(
         aliceStorage,
+        JwkPqMemStore.mldsaKeyType(),
+        JwsAlgorithm.MLDSA44,
+        "#0",
+        MethodScope.VerificationMethod(),
     );
- 
+    const aliceIdentity = await aliceClient
+        .createIdentity(aliceDocument)
+        .finish()
+        .buildAndExecute(aliceClient)
+        .then(res => res.output);
+
     // ===========================================================================
     // Step 2: Issuer creates and signs a Verifiable Credential.
     // ===========================================================================
@@ -138,7 +90,7 @@ export async function pq() {
         issuer: issuerDocument.id(),
         credentialSubject: subject,
     });
-    
+
     // Create a Credential JWT with the issuer's PQ verification method.
     const credentialJwt = await issuerDocument.createCredentialJwtPqc(
         issuerStorage,
@@ -219,7 +171,7 @@ export async function pq() {
     );
 
     const resolver = new Resolver({
-        client: didClient,
+        client: aliceClient,
     });
     // Resolve the presentation holder.
     const presentationHolderDID: CoreDID = JwtPresentationValidator.extractHolder(presentationJwt);

@@ -28,20 +28,18 @@ pub struct PostQuantumJwk(Jwk);
 impl PostQuantumJwk {
   /// Creates a new `[PostQuantumJwk]`.
   pub fn new(paramsakp: JwkParamsAkp) -> Self {
-    Self(
-      Jwk{
-        kty: JwkType::Akp,
-        use_: None,
-        key_ops: None,
-        alg: None,
-        kid: None,
-        x5u: None,
-        x5c: None,
-        x5t: None,
-        x5t_s256: None,
-        params: JwkParams::Akp(paramsakp),
-      }
-    )
+    Self(Jwk {
+      kty: JwkType::Akp,
+      use_: None,
+      key_ops: None,
+      alg: None,
+      kid: None,
+      x5u: None,
+      x5c: None,
+      x5t: None,
+      x5t_s256: None,
+      params: JwkParams::Akp(paramsakp),
+    })
   }
 
   /// Creates a new `[PostQuantumJwk]` from the given kty.
@@ -51,48 +49,42 @@ impl PostQuantumJwk {
       return Err(Error::KeyError("PostQuantumJwk can only be created with JwkType::Akp"));
     }
 
-    Ok(
-      Self(
-        Jwk{
-          kty,
-          use_: None,
-          key_ops: None,
-          alg: None,
-          kid: None,
-          x5u: None,
-          x5c: None,
-          x5t: None,
-          x5t_s256: None,
-          params: JwkParams::new(kty),
-        }
-      )
-    )
+    Ok(Self(Jwk {
+      kty,
+      use_: None,
+      key_ops: None,
+      alg: None,
+      kid: None,
+      x5u: None,
+      x5c: None,
+      x5t: None,
+      x5t_s256: None,
+      params: JwkParams::new(kty),
+    }))
   }
 
   /// Creates a new `[PostQuantumJwk]` from the given params.
   pub fn from_params(params: impl Into<JwkParams>) -> Result<Self> {
     let params: JwkParams = params.into();
 
-    if params.kty() != JwkType::Akp{
-      return Err(Error::KeyError("PostQuantumJwk can only be created from a JwkParamsAkp"));
+    if params.kty() != JwkType::Akp {
+      return Err(Error::KeyError(
+        "PostQuantumJwk can only be created from a JwkParamsAkp",
+      ));
     }
 
-    Ok(
-      Self(
-        Jwk{
-          kty: params.kty(),
-          use_: None,
-          key_ops: None,
-          alg: None,
-          kid: None,
-          x5u: None,
-          x5c: None,
-          x5t: None,
-          x5t_s256: None,
-          params: params,
-        }
-      )
-    )
+    Ok(Self(Jwk {
+      kty: params.kty(),
+      use_: None,
+      key_ops: None,
+      alg: None,
+      kid: None,
+      x5u: None,
+      x5c: None,
+      x5t: None,
+      x5t_s256: None,
+      params: params,
+    }))
   }
 
   /// Sets a value for the key use parameter (use).
@@ -106,11 +98,12 @@ impl PostQuantumJwk {
   }
 
   /// Sets a value for the algorithm property (alg).
-  pub fn set_alg(&mut self, value: impl Into<String>) -> Result<()>{
-    let alg = JwsAlgorithm::from_str(&value.into())
-      .map_err(|_| Error::InvalidParam("Invalid JWS algorithm"))?;
+  pub fn set_alg(&mut self, value: impl Into<String>) -> Result<()> {
+    let alg = JwsAlgorithm::from_str(&value.into()).map_err(|_| Error::InvalidParam("Invalid JWS algorithm"))?;
     if !is_post_quantum(&alg) {
-      return Err(Error::InvalidParam("PostQuantumJwk can only be created with a post-quantum JWS algorithm"));
+      return Err(Error::InvalidParam(
+        "PostQuantumJwk can only be created with a post-quantum JWS algorithm",
+      ));
     }
     self.0.set_alg(alg.to_string());
     Ok(())
@@ -154,13 +147,17 @@ impl PostQuantumJwk {
 
   /// Returns the [`JwkParamsAkp`] in this JWK.
   pub fn akp_params(&self) -> &JwkParamsAkp {
-    self.0.try_akp_params()
+    self
+      .0
+      .try_akp_params()
       .expect("PostQuantumJwk must have JwkParamsAkp as params")
   }
 
   /// Returns a mutable reference to the [`JwkParamsAkp`] in this JWK.
   pub fn akp_params_mut(&mut self) -> &mut JwkParamsAkp {
-    self.0.try_akp_params_mut()
+    self
+      .0
+      .try_akp_params_mut()
       .expect("PostQuantumJwk must have JwkParamsAkp as params")
   }
 
@@ -175,7 +172,6 @@ impl PostQuantumJwk {
     self.0.params.strip_private();
     Some(self)
   }
-
 }
 
 impl Deref for PostQuantumJwk {
@@ -190,12 +186,11 @@ impl TryFrom<Jwk> for PostQuantumJwk {
   type Error = Error;
 
   fn try_from(value: Jwk) -> Result<Self> {
-    let alg = JwsAlgorithm::from_str(
-      value.alg()
-        .ok_or(Error::KeyError("Missing JWK algorithm"))?
-    )?;
+    let alg = JwsAlgorithm::from_str(value.alg().ok_or(Error::KeyError("Missing JWK algorithm"))?)?;
     if value.kty != JwkType::Akp && !is_post_quantum(&alg) {
-      return Err(Error::KeyError("PostQuantumJwk can only be created from a post quantum Jwk"));
+      return Err(Error::KeyError(
+        "PostQuantumJwk can only be created from a post quantum Jwk",
+      ));
     }
 
     Ok(Self(value))
@@ -214,7 +209,8 @@ impl From<PostQuantumJwk> for Jwk {
   }
 }
 
-/// Wrapper to the [`Jwk`] structure to enforce the exclusive use of traditional JWK encoded keys in the [`CompositeJwk`]
+/// Wrapper to the [`Jwk`] structure to enforce the exclusive use of traditional JWK encoded keys in the
+/// [`CompositeJwk`]
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(transparent)]
 pub struct TraditionalJwk(Jwk);
@@ -222,70 +218,64 @@ pub struct TraditionalJwk(Jwk);
 impl TraditionalJwk {
   /// Creates a new `[TraditionalJwk]` from a `[JwkParamsOkp]`.
   pub fn new(kty: JwkParamsOkp) -> Self {
-    Self(
-      Jwk{
-        kty: JwkType::Okp,
-        use_: None,
-        key_ops: None,
-        alg: None,
-        kid: None,
-        x5u: None,
-        x5c: None,
-        x5t: None,
-        x5t_s256: None,
-        params: JwkParams::Okp(kty),
-      }
-    )
+    Self(Jwk {
+      kty: JwkType::Okp,
+      use_: None,
+      key_ops: None,
+      alg: None,
+      kid: None,
+      x5u: None,
+      x5c: None,
+      x5t: None,
+      x5t_s256: None,
+      params: JwkParams::Okp(kty),
+    })
   }
 
   /// Creates a new `[TraditionalJwk]` from the given kty.
   pub fn from_kty(kty: JwkType) -> Result<Self> {
     if kty == JwkType::Akp {
-      return Err(Error::KeyError("TraditionalJwk can only be created with different from JwkType::Akp"));
+      return Err(Error::KeyError(
+        "TraditionalJwk can only be created with different from JwkType::Akp",
+      ));
     }
 
-    Ok(
-      Self(
-        Jwk{
-          kty,
-          use_: None,
-          key_ops: None,
-          alg: None,
-          kid: None,
-          x5u: None,
-          x5c: None,
-          x5t: None,
-          x5t_s256: None,
-          params: JwkParams::new(kty),
-        }
-      )
-    )
+    Ok(Self(Jwk {
+      kty,
+      use_: None,
+      key_ops: None,
+      alg: None,
+      kid: None,
+      x5u: None,
+      x5c: None,
+      x5t: None,
+      x5t_s256: None,
+      params: JwkParams::new(kty),
+    }))
   }
 
   /// Creates a new `[TraditionalJwk]` from the given params.
   pub fn from_params(params: impl Into<JwkParams>) -> Result<Self> {
     let params: JwkParams = params.into();
 
-    if params.kty() == JwkType::Akp{
-      return Err(Error::KeyError("TraditionalJwk can only be created with different from JwkType::Akp"));
+    if params.kty() == JwkType::Akp {
+      return Err(Error::KeyError(
+        "TraditionalJwk can only be created with different from JwkType::Akp",
+      ));
     }
 
-    Ok(
-      Self(
-        Jwk{
-          kty: params.kty(),
-          use_: None,
-          key_ops: None,
-          alg: None,
-          kid: None,
-          x5u: None,
-          x5c: None,
-          x5t: None,
-          x5t_s256: None,
-          params: params,
-        }
-      )
-    )
+    Ok(Self(Jwk {
+      kty: params.kty(),
+      use_: None,
+      key_ops: None,
+      alg: None,
+      kid: None,
+      x5u: None,
+      x5c: None,
+      x5t: None,
+      x5t_s256: None,
+      params: params,
+    }))
   }
 
   /// Sets a value for the key use parameter (use).
@@ -299,11 +289,12 @@ impl TraditionalJwk {
   }
 
   /// Sets a value for the algorithm property (alg).
-  pub fn set_alg(&mut self, value: impl Into<String>) -> Result<()>{
-    let alg = JwsAlgorithm::from_str(&value.into())
-      .map_err(|_| Error::InvalidParam("Invalid JWS algorithm"))?;
+  pub fn set_alg(&mut self, value: impl Into<String>) -> Result<()> {
+    let alg = JwsAlgorithm::from_str(&value.into()).map_err(|_| Error::InvalidParam("Invalid JWS algorithm"))?;
     if is_post_quantum(&alg) {
-      return Err(Error::InvalidParam("TraditionalJwk can only be created with a traditional JWS algorithm"));
+      return Err(Error::InvalidParam(
+        "TraditionalJwk can only be created with a traditional JWS algorithm",
+      ));
     }
     self.0.set_alg(alg.to_string());
     Ok(())
@@ -388,7 +379,6 @@ impl TraditionalJwk {
       Some(self)
     }
   }
-
 }
 
 impl Deref for TraditionalJwk {
@@ -403,12 +393,11 @@ impl TryFrom<Jwk> for TraditionalJwk {
   type Error = Error;
 
   fn try_from(value: Jwk) -> Result<Self> {
-    let alg = JwsAlgorithm::from_str(
-      value.alg()
-        .ok_or(Error::KeyError("Missing JWK algorithm"))?
-    )?;
-    if value.kty == JwkType::Akp  && is_post_quantum(&alg){
-      return Err(Error::KeyError("TraditionalJwk can only be created from a traditional Jwk"));
+    let alg = JwsAlgorithm::from_str(value.alg().ok_or(Error::KeyError("Missing JWK algorithm"))?)?;
+    if value.kty == JwkType::Akp && is_post_quantum(&alg) {
+      return Err(Error::KeyError(
+        "TraditionalJwk can only be created from a traditional Jwk",
+      ));
     }
     Ok(Self(value))
   }
@@ -429,14 +418,22 @@ impl From<TraditionalJwk> for Jwk {
 fn is_post_quantum(alg: &JwsAlgorithm) -> bool {
   matches!(
     alg,
-    JwsAlgorithm::FALCON1024 | JwsAlgorithm::FALCON512 |
-    JwsAlgorithm::ML_DSA_44 | JwsAlgorithm::ML_DSA_65 |
-    JwsAlgorithm::ML_DSA_87 | JwsAlgorithm::SLH_DSA_SHA2_128s |
-    JwsAlgorithm::SLH_DSA_SHAKE_128s | JwsAlgorithm::SLH_DSA_SHA2_128f |
-    JwsAlgorithm::SLH_DSA_SHAKE_128f | JwsAlgorithm::SLH_DSA_SHA2_192s |
-    JwsAlgorithm::SLH_DSA_SHAKE_192s | JwsAlgorithm::SLH_DSA_SHA2_192f |
-    JwsAlgorithm::SLH_DSA_SHAKE_192f | JwsAlgorithm::SLH_DSA_SHA2_256s |
-    JwsAlgorithm::SLH_DSA_SHAKE_256s | JwsAlgorithm::SLH_DSA_SHA2_256f |  
-    JwsAlgorithm::SLH_DSA_SHAKE_256f
+    JwsAlgorithm::FALCON1024
+      | JwsAlgorithm::FALCON512
+      | JwsAlgorithm::ML_DSA_44
+      | JwsAlgorithm::ML_DSA_65
+      | JwsAlgorithm::ML_DSA_87
+      | JwsAlgorithm::SLH_DSA_SHA2_128s
+      | JwsAlgorithm::SLH_DSA_SHAKE_128s
+      | JwsAlgorithm::SLH_DSA_SHA2_128f
+      | JwsAlgorithm::SLH_DSA_SHAKE_128f
+      | JwsAlgorithm::SLH_DSA_SHA2_192s
+      | JwsAlgorithm::SLH_DSA_SHAKE_192s
+      | JwsAlgorithm::SLH_DSA_SHA2_192f
+      | JwsAlgorithm::SLH_DSA_SHAKE_192f
+      | JwsAlgorithm::SLH_DSA_SHA2_256s
+      | JwsAlgorithm::SLH_DSA_SHAKE_256s
+      | JwsAlgorithm::SLH_DSA_SHA2_256f
+      | JwsAlgorithm::SLH_DSA_SHAKE_256f
   )
 }

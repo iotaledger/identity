@@ -48,7 +48,7 @@ strum = { version = "0.25", default-features = false, features = [
   "derive",
 ] }
 thiserror = { version = "1.0", default-features = false }
-json-proof-token = { version = "0.3.5" }
+json-proof-token = { version = "0.4" }
 zkryptium = { version = "0.2.2", default-features = false, features = [
   "bbsplus",
 ] }

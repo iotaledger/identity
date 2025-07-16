@@ -1,16 +1,15 @@
 // Copyright 2024 Fondazione Links
 // SPDX-License-Identifier: Apache-2.0
 import * as ed from "@noble/ed25519";
-import { ml_dsa44, ml_dsa65, ml_dsa87 } from '@noble/post-quantum/ml-dsa';
-import { decodeB64, encodeB64, Jwk, JwkGenOutput, JwkStoragePQ, JwkStorage  } from "~identity_wasm";
-import { EdCurve, JwkType, JwsAlgorithm} from "./jose";
+import { ml_dsa44, ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa";
+import { decodeB64, encodeB64, Jwk, JwkGenOutput, JwkStorage, JwkStoragePQ } from "~identity_wasm";
+import { EdCurve, JwkType, JwsAlgorithm } from "./jose";
 
 type Ed25519PrivateKey = Uint8Array;
 type Ed25519PublicKey = Uint8Array;
 
-
-//JkwStorage for PQ and PQ/T examples
-export class JwkPqMemStore implements  JwkStorage, JwkStoragePQ{
+// JkwStorage for PQ and PQ/T examples
+export class JwkPqMemStore implements JwkStorage, JwkStoragePQ {
     /** The map from key identifiers to Jwks. */
     private _keys: Map<string, Jwk>;
 
@@ -26,7 +25,6 @@ export class JwkPqMemStore implements  JwkStorage, JwkStoragePQ{
     public static ed25519KeyType(): string {
         return "Ed25519";
     }
-
 
     private _get_key(keyId: string): Jwk | undefined {
         return this._keys.get(keyId);
@@ -57,30 +55,30 @@ export class JwkPqMemStore implements  JwkStorage, JwkStoragePQ{
         return new JwkGenOutput(keyId, publicJWK);
     }
 
-    public async generatePQKey(keyType: String, algorithm: JwsAlgorithm):  Promise<JwkGenOutput> {
-
+    public async generatePQKey(keyType: String, algorithm: JwsAlgorithm): Promise<JwkGenOutput> {
         if (keyType !== JwkPqMemStore.mldsaKeyType()) {
             throw new Error(`unsupported key type ${keyType}`);
         }
-        
-        const seed = new TextEncoder().encode(randomKeyId())
+
+        const seed = new TextEncoder().encode(randomKeyId());
         let keys;
         if (algorithm === JwsAlgorithm.MLDSA44) {
             keys = ml_dsa44.keygen(seed);
-        } else if(algorithm === JwsAlgorithm.MLDSA65) {
+        } else if (algorithm === JwsAlgorithm.MLDSA65) {
             keys = ml_dsa65.keygen(seed);
-        } else if(algorithm === JwsAlgorithm.MLDSA87) {
+        } else if (algorithm === JwsAlgorithm.MLDSA87) {
             keys = ml_dsa87.keygen(seed);
         } else {
             throw new Error(`unsupported algorithm`);
         }
 
         const keyId = randomKeyId();
-        
+
         const jwk = await encodeJwk(keys.secretKey, keys.publicKey, algorithm);
 
-        if(jwk == undefined)
+        if (jwk == undefined) {
             throw new Error("Unexpected error: await encodeJwk(privKey, publicKey, algorithm)");
+        }
 
         this._keys.set(keyId, jwk);
 
@@ -88,24 +86,22 @@ export class JwkPqMemStore implements  JwkStorage, JwkStoragePQ{
         if (!publicJWK) {
             throw new Error(`JWK is not a public key`);
         }
-        
-        return new JwkGenOutput(keyId, publicJWK);
 
+        return new JwkGenOutput(keyId, publicJWK);
     }
 
     public async sign(keyId: string, data: Uint8Array, publicKey: Jwk): Promise<Uint8Array> {
         let alg = publicKey.alg();
         let signature = null;
-        
-        if(alg === undefined) {
+
+        if (alg === undefined) {
             throw new Error("expected a Jwk with an `alg` parameter");
         }
 
-        if (alg !== JwsAlgorithm.EdDSA ) {
+        if (alg !== JwsAlgorithm.EdDSA) {
             throw new Error("unsupported JWS algorithm");
         } else {
-            if (publicKey.paramsOkp()?.crv !== (EdCurve.Ed25519 as string))
-            {
+            if (publicKey.paramsOkp()?.crv !== (EdCurve.Ed25519 as string)) {
                 throw new Error("unsupported Okp parameter");
             }
         }
@@ -115,18 +111,22 @@ export class JwkPqMemStore implements  JwkStorage, JwkStoragePQ{
         if (jwk) {
             const [privateKey, _] = decodeJwk(jwk);
             signature = await ed.sign(data, privateKey);
-
         } else {
             throw new Error(`key with id ${keyId} not found`);
         }
-        return signature; 
+        return signature;
     }
 
-    public async signPQ(keyId: string, data: Uint8Array, publicKey: Jwk, ctx: Uint8Array|undefined ): Promise<Uint8Array> {
+    public async signPQ(
+        keyId: string,
+        data: Uint8Array,
+        publicKey: Jwk,
+        ctx: Uint8Array | undefined,
+    ): Promise<Uint8Array> {
         let alg = publicKey.alg();
         let signature = null;
-        
-        if(alg === undefined) {
+
+        if (alg === undefined) {
             throw new Error("expected a Jwk with an `alg` parameter");
         }
 
@@ -137,22 +137,21 @@ export class JwkPqMemStore implements  JwkStorage, JwkStoragePQ{
         const jwk = this._keys.get(keyId);
 
         if (jwk) {
-            
             const [privateKey, _] = decodeJwk(jwk);
-            
-            if(alg == JwsAlgorithm.MLDSA44)
-                signature = ml_dsa44.sign(privateKey, data, ctx);
-            else if(alg == JwsAlgorithm.MLDSA65)
-                signature = ml_dsa65.sign(privateKey, data, ctx);
-            else if(alg == JwsAlgorithm.MLDSA87)
-                signature = ml_dsa87.sign(privateKey, data, ctx);
-            else
-                throw new Error("unsupported algorithm");
 
+            if (alg == JwsAlgorithm.MLDSA44) {
+                signature = ml_dsa44.sign(privateKey, data, ctx);
+            } else if (alg == JwsAlgorithm.MLDSA65) {
+                signature = ml_dsa65.sign(privateKey, data, ctx);
+            } else if (alg == JwsAlgorithm.MLDSA87) {
+                signature = ml_dsa87.sign(privateKey, data, ctx);
+            } else {
+                throw new Error("unsupported algorithm");
+            }
         } else {
             throw new Error(`key with id ${keyId} not found`);
         }
-        return signature; 
+        return signature;
     }
 
     public async insert(jwk: Jwk): Promise<string> {
@@ -204,15 +203,16 @@ async function encodeJwk(privateKey: Uint8Array, publicKey: Uint8Array, alg: Jws
             priv: priv,
             alg,
         });
-    } 
-
+    }
 }
 
 function decodeJwk(jwk: Jwk): [Uint8Array, Uint8Array] {
-    if (jwk.alg()! !== JwsAlgorithm.MLDSA44 &&
-        jwk.alg()! !== JwsAlgorithm.MLDSA65 &&
-        jwk.alg()! !== JwsAlgorithm.MLDSA87 &&
-        jwk.alg()! !== JwsAlgorithm.EdDSA) {
+    if (
+        jwk.alg()! !== JwsAlgorithm.MLDSA44
+        && jwk.alg()! !== JwsAlgorithm.MLDSA65
+        && jwk.alg()! !== JwsAlgorithm.MLDSA87
+        && jwk.alg()! !== JwsAlgorithm.EdDSA
+    ) {
         throw new Error("unsupported `alg`");
     }
     if (jwk.alg()! === JwsAlgorithm.EdDSA) {
@@ -248,9 +248,7 @@ function decodeJwk(jwk: Jwk): [Uint8Array, Uint8Array] {
         } else {
             throw new Error("expected Okp params");
         }
-
     }
-
 }
 
 // Returns a random number between `min` and `max` (inclusive).

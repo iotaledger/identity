@@ -11,11 +11,11 @@ use crate::common::ArrayString;
 use crate::error::WasmResult;
 use crate::jose::ArrayJwkOperation;
 use crate::jose::IJwkParams;
+use crate::jose::WasmJwkParamsAkp;
 use crate::jose::WasmJwkParamsEc;
 use crate::jose::WasmJwkParamsOct;
 use crate::jose::WasmJwkParamsOkp;
 use crate::jose::WasmJwkParamsRsa;
-use crate::jose::WasmJwkParamsAkp;
 use crate::jose::WasmJwkType;
 use crate::jose::WasmJwkUse;
 use crate::jose::WasmJwsAlgorithm;
@@ -136,7 +136,9 @@ impl WasmJwk {
   pub fn params_ec(&self) -> crate::error::Result<Option<WasmJwkParamsEc>> {
     if let JwkParams::Ec(params_ec) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
-      Ok(Some(serde_wasm_bindgen::to_value(params_ec).wasm_result()?.unchecked_into()))
+      Ok(Some(
+        serde_wasm_bindgen::to_value(params_ec).wasm_result()?.unchecked_into(),
+      ))
     } else {
       Ok(None)
     }
@@ -147,7 +149,9 @@ impl WasmJwk {
   pub fn params_okp(&self) -> crate::error::Result<Option<WasmJwkParamsOkp>> {
     if let JwkParams::Okp(params_okp) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
-      Ok(Some(serde_wasm_bindgen::to_value(params_okp).wasm_result()?.unchecked_into()))
+      Ok(Some(
+        serde_wasm_bindgen::to_value(params_okp).wasm_result()?.unchecked_into(),
+      ))
     } else {
       Ok(None)
     }
@@ -158,7 +162,9 @@ impl WasmJwk {
   pub fn params_oct(&self) -> crate::error::Result<Option<WasmJwkParamsOct>> {
     if let JwkParams::Oct(params_oct) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
-      Ok(Some(serde_wasm_bindgen::to_value(params_oct).wasm_result()?.unchecked_into()))
+      Ok(Some(
+        serde_wasm_bindgen::to_value(params_oct).wasm_result()?.unchecked_into(),
+      ))
     } else {
       Ok(None)
     }
@@ -169,7 +175,9 @@ impl WasmJwk {
   pub fn params_rsa(&self) -> crate::error::Result<Option<WasmJwkParamsRsa>> {
     if let JwkParams::Rsa(params_rsa) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
-      Ok(Some(serde_wasm_bindgen::to_value(params_rsa).wasm_result()?.unchecked_into()))
+      Ok(Some(
+        serde_wasm_bindgen::to_value(params_rsa).wasm_result()?.unchecked_into(),
+      ))
     } else {
       Ok(None)
     }
@@ -180,7 +188,9 @@ impl WasmJwk {
   pub fn params_akp(&self) -> crate::error::Result<Option<WasmJwkParamsAkp>> {
     if let JwkParams::Akp(params_akp) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
-      Ok(Some(serde_wasm_bindgen::to_value(params_akp).wasm_result()?.unchecked_into()))
+      Ok(Some(
+        serde_wasm_bindgen::to_value(params_akp).wasm_result()?.unchecked_into(),
+      ))
     } else {
       Ok(None)
     }
@@ -437,7 +447,6 @@ interface JwkParamsOct {
    * [More Info](https://tools.ietf.org/html/rfc7518#section-6.4.1) */
   k: string
 }"#;
-
 
 #[wasm_bindgen(typescript_custom_section)]
 const IJWK_PARAMS_AKP: &str = r#"

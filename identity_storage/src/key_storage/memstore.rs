@@ -211,7 +211,6 @@ impl JwkMemStore {
   const PQ_KEY_TYPE_STR: &'static str = "AKP";
   /// ML-DSA algorithms key types;
   pub const PQ_KEY_TYPE: KeyType = KeyType::from_static_str(Self::PQ_KEY_TYPE_STR);
-
 }
 
 impl MemStoreKeyType {
@@ -314,7 +313,6 @@ fn check_key_alg_compatibility(key_type: MemStoreKeyType, alg: &JwsAlgorithm) ->
 
 #[cfg(feature = "pqc-liboqs")]
 mod pqc_liboqs {
-  use std::str::FromStr;
   use async_trait::async_trait;
   use identity_verification::jose::jwk::Jwk;
   use identity_verification::jose::jwk::JwkType;
@@ -324,6 +322,7 @@ mod pqc_liboqs {
   use identity_verification::jwu;
   use oqs::sig::Algorithm;
   use oqs::sig::Sig;
+  use std::str::FromStr;
   use tokio::sync::RwLockReadGuard;
   use tokio::sync::RwLockWriteGuard;
 
@@ -359,12 +358,10 @@ mod pqc_liboqs {
 
       JwsAlgorithm::FALCON512 => Ok(Algorithm::Falcon512),
       JwsAlgorithm::FALCON1024 => Ok(Algorithm::Falcon1024),
-      other => {
-        Err(
-          KeyStorageError::new(KeyStorageErrorKind::UnsupportedSignatureAlgorithm)
-            .with_custom_message(format!("{other} is not supported")),
-        )
-      }
+      other => Err(
+        KeyStorageError::new(KeyStorageErrorKind::UnsupportedSignatureAlgorithm)
+          .with_custom_message(format!("{other} is not supported")),
+      ),
     }
   }
 
@@ -373,8 +370,7 @@ mod pqc_liboqs {
   #[cfg_attr(feature = "send-sync-storage", async_trait)]
   impl JwkStoragePQ for JwkMemStore {
     async fn generate_pq_key(&self, key_type: KeyType, alg: JwsAlgorithm) -> KeyStorageResult<JwkGenOutput> {
-      if key_type != JwkMemStore::PQ_KEY_TYPE
-      {
+      if key_type != JwkMemStore::PQ_KEY_TYPE {
         return Err(
           KeyStorageError::new(KeyStorageErrorKind::UnsupportedKeyType)
             .with_custom_message(format!("unsupported key type {key_type}")),
@@ -384,7 +380,7 @@ mod pqc_liboqs {
       let oqs_alg = check_pq_alg_compatibility(&alg)?;
       oqs::init();
 
-       let scheme = Sig::new(oqs_alg).map_err(|err| {
+      let scheme = Sig::new(oqs_alg).map_err(|err| {
         KeyStorageError::new(KeyStorageErrorKind::Unspecified)
           .with_custom_message("signature scheme init failed".to_string())
           .with_source(err)
@@ -450,7 +446,13 @@ mod pqc_liboqs {
       Ok(JwkGenOutput::new(kid, public_jwk))
     }
 
-    async fn pq_sign(&self, key_id: &KeyId, data: &[u8], public_key: &PostQuantumJwk, ctx: Option<&[u8]>) -> KeyStorageResult<Vec<u8>> {
+    async fn pq_sign(
+      &self,
+      key_id: &KeyId,
+      data: &[u8],
+      public_key: &PostQuantumJwk,
+      ctx: Option<&[u8]>,
+    ) -> KeyStorageResult<Vec<u8>> {
       let jwk_store: RwLockReadGuard<'_, JwkKeyStore> = self.jwk_store.read().await;
 
       // Extract the required alg from the given public key
@@ -514,42 +516,41 @@ mod pqc_liboqs {
             .with_custom_message("unable to decode `private` param")
             .with_source(err)
         })?;
-        oqs::init();
+      oqs::init();
 
-        let scheme = Sig::new(oqs_alg).map_err(|err| {
+      let scheme = Sig::new(oqs_alg).map_err(|err| {
+        KeyStorageError::new(KeyStorageErrorKind::Unspecified)
+          .with_custom_message("signature scheme init failed".to_string())
+          .with_source(err)
+      })?;
+
+      let secret_key = scheme.secret_key_from_bytes(&sk_bytes).ok_or(
+        KeyStorageError::new(KeyStorageErrorKind::Unspecified).with_custom_message("invalid private key".to_string()),
+      )?;
+
+      let signature: oqs::sig::Signature;
+
+      if let Some(ctx) = ctx {
+        if !scheme.has_ctx_str_support() {
+          return Err(
+            KeyStorageError::new(KeyStorageErrorKind::Unspecified)
+              .with_custom_message("signature with ctx is not supported with this algorithm".to_string()),
+          );
+        }
+        signature = scheme.sign_with_ctx_str(data, ctx, secret_key).map_err(|err| {
           KeyStorageError::new(KeyStorageErrorKind::Unspecified)
-            .with_custom_message("signature scheme init failed".to_string())
+            .with_custom_message("signature computation failed".to_string())
             .with_source(err)
         })?;
-  
-        let secret_key = scheme.secret_key_from_bytes(&sk_bytes).ok_or(
+      } else {
+        signature = scheme.sign(data, secret_key).map_err(|err| {
           KeyStorageError::new(KeyStorageErrorKind::Unspecified)
-            .with_custom_message("invalid private key".to_string()),
-        )?;
+            .with_custom_message("signature computation failed".to_string())
+            .with_source(err)
+        })?;
+      }
 
-        let signature: oqs::sig::Signature;
-
-        if let Some(ctx) = ctx {
-          if !scheme.has_ctx_str_support() {
-            return Err(
-              KeyStorageError::new(KeyStorageErrorKind::Unspecified)
-                .with_custom_message("signature with ctx is not supported with this algorithm".to_string())
-            );
-          }
-          signature = scheme.sign_with_ctx_str(data, ctx, secret_key).map_err(|err| {
-            KeyStorageError::new(KeyStorageErrorKind::Unspecified)
-              .with_custom_message("signature computation failed".to_string())
-              .with_source(err)
-          })?;
-        } else {
-          signature = scheme.sign(data, secret_key).map_err(|err| {
-            KeyStorageError::new(KeyStorageErrorKind::Unspecified)
-              .with_custom_message("signature computation failed".to_string())
-              .with_source(err)
-          })?;
-        }
-
-        Ok(signature.into_vec())
+      Ok(signature.into_vec())
     }
   }
 }

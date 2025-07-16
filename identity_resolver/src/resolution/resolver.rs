@@ -268,7 +268,8 @@ impl<DOC: From<CoreDocument> + 'static> Resolver<DOC, SendSyncCommand<DOC>> {
 impl<DOC: From<CoreDocument> + 'static> Resolver<DOC, SingleThreadedCommand<DOC>> {
   /// Attaches a handler capable of resolving `did:compositejwk` DIDs.
   pub fn attach_did_compositejwk_handler(&mut self) {
-    let handler = |did_compositejwk: DIDCompositeJwk| async move { CoreDocument::expand_did_compositejwk(did_compositejwk) };
+    let handler =
+      |did_compositejwk: DIDCompositeJwk| async move { CoreDocument::expand_did_compositejwk(did_compositejwk) };
     self.attach_handler(DIDCompositeJwk::METHOD.to_string(), handler)
   }
 }
@@ -276,7 +277,8 @@ impl<DOC: From<CoreDocument> + 'static> Resolver<DOC, SingleThreadedCommand<DOC>
 impl<DOC: From<CoreDocument> + 'static> Resolver<DOC, SendSyncCommand<DOC>> {
   /// Attaches a handler capable of resolving `did:compositejwk` DIDs.
   pub fn attach_did_compositejwk_handler(&mut self) {
-    let handler = |did_compositejwk: DIDCompositeJwk| async move { CoreDocument::expand_did_compositejwk(did_compositejwk) };
+    let handler =
+      |did_compositejwk: DIDCompositeJwk| async move { CoreDocument::expand_did_compositejwk(did_compositejwk) };
     self.attach_handler(DIDCompositeJwk::METHOD.to_string(), handler)
   }
 }

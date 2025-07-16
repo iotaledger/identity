@@ -1063,7 +1063,8 @@ impl CoreDocument {
 impl CoreDocument {
   /// Creates a [`CoreDocument`] from a did:compositejwk DID.
   pub fn expand_did_compositejwk(did_compositejwk: DIDCompositeJwk) -> Result<Self, Error> {
-    let verification_method = VerificationMethod::try_from(did_compositejwk.clone()).map_err(Error::InvalidKeyMaterial)?;
+    let verification_method =
+      VerificationMethod::try_from(did_compositejwk.clone()).map_err(Error::InvalidKeyMaterial)?;
     let verification_method_id = verification_method.id().clone();
 
     DocumentBuilder::default()

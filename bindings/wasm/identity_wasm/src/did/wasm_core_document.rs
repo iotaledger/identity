@@ -24,8 +24,8 @@ use crate::credential::WasmJwt;
 use crate::credential::WasmPresentation;
 use crate::did::service::WasmService;
 use crate::did::wasm_did_url::WasmDIDUrl;
-use crate::did::WasmDIDJwk;
 use crate::did::WasmDIDCompositeJwk;
+use crate::did::WasmDIDJwk;
 use crate::error::Result;
 use crate::error::WasmResult;
 use crate::jose::WasmDecodedJws;
@@ -778,7 +778,9 @@ impl WasmCoreDocument {
   /// Creates a {@link CoreDocument} from the given {@link DIDCompositeJwk}.
   #[wasm_bindgen(js_name = expandDIDCompositeJwk)]
   pub fn expand_did_compositejwk(did: WasmDIDCompositeJwk) -> Result<WasmCoreDocument> {
-    CoreDocument::expand_did_compositejwk(did.0).wasm_result().map(Self::from)
+    CoreDocument::expand_did_compositejwk(did.0)
+      .wasm_result()
+      .map(Self::from)
   }
 }
 

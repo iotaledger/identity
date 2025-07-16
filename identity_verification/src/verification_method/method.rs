@@ -229,7 +229,6 @@ impl VerificationMethod {
   }
 }
 
-
 impl VerificationMethod {
   // ===========================================================================
   // Constructors

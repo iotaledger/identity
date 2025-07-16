@@ -1,8 +1,8 @@
 // Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::jose::jwk::Jwk;
 use crate::jose::jwk::CompositeJwk;
+use crate::jose::jwk::Jwk;
 use core::fmt::Debug;
 use core::fmt::Formatter;
 use identity_core::convert::BaseEncoding;
@@ -62,9 +62,9 @@ impl MethodData {
   /// represented as a vector of bytes.
   pub fn try_decode(&self) -> Result<Vec<u8>> {
     match self {
-      Self::PublicKeyJwk(_) | Self::Custom(_) | Self::CompositeJwk(_) => Err(
-        Error::InvalidMethodDataTransformation("method data is not base encoded"),
-      ),
+      Self::PublicKeyJwk(_) | Self::Custom(_) | Self::CompositeJwk(_) => Err(Error::InvalidMethodDataTransformation(
+        "method data is not base encoded",
+      )),
       Self::PublicKeyMultibase(input) => {
         BaseEncoding::decode_multibase(input).map_err(|_| Error::InvalidKeyDataMultibase)
       }

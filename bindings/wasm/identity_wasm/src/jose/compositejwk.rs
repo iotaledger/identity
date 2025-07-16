@@ -3,11 +3,11 @@
 
 use identity_iota::verification::jose::jwk::CompositeJwk;
 
-use wasm_bindgen::prelude::*;
+use crate::error::Result;
+use crate::jose::IJwkParams;
 use crate::jose::WasmCompositeAlgId;
 use crate::jose::WasmJwk;
-use crate::jose::IJwkParams;
-use crate::error::Result;
+use wasm_bindgen::prelude::*;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
@@ -18,7 +18,8 @@ pub struct WasmCompositeJwk(pub(crate) CompositeJwk);
 impl WasmCompositeJwk {
   #[wasm_bindgen(constructor)]
   pub fn new(jwk: IJwkParams) -> Result<Self> {
-    let jwk = jwk.into_serde()
+    let jwk = jwk
+      .into_serde()
       .map_err(|e| JsValue::from_str(&format!("Failed to deserialize CompositeJwk: {}", e)))?;
     Ok(Self(jwk))
   }
@@ -28,10 +29,7 @@ impl WasmCompositeJwk {
   pub fn alg_id(&self) -> WasmCompositeAlgId {
     //let alg: CompositeAlgId = alg.into_serde().wasm_result()?;
     //JsValue::from(self.0.alg_id()).unchecked_into()
-    JsValue::from_serde(&self.0.alg_id()).unwrap()
-    .unchecked_into()
-
-    
+    JsValue::from_serde(&self.0.alg_id()).unwrap().unchecked_into()
   }
 
   /// Get the post-quantum public key in Jwk format.
@@ -47,18 +45,16 @@ impl WasmCompositeJwk {
     //self.0.traditional_public_key().map(JsValue::from)
     todo!()
   }
-
 }
 
 impl From<WasmCompositeJwk> for CompositeJwk {
-    fn from(value: WasmCompositeJwk) -> Self {
-      value.0
-    }
+  fn from(value: WasmCompositeJwk) -> Self {
+    value.0
+  }
 }
-  
 
 impl From<CompositeJwk> for WasmCompositeJwk {
-    fn from(value: CompositeJwk) -> Self {
-        WasmCompositeJwk(value)
-    }
+  fn from(value: CompositeJwk) -> Self {
+    WasmCompositeJwk(value)
+  }
 }

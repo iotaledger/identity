@@ -1,11 +1,11 @@
 // Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
+use identity_iota::verification::jwk::CompositeAlgId;
 use identity_iota::verification::jws::JwsAlgorithm;
 use js_sys::JsString;
 use std::str::FromStr;
 use wasm_bindgen::prelude::*;
-use identity_iota::verification::jwk::CompositeAlgId;
 
 #[wasm_bindgen]
 extern "C" {

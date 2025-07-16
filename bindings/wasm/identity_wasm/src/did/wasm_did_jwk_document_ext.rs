@@ -1,67 +1,63 @@
 // Copyright 2024 Fondazione Links
 // SPDX-License-Identifier: Apache-2.0
 
-use std::rc::Rc;
-use crate::error::Result;
-use crate::error::WasmResult;
-use crate::storage::WasmStorageInner;
-use crate::jose::WasmJwsAlgorithm;
-use crate::jose::WasmCompositeAlgId;
-use crate::storage::WasmStorage;
 use super::CoreDocumentLock;
 use super::WasmCoreDocument;
-use crate::credential::WasmCredential;
 use crate::common::RecordStringAny;
-use crate::credential::WasmJpt;
 use crate::credential::PromiseJpt;
-use crate::credential::WasmJwpPresentationOptions;
-use crate::jpt::WasmSelectiveDisclosurePresentation;
-use crate::credential::WasmJwt;
-use crate::jpt::WasmProofAlgorithm;
 use crate::credential::UnknownCredential;
-use crate::did::PromiseJws;
-use crate::storage::WasmJwsSignatureOptions;
+use crate::credential::WasmCredential;
+use crate::credential::WasmJpt;
+use crate::credential::WasmJwpPresentationOptions;
 use crate::credential::WasmJws;
+use crate::credential::WasmJwt;
 use crate::credential::WasmPresentation;
-use crate::storage::WasmJwtPresentationOptions;
+use crate::did::PromiseJws;
 use crate::did::PromiseJwt;
-use identity_iota::credential::Presentation;
-use identity_iota::credential::JwtPresentationOptions;
-use identity_iota::storage::JwsSignatureOptions;
-use identity_iota::storage::JwpDocumentExt;
-use identity_iota::credential::Credential;
+use crate::error::Result;
+use crate::error::WasmResult;
+use crate::jose::WasmCompositeAlgId;
+use crate::jose::WasmJwsAlgorithm;
+use crate::jpt::WasmProofAlgorithm;
+use crate::jpt::WasmSelectiveDisclosurePresentation;
+use crate::storage::WasmJwsSignatureOptions;
+use crate::storage::WasmJwtPresentationOptions;
+use crate::storage::WasmStorage;
+use crate::storage::WasmStorageInner;
 use identity_iota::core::Object;
-use identity_iota::storage::storage::JwsDocumentExtPQC;
-use identity_iota::storage::storage::JwkDocumentExtHybrid;
-use identity_iota::storage::DidJwkDocumentExt;
+use identity_iota::credential::Credential;
+use identity_iota::credential::JwtPresentationOptions;
+use identity_iota::credential::Presentation;
 use identity_iota::document::CoreDocument;
 use identity_iota::storage::key_storage::KeyType;
-use identity_iota::verification::jws::JwsAlgorithm;
+use identity_iota::storage::storage::JwkDocumentExtHybrid;
+use identity_iota::storage::storage::JwsDocumentExtPQC;
+use identity_iota::storage::DidJwkDocumentExt;
+use identity_iota::storage::JwpDocumentExt;
+use identity_iota::storage::JwsSignatureOptions;
 use identity_iota::verification::jwk::CompositeAlgId;
+use identity_iota::verification::jws::JwsAlgorithm;
+use js_sys::Promise;
+use jsonprooftoken::jpa::algs::ProofAlgorithm;
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
-use jsonprooftoken::jpa::algs::ProofAlgorithm;
-use js_sys::Promise;
 
 #[wasm_bindgen(js_class = CoreDocument)]
 impl WasmCoreDocument {
-
   /// Creates a new DID Document with the given `key_type` and `alg` with the JWK did method.
   #[wasm_bindgen(js_name = newDidJwk)]
   pub async fn _new_did_jwk(
     storage: &WasmStorage,
     key_type: String,
     alg: WasmJwsAlgorithm,
-  ) -> Result<WasmCoreDocument>{
+  ) -> Result<WasmCoreDocument> {
     let storage_clone: Rc<WasmStorageInner> = storage.0.clone();
     let alg: JwsAlgorithm = alg.into_serde().wasm_result()?;
-    CoreDocument::new_did_jwk(
-      &storage_clone,
-      KeyType::from(key_type),
-      alg
-    ).await
-    .map(|doc| WasmCoreDocument(Rc::new(CoreDocumentLock::new(doc.0))))
-    .wasm_result()
+    CoreDocument::new_did_jwk(&storage_clone, KeyType::from(key_type), alg)
+      .await
+      .map(|doc| WasmCoreDocument(Rc::new(CoreDocumentLock::new(doc.0))))
+      .wasm_result()
   }
 
   /// Creates a new PQ DID Document with the given `key_type` and `alg` with the JWK did method.
@@ -73,53 +69,40 @@ impl WasmCoreDocument {
   ) -> Result<WasmCoreDocument> {
     let storage_clone: Rc<WasmStorageInner> = storage.0.clone();
     let alg: JwsAlgorithm = alg.into_serde().wasm_result()?;
-    CoreDocument::new_did_jwk_pqc(
-      &storage_clone,
-      KeyType::from(key_type),
-      alg
-    ).await
-    .map(|doc| WasmCoreDocument(Rc::new(CoreDocumentLock::new(doc.0))))
-    .wasm_result()
+    CoreDocument::new_did_jwk_pqc(&storage_clone, KeyType::from(key_type), alg)
+      .await
+      .map(|doc| WasmCoreDocument(Rc::new(CoreDocumentLock::new(doc.0))))
+      .wasm_result()
   }
 
   /// Creates a new hybrid DID Document with the given `key_type` and `alg`with the compositeJWK did method.
   #[wasm_bindgen(js_name = newDidCompositeJwk)]
-  pub async fn _new_did_compositejwk(
-    storage: &WasmStorage,
-    alg: WasmCompositeAlgId
-  ) -> Result<WasmCoreDocument>{
+  pub async fn _new_did_compositejwk(storage: &WasmStorage, alg: WasmCompositeAlgId) -> Result<WasmCoreDocument> {
     let storage_clone: Rc<WasmStorageInner> = storage.0.clone();
     let alg: CompositeAlgId = alg.into_serde().wasm_result()?;
-    CoreDocument::new_did_compositejwk(
-      &storage_clone,
-      alg
-    ).await
-    .map(|doc| WasmCoreDocument(Rc::new(CoreDocumentLock::new(doc.0))))
-    .wasm_result()
+    CoreDocument::new_did_compositejwk(&storage_clone, alg)
+      .await
+      .map(|doc| WasmCoreDocument(Rc::new(CoreDocumentLock::new(doc.0))))
+      .wasm_result()
   }
 
   /// Creates a new zk DID Document with the given `key_type` and `alg` with the JWK did method.
   #[wasm_bindgen(js_name = newDidJwkZk)]
-  pub async fn _new_did_jwk_zk(
-    storage: &WasmStorage,
-    alg: WasmProofAlgorithm,
-  ) -> Result<WasmCoreDocument> {
+  pub async fn _new_did_jwk_zk(storage: &WasmStorage, alg: WasmProofAlgorithm) -> Result<WasmCoreDocument> {
     let storage_clone: Rc<WasmStorageInner> = storage.0.clone();
     let alg: ProofAlgorithm = alg.into();
-    CoreDocument::new_did_jwk_zk(
-      &storage_clone,
-      KeyType::from_static_str("BLS12381"),
-      alg
-    ).await
-    .map(|doc| WasmCoreDocument(Rc::new(CoreDocumentLock::new(doc.0))))
-    .wasm_result()
+    CoreDocument::new_did_jwk_zk(&storage_clone, KeyType::from_static_str("BLS12381"), alg)
+      .await
+      .map(|doc| WasmCoreDocument(Rc::new(CoreDocumentLock::new(doc.0))))
+      .wasm_result()
   }
 
   #[wasm_bindgen(js_name = fragmentJwk)]
   pub fn _fragment(self) -> String {
     "0".to_string()
   }
-  /// Produces a PQ JWS, from a document with a PQ method, where the payload is produced from the given `fragment` and `payload`.
+  /// Produces a PQ JWS, from a document with a PQ method, where the payload is produced from the given `fragment` and
+  /// `payload`.
   #[wasm_bindgen(js_name = createPqJws)]
   pub fn _create_pq_jws(
     &self,
@@ -144,7 +127,8 @@ impl WasmCoreDocument {
     Ok(promise.unchecked_into())
   }
 
-  /// Produces an hybrid JWS, from a document with an hybrid method, where the payload is produced from the given `fragment` and `payload`.
+  /// Produces an hybrid JWS, from a document with an hybrid method, where the payload is produced from the given
+  /// `fragment` and `payload`.
   #[wasm_bindgen(js_name = createHybridJws)]
   pub fn create_hybrid_jws(
     &self,
@@ -206,8 +190,8 @@ impl WasmCoreDocument {
     Ok(promise.unchecked_into())
   }
 
-  /// Produces an hybrid JWT, from a document with an hybrid method, where the payload is produced from the given `credential`
-  /// in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
+  /// Produces an hybrid JWT, from a document with an hybrid method, where the payload is produced from the given
+  /// `credential` in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
   ///
   /// Unless the `kid` is explicitly set in the options, the `kid` in the protected header is the `id`
   /// of the method identified by `fragment` and the JWS signature will be produced by the corresponding
@@ -282,8 +266,8 @@ impl WasmCoreDocument {
     Ok(promise.unchecked_into())
   }
 
-  /// Produces an hybrid JWT, from a document with an hybrid method, where the payload is produced from the given presentation.
-  /// in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
+  /// Produces an hybrid JWT, from a document with an hybrid method, where the payload is produced from the given
+  /// presentation. in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
   ///
   /// Unless the `kid` is explicitly set in the options, the `kid` in the protected header is the `id`
   /// of the method identified by `fragment` and the JWS signature will be produced by the corresponding
@@ -344,7 +328,4 @@ impl WasmCoreDocument {
 
     Ok(promise.unchecked_into())
   }
-
-
 }
-

@@ -27,10 +27,16 @@ impl WasmJwtPresentationValidatorHybrid {
   /// algorithms will be used.
   #[wasm_bindgen(constructor)]
   #[allow(non_snake_case)]
-  pub fn new(traditionalSignatureVerifier: Option<IJwsVerifier>, pqSignatureVerifier: Option<IJwsVerifier>) -> WasmJwtPresentationValidatorHybrid {
+  pub fn new(
+    traditionalSignatureVerifier: Option<IJwsVerifier>,
+    pqSignatureVerifier: Option<IJwsVerifier>,
+  ) -> WasmJwtPresentationValidatorHybrid {
     let traditional_signature_verifier = WasmJwsVerifier::new(traditionalSignatureVerifier);
     let pq_signature_verifier = WasmJwsVerifier::new(pqSignatureVerifier);
-    WasmJwtPresentationValidatorHybrid(JwtPresentationValidatorHybrid::with_signature_verifiers(traditional_signature_verifier, pq_signature_verifier))
+    WasmJwtPresentationValidatorHybrid(JwtPresentationValidatorHybrid::with_signature_verifiers(
+      traditional_signature_verifier,
+      pq_signature_verifier,
+    ))
   }
 
   /// Validates a {@link Presentation} encoded as a {@link Jwt}.

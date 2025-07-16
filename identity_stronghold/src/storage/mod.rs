@@ -109,7 +109,7 @@ impl StrongholdStorage {
       .get_guards([location], |[sk]| {
         let sk = BBSplusSecretKey::from_bytes(&sk.borrow()).map_err(|e| FatalProcedureError::from(e.to_string()))?;
         let pk = sk.public_key();
-        let public_jwk = encode_bls_jwk(&sk, &pk, ProofAlgorithm::BLS12381_SHA256).1;
+        let public_jwk = encode_bls_jwk(&sk, &pk, ProofAlgorithm::BBS).1;
 
         drop(Zeroizing::new(sk.to_bytes()));
         Ok(public_jwk)

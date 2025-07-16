@@ -3,7 +3,8 @@
 
 use std::str::FromStr;
 
-use crate::jwk::{PostQuantumJwk, TraditionalJwk};
+use crate::jwk::PostQuantumJwk;
+use crate::jwk::TraditionalJwk;
 
 /// Algorithms used to generate hybrid signatures.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -29,8 +30,12 @@ impl CompositeAlgId {
   /// Returns the CompositeAlgId domain as a byte slice
   pub const fn domain(self) -> &'static [u8] {
     match self {
-      Self::IdMldsa44Ed25519 => &[0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x08, 0x01, 0x3E],
-      Self::IdMldsa65Ed25519 => &[0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x08, 0x01, 0x47],
+      Self::IdMldsa44Ed25519 => &[
+        0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x08, 0x01, 0x3E,
+      ],
+      Self::IdMldsa65Ed25519 => &[
+        0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x08, 0x01, 0x47,
+      ],
     }
   }
 
@@ -51,7 +56,7 @@ pub struct CompositeJwk {
 
 impl CompositeJwk {
   /// Create a new CompositePublicKey structure.
-  pub fn new(alg_id: CompositeAlgId, traditional_public_key: TraditionalJwk, pq_public_key: PostQuantumJwk) -> Self  {
+  pub fn new(alg_id: CompositeAlgId, traditional_public_key: TraditionalJwk, pq_public_key: PostQuantumJwk) -> Self {
     Self {
       alg_id,
       traditional_public_key: traditional_public_key.into_public().unwrap(),

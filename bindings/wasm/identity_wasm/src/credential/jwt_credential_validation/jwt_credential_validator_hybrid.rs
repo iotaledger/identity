@@ -36,13 +36,19 @@ pub struct WasmJwtCredentialValidatorHybrid(JwtCredentialValidatorHybrid<WasmJws
 
 #[wasm_bindgen(js_class = JwtCredentialValidatorHybrid)]
 impl WasmJwtCredentialValidatorHybrid {
-  /// Creates a new {@link JwtCredentialValidatorHybrid}. 
+  /// Creates a new {@link JwtCredentialValidatorHybrid}.
   #[wasm_bindgen(constructor)]
   #[allow(non_snake_case)]
-  pub fn new(traditionalSignatureVerifier: Option<IJwsVerifier>, pqSignatureVerifier: Option<IJwsVerifier>) -> WasmJwtCredentialValidatorHybrid {
+  pub fn new(
+    traditionalSignatureVerifier: Option<IJwsVerifier>,
+    pqSignatureVerifier: Option<IJwsVerifier>,
+  ) -> WasmJwtCredentialValidatorHybrid {
     let traditional_signature_verifier = WasmJwsVerifier::new(traditionalSignatureVerifier);
     let pq_signature_verifier = WasmJwsVerifier::new(pqSignatureVerifier);
-    WasmJwtCredentialValidatorHybrid(JwtCredentialValidatorHybrid::with_signature_verifiers(traditional_signature_verifier, pq_signature_verifier))
+    WasmJwtCredentialValidatorHybrid(JwtCredentialValidatorHybrid::with_signature_verifiers(
+      traditional_signature_verifier,
+      pq_signature_verifier,
+    ))
   }
 
   /// Decodes and validates a {@link Credential} issued as a JWS. A {@link DecodedJwtCredential} is returned upon

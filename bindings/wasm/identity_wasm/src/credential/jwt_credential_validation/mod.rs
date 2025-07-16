@@ -3,11 +3,11 @@
 
 mod decoded_jwt_credential;
 mod jwt_credential_validator;
+mod jwt_credential_validator_hybrid;
 mod kb_validation_options;
 mod options;
 mod sd_jwt_validator;
 mod unknown_credential;
-mod jwt_credential_validator_hybrid;
 
 pub use self::decoded_jwt_credential::*;
 pub use self::jwt_credential_validator::*;

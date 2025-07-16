@@ -4,13 +4,13 @@
 use super::JwkStorageDocumentError as Error;
 use crate::try_undo_key_generation;
 use crate::JwkGenOutput;
-use crate::KeyType;
 use crate::JwkStorage;
 use crate::JwkStoragePQ;
 use crate::JwsSignatureOptions;
 use crate::KeyId;
 use crate::KeyIdStorage;
 use crate::KeyIdStorageErrorKind;
+use crate::KeyType;
 use crate::MethodDigest;
 use crate::Storage;
 use crate::StorageResult;
@@ -23,15 +23,15 @@ use identity_credential::presentation::JwtPresentationOptions;
 use identity_credential::presentation::Presentation;
 use identity_did::DIDUrl;
 use identity_document::document::CoreDocument;
+use identity_verification::jwk::CompositeAlgId;
+use identity_verification::jwk::CompositeJwk;
+use identity_verification::jwk::PostQuantumJwk;
+use identity_verification::jwk::TraditionalJwk;
 use identity_verification::jws::CharSet;
 use identity_verification::jws::CompactJwsEncoder;
 use identity_verification::jws::CompactJwsEncodingOptions;
 use identity_verification::jws::JwsAlgorithm;
 use identity_verification::jws::JwsHeader;
-use identity_verification::jwk::CompositeAlgId;
-use identity_verification::jwk::CompositeJwk;
-use identity_verification::jwk::PostQuantumJwk;
-use identity_verification::jwk::TraditionalJwk;
 use identity_verification::MethodData;
 use identity_verification::MethodScope;
 use identity_verification::VerificationMethod;
@@ -85,11 +85,9 @@ macro_rules! generate_method_hybrid_for_document_type {
 
       let composite_kid = KeyId::new(format!("{}~{}", t_key_id.as_str(), pq_key_id.as_str()));
 
-      let pq_jwk = PostQuantumJwk::try_from(pq_jwk)
-      .map_err(|err| Error::EncodingError(Box::new(err)))?;
+      let pq_jwk = PostQuantumJwk::try_from(pq_jwk).map_err(|err| Error::EncodingError(Box::new(err)))?;
 
-      let traditional_jwk = TraditionalJwk::try_from(t_jwk)
-      .map_err(|err| Error::EncodingError(Box::new(err)))?;
+      let traditional_jwk = TraditionalJwk::try_from(t_jwk).map_err(|err| Error::EncodingError(Box::new(err)))?;
 
       let composite_pk = CompositeJwk::new(alg_id, traditional_jwk, pq_jwk);
 
@@ -298,15 +296,14 @@ impl JwkDocumentExtHybrid for CoreDocument {
       .await
       .map_err(Error::KeyIdStorageError)?;
 
-    let (t_key_id, pq_key_id) = 
-      match key_id.as_str().split_once("~") {
-          Some(v) => (KeyId::new(v.0), KeyId::new(v.1)),
-          None => {
-            // If the key_id is not in the expected format, we return an error.
-            return Err(Error::KeyIdStorageError(KeyIdStorageErrorKind::Unspecified.into()));
-          }
-      };
-    
+    let (t_key_id, pq_key_id) = match key_id.as_str().split_once("~") {
+      Some(v) => (KeyId::new(v.0), KeyId::new(v.1)),
+      None => {
+        // If the key_id is not in the expected format, we return an error.
+        return Err(Error::KeyIdStorageError(KeyIdStorageErrorKind::Unspecified.into()));
+      }
+    };
+
     // Extract Compact JWS encoding options.
     let encoding_options: CompactJwsEncodingOptions = if !options.detached_payload {
       // We use this as a default and don't provide the extra UrlSafe check for now.
@@ -321,7 +318,7 @@ impl JwkDocumentExtHybrid for CoreDocument {
     let jws_encoder: CompactJwsEncoder<'_> = CompactJwsEncoder::new_with_options(payload, &header, encoding_options)
       .map_err(|err| Error::EncodingError(err.into()))?;
 
-    let domain= match alg {
+    let domain = match alg {
       JwsAlgorithm::IdMldsa44Ed25519 => CompositeAlgId::IdMldsa44Ed25519.domain(),
       JwsAlgorithm::IdMldsa65Ed25519 => CompositeAlgId::IdMldsa65Ed25519.domain(),
       _ => return Err(Error::InvalidJwsAlgorithm),
@@ -341,7 +338,7 @@ impl JwkDocumentExtHybrid for CoreDocument {
 
     //M
     input.extend(jws_encoder.signing_input());
-        
+
     let signature_t = <K as JwkStorage>::sign(storage.key_storage(), &t_key_id, &input, &t_jwk)
       .await
       .map_err(Error::KeyStorageError)?;

@@ -139,7 +139,7 @@ async fn main() -> anyhow::Result<()> {
     &storage_issuer,
     JwkMemStore::BLS12381G2_KEY_TYPE,
     None,
-    Some(ProofAlgorithm::BLS12381_SHA256),
+    Some(ProofAlgorithm::BBS),
   )
   .await?;
 

@@ -42,5 +42,4 @@ export const enum JwsAlgorithm {
     IdMldsa44Ed25519 = "id-MLDSA44-Ed25519",
     /** ML-DSA-65 in hybrid signature*/
     IdMldsa65Ed25519 = "id-MLDSA65-Ed25519",
-
 }

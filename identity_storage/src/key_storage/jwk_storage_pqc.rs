@@ -19,5 +19,11 @@ pub trait JwkStoragePQ: JwkStorage {
   async fn generate_pq_key(&self, key_type: KeyType, alg: JwsAlgorithm) -> KeyStorageResult<JwkGenOutput>;
 
   /// Sign the provided `data` using a PQ algorithm, ctx is optional for the ctx paramter of the algorithm ML-DSA.
-  async fn pq_sign(&self, key_id: &KeyId, data: &[u8], public_key: &PostQuantumJwk, ctx: Option<&[u8]>) -> KeyStorageResult<Vec<u8>>;
+  async fn pq_sign(
+    &self,
+    key_id: &KeyId,
+    data: &[u8],
+    public_key: &PostQuantumJwk,
+    ctx: Option<&[u8]>,
+  ) -> KeyStorageResult<Vec<u8>>;
 }

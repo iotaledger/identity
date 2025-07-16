@@ -3,10 +3,10 @@
 
 mod decoded_jwt_presentation;
 mod jwt_presentation_validator;
-mod options;
 mod jwt_presentation_validator_hybrid;
+mod options;
 
 pub use self::decoded_jwt_presentation::*;
 pub use self::jwt_presentation_validator::*;
-pub use self::options::*;
 pub use self::jwt_presentation_validator_hybrid::*;
+pub use self::options::*;

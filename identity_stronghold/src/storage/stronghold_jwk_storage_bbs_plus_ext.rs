@@ -39,7 +39,7 @@ impl JwkStorageBbsPlusExt for StrongholdStorage {
       );
     }
 
-    if !matches!(alg, ProofAlgorithm::BBS | ProofAlgorithm::BBS_SHAKE256) {
+    if !matches!(alg, ProofAlgorithm::BLS12381_SHA256 | ProofAlgorithm::BLS12381_SHAKE256) {
       return Err(KeyStorageErrorKind::UnsupportedProofAlgorithm.into());
     }
 

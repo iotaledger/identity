@@ -91,28 +91,6 @@ impl JwkParams {
     }
   }
 
-  /// Removes all private key components.
-  /// In the case of [JwkParams::Oct], this method does nothing.
-  pub fn strip_private(&mut self) {
-    match self {
-      Self::Okp(inner) => inner.strip_private(),
-      Self::Ec(inner) => inner.strip_private(),
-      Self::Rsa(inner) => inner.strip_private(),
-      Self::Oct(_) => (),
-    }
-  }
-
-  /// Returns this key with _all_ private key components unset.
-  /// In the case of [JwkParams::Oct], this method returns [None].
-  pub fn into_public(mut self) -> Option<Self> {
-    if matches!(self, JwkParams::Oct(_)) {
-      None
-    } else {
-      self.strip_private();
-      Some(self)
-    }
-  }
-
   /// Returns `true` if _all_ private key components are unset, `false` otherwise.
   pub fn is_public(&self) -> bool {
     match self {

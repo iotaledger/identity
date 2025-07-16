@@ -502,18 +502,18 @@ mod tests {
       let sets = [&x, &y];
 
       let sample = |generator: &mut TestRng| {
-        let set_idx = usize::from(generator.random_bool(0.5));
+        let set_idx = usize::from(generator.gen_bool(0.5));
         let set_range = if set_idx == 0 { 0..x.len() } else { 0..y.len() };
         if set_range.is_empty() {
           T::default()
         } else {
-          let entry_idx = generator.random_range(set_range);
+          let entry_idx = generator.gen_range(set_range);
           (sets[set_idx])[entry_idx].clone()
         }
       };
 
       let (mut a, mut b) = (sample(&mut rng), sample(&mut rng));
-      if rng.random_bool(0.5) {
+      if rng.gen_bool(0.5) {
         let key_a = a.key().clone();
         let key_b = b.key().clone();
         a.set_key(key_b);

@@ -1,10 +1,9 @@
 // Copyright 2024 Fondazione Links
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::HashMap;
-use examples::get_address_with_funds;
-use examples::random_stronghold_path;
-use examples::MemStorage;
+use examples::create_did_document;
+use examples::get_funded_client;
+use examples::get_memstorage;
 use identity_eddsa_verifier::EdDSAJwsVerifier;
 use identity_iota::core::Duration;
 use identity_iota::core::FromJson;
@@ -31,65 +30,13 @@ use identity_iota::credential::SubjectHolderRelationship;
 use identity_iota::did::CoreDID;
 use identity_iota::did::DID;
 use identity_iota::document::verifiable::JwsVerificationOptions;
-use identity_iota::iota::IotaClientExt;
 use identity_iota::iota::IotaDocument;
-use identity_iota::iota::IotaIdentityClientExt;
-use identity_iota::iota::NetworkName;
 use identity_iota::resolver::Resolver;
 use identity_iota::storage::JwkDocumentExtHybrid;
-use identity_iota::storage::JwkMemStore;
 use identity_iota::storage::JwsSignatureOptions;
-use identity_iota::storage::KeyIdMemstore;
-use identity_iota::verification::jwk::CompositeAlgId;
-use identity_iota::verification::MethodScope;
 use identity_pqc_verifier::PQCJwsVerifier;
-use iota_sdk::client::secret::stronghold::StrongholdSecretManager;
-use iota_sdk::client::secret::SecretManager;
-use iota_sdk::client::Client;
-use iota_sdk::client::Password;
-use iota_sdk::types::block::address::Address;
-use iota_sdk::types::block::output::AliasOutput;
 use serde_json::json;
-
-// // The API endpoint of an IOTA node, e.g. Hornet.
-// const API_ENDPOINT: &str = "http://localhost";
-// // The faucet endpoint allows requesting funds for testing purposes.
-// const FAUCET_ENDPOINT: &str = "http://localhost/faucet/api/enqueue";
-
-const API_ENDPOINT: &str = "https://api.testnet.shimmer.network";
-const FAUCET_ENDPOINT: &str = "https://faucet.testnet.shimmer.network/api/enqueue";
-
-async fn create_did(
-  client: &Client,
-  secret_manager: &SecretManager,
-  storage: &MemStorage,
-  alg_id: CompositeAlgId,
-) -> anyhow::Result<(Address, IotaDocument, String)> {
-  // Get an address with funds for testing.
-  let address: Address = get_address_with_funds(client, secret_manager, FAUCET_ENDPOINT).await?;
-
-  // Get the Bech32 human-readable part (HRP) of the network.
-  let network_name: NetworkName = client.network_name().await?;
-
-  // Create a new DID document with a placeholder DID.
-  // The DID will be derived from the Alias Id of the Alias Output after publishing.
-  let mut document: IotaDocument = IotaDocument::new(&network_name);
-
-  // New Verification Method containing a PQC key
-  let fragment = document
-    .generate_method_hybrid(storage, alg_id, None, MethodScope::VerificationMethod)
-    .await?;
-
-  // Construct an Alias Output containing the DID document, with the wallet address
-  // set as both the state controller and governor.
-  let alias_output: AliasOutput = client.new_did_output(address, document, None).await?;
-
-  // Publish the Alias Output and get the published DID document.
-  let document: IotaDocument = client.publish_did_output(secret_manager, alias_output).await?;
-  println!("Published DID document: {document:#}");
-
-  Ok((address, document, fragment))
-}
+use std::collections::HashMap;
 
 /// Demonstrates how to create a DID Document and publish it in a new Alias Output.
 ///
@@ -100,43 +47,14 @@ async fn create_did(
 /// https://github.com/iotaledger/hornet/tree/develop/private_tangle
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-  // Create a new client to interact with the IOTA ledger.
-  let client: Client = Client::builder()
-    .with_primary_node(API_ENDPOINT, None)?
-    .finish()
-    .await?;
+  let issuer_storage = get_memstorage()?;
+  let issuer_client = get_funded_client(&issuer_storage).await?;
 
-  let secret_manager_issuer = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_1".to_owned()))
-      .build(random_stronghold_path())?,
-  );
+  let (issuer_document, issuer_fragment) = create_did_document(&issuer_client, &issuer_storage).await?;
 
-  let storage_issuer: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-
-  let (_, issuer_document, fragment_issuer): (Address, IotaDocument, String) = create_did(
-    &client,
-    &secret_manager_issuer,
-    &storage_issuer,
-    CompositeAlgId::IdMldsa65Ed25519,
-  )
-  .await?;
-
-  let secret_manager_holder = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_2".to_owned()))
-      .build(random_stronghold_path())?,
-  );
-
-  let storage_holder: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-
-  let (_, holder_document, fragment_holder): (Address, IotaDocument, String) = create_did(
-    &client,
-    &secret_manager_holder,
-    &storage_holder,
-    CompositeAlgId::IdMldsa65Ed25519,
-  )
-  .await?;
+  let holder_storage = get_memstorage()?;
+  let holder_client = get_funded_client(&holder_storage).await?;
+  let (holder_document, holder_fragment) = create_did_document(&holder_client, &holder_storage).await?;
 
   // Create a credential subject indicating the degree earned by Alice.
   let subject: Subject = Subject::from_json_value(json!({
@@ -160,8 +78,8 @@ async fn main() -> anyhow::Result<()> {
   let credential_jwt: Jwt = issuer_document
     .create_credential_jwt_hybrid(
       &credential,
-      &storage_issuer,
-      &fragment_issuer,
+      &issuer_storage,
+      &issuer_fragment,
       &JwsSignatureOptions::default(),
       None,
     )
@@ -214,8 +132,8 @@ async fn main() -> anyhow::Result<()> {
   let presentation_jwt: Jwt = holder_document
     .create_presentation_jwt_hybrid(
       &presentation,
-      &storage_holder,
-      &fragment_holder,
+      &holder_storage,
+      &holder_fragment,
       &JwsSignatureOptions::default().nonce(challenge.to_owned()),
       &JwtPresentationOptions::default().expiration_date(expires),
     )
@@ -243,7 +161,7 @@ async fn main() -> anyhow::Result<()> {
     JwsVerificationOptions::default().nonce(challenge.to_owned());
 
   let mut resolver: Resolver<IotaDocument> = Resolver::new();
-  resolver.attach_iota_handler(client);
+  resolver.attach_iota_handler((*issuer_client).clone());
 
   // Resolve the holder's document.
   let holder_did: CoreDID = JwtPresentationValidatorUtils::extract_holder(&presentation_jwt)?;

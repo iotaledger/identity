@@ -12,5 +12,5 @@ repository.workspace = true
 description = "JWS PQC signature verification for IOTA Identity"
 
 [dependencies]
-identity_jose = { version = "=1.5.1", path = "../identity_jose", default-features = true }
+identity_jose = { version = "=1.6.0-beta", path = "../identity_jose", default-features = true }
 oqs.workspace = true

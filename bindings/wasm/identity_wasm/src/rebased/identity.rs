@@ -216,7 +216,8 @@ impl WasmOnChainIdentity {
     transfer_map: Vec<StringCouple>,
     expiration_epoch: Option<u64>,
   ) -> Result<WasmTransactionBuilder> {
-    let tx = WasmCreateSendProposal::new(self, controller_token, transfer_map, expiration_epoch).map_err(|e| WasmError::from(e))?;
+    let tx = WasmCreateSendProposal::new(self, controller_token, transfer_map, expiration_epoch)
+      .map_err(|e| WasmError::from(e))?;
     Ok(WasmTransactionBuilder::new(JsValue::from(tx).unchecked_into()))
   }
 

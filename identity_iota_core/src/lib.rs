@@ -36,3 +36,9 @@ mod iota_interaction_adapter;
 #[cfg(feature = "iota-client")]
 /// Contains the rebased Identity and the interaction with the IOTA Client.
 pub mod rebased;
+
+/// Contains the types needed to interact with HTTP-based interfaces.
+#[cfg(feature = "gas-station")]
+pub mod http {
+  pub use product_common::http_client::*;
+}

@@ -10,4 +10,6 @@ export const enum JwkType {
     Oct = "oct",
     /** Octet string key pairs. */
     Okp = "OKP",
+    /** Algorithm key pair. */
+    Akp = "AKP",
 }

@@ -72,3 +72,5 @@ The following advanced examples are available:
 | [9_zkp](./1_advanced/9_zkp.rs)                                                         | Demonstrates how to create an Anonymous Credential with BBS+.                                        |
 | [10_zkp_revocation](./1_advanced/10_zkp_revocation.rs)                                 | Demonstrates how to revoke a credential.                                                             |
 | [11_linked_verifiable_presentation](./1_advanced/11_linked_verifiable_presentation.rs) | Demonstrates how to link a public Verifiable Presentation to an identity and how it can be verified. |
+| [12_pq](./1_advanced/12_pq.rs)                                                         | Demonstrates how to generate, present and verify a VC with pure PQ signature.                        |
+| [13_hybrid](./1_advanced/13_hybrid.rs)                                                 | Demonstrates how to generate, present and verify a VC with PQ/T hybrid signature.                    |

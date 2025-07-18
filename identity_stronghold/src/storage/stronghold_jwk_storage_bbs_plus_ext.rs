@@ -1,4 +1,4 @@
-// Copyright 2020-2024 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use async_trait::async_trait;
@@ -39,7 +39,7 @@ impl JwkStorageBbsPlusExt for StrongholdStorage {
       );
     }
 
-    if !matches!(alg, ProofAlgorithm::BLS12381_SHA256 | ProofAlgorithm::BLS12381_SHAKE256) {
+    if !matches!(alg, ProofAlgorithm::BBS | ProofAlgorithm::BBS_SHAKE256) {
       return Err(KeyStorageErrorKind::UnsupportedProofAlgorithm.into());
     }
 

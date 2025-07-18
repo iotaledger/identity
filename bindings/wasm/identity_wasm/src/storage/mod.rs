@@ -1,10 +1,11 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 mod jpt_timeframe_revocation_ext;
 mod jwk_gen_output;
 mod jwk_storage;
 mod jwk_storage_bbs_plus_ext;
+mod jwk_storage_pqc;
 mod jwt_presentation_options;
 mod key_id_storage;
 #[cfg(feature = "keytool")]

@@ -26,6 +26,7 @@ identity_verification = { version = "=1.6.0-beta", path = "../identity_verificat
 iota-crypto = { version = "0.23.2", default-features = false, features = ["ed25519", "random"], optional = true }
 json-proof-token = { workspace = true, optional = true }
 k256 = { version = "0.13.3", default-features = false, features = ["std", "ecdsa", "ecdsa-core", "jwk"], optional = true }
+oqs = { workspace = true, optional = true }
 p256 = { version = "0.13.2", default-features = false, features = ["std", "ecdsa", "ecdsa-core", "jwk"], optional = true }
 rand = { version = "0.8.5", default-features = false, features = ["std", "std_rng"], optional = true }
 seahash = { version = "4.1.0", default-features = false }
@@ -35,7 +36,6 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio = { version = "1.43", default-features = false, features = ["macros", "sync"], optional = true }
 zkryptium = { workspace = true, optional = true }
-oqs = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.2.1", package = "iota_interaction", optional = true }

@@ -242,7 +242,7 @@ impl VerificationMethod {
       let maybe_tpk_kid = key.traditional_public_key().kid();
       let maybe_pqpk_kid = key.pq_public_key().kid();
       if let (Some(tpk_kid), Some(pqpk_kid)) = (maybe_tpk_kid, maybe_pqpk_kid) {
-        Some(Cow::Owned(format!("{}~{}", tpk_kid, pqpk_kid)))
+        Some(Cow::Owned(format!("{tpk_kid}~{pqpk_kid}")))
       } else {
         maybe_tpk_kid.or(maybe_pqpk_kid).map(Cow::Borrowed)
       }

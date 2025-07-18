@@ -19,7 +19,7 @@ rand = "0.8.5"
 sd-jwt-payload = { version = "0.2.1", default-features = false, features = ["sha"] }
 secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag = "v0.3.0" }
 serde_json = { version = "1.0", default-features = false }
-tokio = { version = "*", default-features = false, features = ["rt", "macros"] }
+tokio = { version = "1.44", default-features = false, features = ["rt", "macros"] }
 
 [dependencies.identity_iota]
 path = "../identity_iota"

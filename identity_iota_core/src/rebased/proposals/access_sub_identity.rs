@@ -319,7 +319,7 @@ impl Proposal<AccessSubIdentity> {
 }
 
 /// Error type that is returned when attempting to access an Identity `sub_identity`
-/// that is **not** controlled by `base_identity`.
+/// that is **not** controlled by `identity`.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 #[error("Identity `{identity}` has no control over Identity `{sub_identity}`")]

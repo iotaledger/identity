@@ -29,9 +29,9 @@ exclude = ["bindings/wasm/identity_wasm", "bindings/grpc"]
 
 [workspace.dependencies]
 bls12_381_plus = { version = "0.8.17" }
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.6.1", package = "iota_interaction" }
-iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.6.1", package = "iota_interaction_ts" }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.6.1", package = "product_common" }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.7.0", package = "iota_interaction" }
+iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.7.0", package = "iota_interaction_ts" }
+product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.7.0", package = "product_common" }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = { version = "1.0", default-features = false }
 strum = { version = "0.25", default-features = false, features = ["std", "derive"] }
@@ -50,9 +50,3 @@ opt-level = 's'
 #       If not, remove the next line
 #       If yes, describe the helping effect in the comment above
 # debug = true
-
-# [patch."https://github.com/iotaledger/product-core.git"]
-# iota_interaction = { path = "../product-core/iota_interaction" }
-# iota_interaction_ts = { path = "../product-core/bindings/wasm/iota_interaction_ts" }
-# iota_interaction_rust = { path = "../product-core/iota_interaction_rust" }
-# product_common = { path = "../product-core/product_common" }

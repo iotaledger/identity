@@ -72,6 +72,10 @@ path = "0_basic/7_revoke_vc.rs"
 name = "7_revoke_vc"
 
 [[example]]
+path = "0_basic/8_legacy_stronghold.rs"
+name = "8_legacy_stronghold"
+
+[[example]]
 path = "1_advanced/0_did_controls_did.rs"
 name = "0_did_controls_did"
 

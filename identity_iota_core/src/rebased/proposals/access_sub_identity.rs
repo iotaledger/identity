@@ -170,13 +170,12 @@ impl<'i, 'sub, F> AccessSubIdentityBuilder<'i, 'sub, F> {
   {
     // Make sure `identity_token` grants access to `identity`.
     if self.identity.id() != self.identity_token.controller_of() {
-      return Err(
-        AccessSubIdentityBuilderErrorKind::Unauthorized(InvalidControllerTokenForIdentity {
+      return Err(AccessSubIdentityBuilderErrorKind::Unauthorized(
+        InvalidControllerTokenForIdentity {
           identity: self.identity.id(),
           controller_token: self.identity_token.clone(),
-        })
-        .into(),
-      );
+        },
+      ));
     }
 
     // Retrieve from `identity` owned asset any token granting access to `sub_identity`.

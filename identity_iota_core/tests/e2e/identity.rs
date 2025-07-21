@@ -7,6 +7,7 @@ use crate::common::TestClient;
 use crate::common::TEST_COIN_TYPE;
 use crate::common::TEST_GAS_BUDGET;
 use identity_iota_core::rebased::client::get_object_id_from_did;
+use identity_iota_core::rebased::migration::get_identity;
 use identity_iota_core::rebased::migration::has_previous_version;
 use identity_iota_core::rebased::migration::ControllerToken;
 use identity_iota_core::rebased::migration::DelegationToken;
@@ -649,7 +650,7 @@ async fn access_sub_identity_works() -> anyhow::Result<()> {
 
   assert!(sub_identity.did_document().metadata.deactivated == Some(true));
   // Local `sub_identity`` reflects its on-chain Identity object.
-  let synced_sub_identity = get_identity(&identity_client, sub_identity.id()).await?.unwrap();
+  let synced_sub_identity = get_identity(&client, sub_identity.id()).await?.unwrap();
   assert_eq!(sub_identity.did_document(), synced_sub_identity.did_document());
 
   Ok(())

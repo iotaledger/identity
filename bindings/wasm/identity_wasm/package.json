@@ -1,13 +1,13 @@
 {
   "name": "@iota/identity-wasm",
-  "version": "1.6.0-beta.4",
+  "version": "1.6.0-beta.5",
   "author": "IOTA Foundation <info@iota.org>",
   "description": "WASM bindings for IOTA Identity - A Self Sovereign Identity Framework implementing the DID and VC standards from W3C. To be used in JavaScript/TypeScript",
   "homepage": "https://www.iota.org",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/iotaledger/identity.rs.git"
+    "url": "git+https://github.com/iotaledger/identity.git"
   },
   "directories": {
     "example": "examples"
@@ -42,7 +42,7 @@
     "CYPRESS_VERIFY_TIMEOUT": 100000
   },
   "bugs": {
-    "url": "https://github.com/iotaledger/identity.rs/issues"
+    "url": "https://github.com/iotaledger/identity/issues"
   },
   "publishConfig": {
     "access": "public"

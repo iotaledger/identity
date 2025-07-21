@@ -13,6 +13,7 @@ use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
+use iota_interaction_ts::wasm_error::WasmError;
 use js_sys::Object;
 use product_common::bindings::core_client::WasmManagedCoreClientReadOnly;
 use product_common::bindings::transaction::WasmTransactionBuilder;
@@ -221,7 +222,8 @@ impl WasmOnChainIdentity {
     transfer_map: Vec<StringCouple>,
     expiration_epoch: Option<u64>,
   ) -> Result<WasmTransactionBuilder> {
-    let tx = WasmCreateSendProposal::new(self, controller_token, transfer_map, expiration_epoch)?;
+    let tx = WasmCreateSendProposal::new(self, controller_token, transfer_map, expiration_epoch)
+      .map_err(|e| WasmError::from(e))?;
     Ok(WasmTransactionBuilder::new(JsValue::from(tx).unchecked_into()))
   }
 

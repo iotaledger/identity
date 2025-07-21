@@ -99,6 +99,10 @@ iota-client = [
   "dep:serde-aux",
   "product_common/transaction",
 ]
+# Enables an high level integration with IOTA Gas Station.
+gas-station = ["product_common/gas-station"]
+# Replaces the generic client used in HTTP interfaces with Reqwest's HTTP Client.
+default-http-client = ["product_common/default-http-client"]
 
 # Enables revocation with `RevocationBitmap2022`.
 revocation-bitmap = ["identity_credential/revocation-bitmap"]

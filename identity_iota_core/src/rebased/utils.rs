@@ -49,7 +49,7 @@ fn unpack_command_output(output: &Output, task: &str) -> anyhow::Result<String> 
 /// This behavior can be changed to send funds with local IOTA client's active address to the given address.
 /// For that the env variable `IOTA_IDENTITY_FUND_WITH_ACTIVE_ADDRESS` must be set to `true`.
 /// Notice, that this is a setting mostly intended for internal test use and must be used with care.
-/// For details refer to to `identity_iota_core`'s README.md.
+/// For details refer to `identity_iota_core`'s README.md.
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn request_funds(address: &IotaAddress) -> anyhow::Result<()> {
   let fund_with_active_address = std::env::var("IOTA_IDENTITY_FUND_WITH_ACTIVE_ADDRESS")

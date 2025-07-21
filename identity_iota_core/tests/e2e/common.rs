@@ -157,7 +157,7 @@ async fn publish_package(active_address: IotaAddress) -> anyhow::Result<ObjectID
   let package_id_str = package_id.to_string();
   std::env::set_var("IDENTITY_IOTA_PKG_ID", package_id_str.as_str());
   let mut file = std::fs::File::create(CACHED_PKG_ID)?;
-  write!(&mut file, "{};{}", package_id_str, active_address)?;
+  write!(&mut file, "{active_address};{active_address}")?;
 
   Ok(package_id)
 }

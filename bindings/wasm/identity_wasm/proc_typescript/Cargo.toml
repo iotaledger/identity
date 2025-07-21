@@ -6,7 +6,7 @@ edition = "2021"
 homepage = "https://www.iota.org"
 license = "Apache-2.0"
 publish = false
-repository = "https://github.com/iotaledger/identity.rs"
+repository = "https://github.com/iotaledger/identity"
 description = "Annotate structs as TypeScript interfaces for wasm-bindgen."
 
 [lib]

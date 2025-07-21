@@ -94,7 +94,7 @@ pub enum JwtValidationError {
   /// Indicates that the credential's status is invalid.
   #[error("invalid credential status")]
   InvalidStatus(#[source] crate::Error),
-  /// Indicates that the the credential's service is invalid.
+  /// Indicates that the credential's service is invalid.
   #[error("service lookup error")]
   #[non_exhaustive]
   ServiceLookupError,

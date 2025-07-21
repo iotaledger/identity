@@ -44,7 +44,7 @@ pub struct WasmAccessSubIdentity {
 
 #[wasm_bindgen(js_class = AccessSubIdentity)]
 impl WasmAccessSubIdentity {
-  #[wasm_bindgen(constructor)]  
+  #[wasm_bindgen(constructor)]
   pub fn new(identity: String, sub_identity: String) -> Self {
     Self { identity, sub_identity }
   }

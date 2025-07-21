@@ -52,7 +52,10 @@ export async function didOwnsDid(): Promise<void> {
     // Changes are persisted on the ledger and reflected locally.
     const syncedSubIdentity = await OnChainIdentity.getById(subIdentity.id(), identityClient);
     const isDeactivated = subIdentity.didDocument().metadata().deactivated || false;
-    console.assert(isDeactivated && syncedSubIdentity.didDocument().metadata().deactivated == isDeactivated, "Whooops, sub identity wasn't updated");
+    console.assert(
+        isDeactivated && syncedSubIdentity.didDocument().metadata().deactivated == isDeactivated,
+        "Whooops, sub identity wasn't updated",
+    );
 
-    console.log(`Identity \`${subIdentity.id()}\` has been successfully deactivated.`)
+    console.log(`Identity \`${subIdentity.id()}\` has been successfully deactivated.`);
 }

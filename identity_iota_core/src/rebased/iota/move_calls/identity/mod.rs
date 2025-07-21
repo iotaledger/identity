@@ -1,20 +1,20 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-mod delegation;
 mod borrow;
 mod config_change;
 mod create;
+mod delegation;
 mod exec;
 mod send;
 pub(crate) mod sub_identity;
 mod update;
 mod upgrade;
 
-pub(crate) use delegation::*;
 pub(crate) use borrow::*;
 pub(crate) use config_change::*;
 pub(crate) use create::*;
+pub(crate) use delegation::*;
 pub(crate) use exec::*;
 pub(crate) use send::*;
 pub(crate) use update::*;

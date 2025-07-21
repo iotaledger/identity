@@ -49,11 +49,11 @@ declare module "~identity_wasm" {
         /**
          * Performs an operation on Identity `subIdentity`, owned by this Identity.
          * # Params
-         * @param controllerToken Transaction sender's token granting access to this Identity. 
+         * @param controllerToken Transaction sender's token granting access to this Identity.
          * @param subIdentity The sub-Identity to access.
          * @param subFn Closure describing the operation to be performed on `subIdentity`.
          * # Notes
-         * `subFn` cannot make use of `this` reference. 
+         * `subFn` cannot make use of `this` reference.
          */
         accessSubIdentity<Tx extends Transaction<unknown>>(
             controllerToken: ControllerToken,
@@ -69,7 +69,7 @@ declare module "~identity_wasm" {
             identity: OnChainIdentity,
             identityToken: ControllerToken,
             subIdentity: OnChainIdentity,
-            subAccessFn: SubAccessFn<Tx>
+            subAccessFn: SubAccessFn<Tx>,
         ): TransactionBuilder<Tx>;
     }
 }

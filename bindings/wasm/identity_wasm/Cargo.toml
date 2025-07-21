@@ -84,8 +84,3 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_bindgen_unstable_test
 [features]
 default = []
 keytool = ["iota_interaction_ts/keytool", "identity_iota/keytool"]
-
-[patch."https://github.com/iotaledger/product-core.git"]
-iota_interaction = { path = "../../../../product-core/iota_interaction" }
-iota_interaction_ts = { path = "../../../../product-core/bindings/wasm/iota_interaction_ts" }
-product_common = { path = "../../../../product-core/product_common", default-features = false, features = ["core-client", "transaction", "bindings"] }

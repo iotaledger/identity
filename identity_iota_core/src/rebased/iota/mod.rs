@@ -151,12 +151,12 @@ mod tests {
     // Base-PTB, where coin is the argument we'd like to use in the PT that we'll be merging.
     let (mut ptb, coin) = empty_iota_coin_ptb();
     // In this PT we have two transfers: the first is a dummy that simply makes sure inputs and arguments
-    // are handled as intented, the other is the transfer of an object that will be replaced with the 
+    // are handled as intented, the other is the transfer of an object that will be replaced with the
     // argument coming from the base PTB after the merge.
     let pt = {
       let mut ptb = Ptb::new();
       let pure_arg = ptb.pure_bytes(vec![1, 2, 3], false);
-      ptb.transfer_arg(recipient, pure_arg); 
+      ptb.transfer_arg(recipient, pure_arg);
 
       let obj = ptb.input(object_to_replace.clone()).unwrap();
       ptb.transfer_arg(recipient, obj);
@@ -171,7 +171,7 @@ mod tests {
     let expected_pt = {
       let (mut ptb, coin) = empty_iota_coin_ptb();
       let pure_arg = ptb.pure_bytes(vec![1, 2, 3], false);
-      ptb.transfer_arg(recipient, pure_arg); 
+      ptb.transfer_arg(recipient, pure_arg);
 
       ptb.transfer_arg(recipient, coin);
 

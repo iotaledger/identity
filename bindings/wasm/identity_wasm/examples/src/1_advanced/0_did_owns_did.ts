@@ -1,7 +1,7 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-import { IotaDocument } from "@iota/identity-wasm/node";
+import { IotaDocument, OnChainIdentity } from "@iota/identity-wasm/node";
 import { IotaClient } from "@iota/iota-sdk/client";
 import { getFundedClient, getMemstorage, NETWORK_URL } from "../util";
 
@@ -41,7 +41,7 @@ export async function didOwnsDid(): Promise<void> {
             `address \`${identityClient.senderAddress()}\` has no control over Identity \`${identityDid}\``,
         );
     }
-    const { output } = await identity
+    await identity
         .accessSubIdentity(
             identityToken,
             subIdentity,
@@ -49,5 +49,10 @@ export async function didOwnsDid(): Promise<void> {
         )
         .buildAndExecute(identityClient);
 
-    console.assert(subIdentity.didDocument().metadata().deactivated, "Whooops, sub identity wasn't updated");
+    // Changes are persisted on the ledger and reflected locally.
+    const syncedSubIdentity = await OnChainIdentity.getById(subIdentity.id(), identityClient);
+    const isDeactivated = subIdentity.didDocument().metadata().deactivated || false;
+    console.assert(isDeactivated && syncedSubIdentity.didDocument().metadata().deactivated == isDeactivated, "Whooops, sub identity wasn't updated");
+
+    console.log(`Identity \`${subIdentity.id()}\` has been successfully deactivated.`)
 }

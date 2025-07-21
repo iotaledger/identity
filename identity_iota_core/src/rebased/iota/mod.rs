@@ -27,7 +27,7 @@ pub(crate) fn ptb_merge_tx_with_inputs_replacement(
     let argument = replacements
       .iter()
       .find_map(|(to_replace, replacement)| (*to_replace == input).then_some(*replacement))
-      .unwrap_or_else(|| ptb.input(input).expect("shouldn't fail. Check this more carefully.."));
+      .unwrap_or_else(|| ptb.input(input).expect("an input in other is a valid input"));
 
     inputs_map.insert(idx as u16, argument);
   }
@@ -108,10 +108,13 @@ mod tests {
   use super::*;
   use iota_interaction::ident_str;
   use iota_interaction::types::base_types::IotaAddress;
+  use iota_interaction::types::base_types::ObjectID;
+  use iota_interaction::types::transaction::ObjectArg;
   use iota_interaction::types::IOTA_FRAMEWORK_PACKAGE_ID;
   use iota_interaction::IOTA_COIN_TYPE;
 
-  fn empty_iota_coin_ptb() -> Ptb {
+  /// Returns a PTB with a single call to `0x2::coin::zero`, together with its result.
+  fn empty_iota_coin_ptb() -> (Ptb, Argument) {
     let mut ptb = Ptb::new();
     let empty_coin = ptb.programmable_move_call(
       IOTA_FRAMEWORK_PACKAGE_ID,
@@ -120,16 +123,62 @@ mod tests {
       vec![IOTA_COIN_TYPE.parse().unwrap()],
       vec![],
     );
-    ptb.transfer_args(IotaAddress::random_for_testing_only(), vec![empty_coin]);
-    ptb
+
+    (ptb, empty_coin)
   }
 
   #[test]
   fn merging_pt_into_empty_ptb_works() {
     let mut ptb = Ptb::new();
-    let pt = empty_iota_coin_ptb().finish();
+    let pt = {
+      let (mut ptb, coin) = empty_iota_coin_ptb();
+      ptb.transfer_arg(IotaAddress::random_for_testing_only(), coin);
+      ptb.finish()
+    };
 
     ptb_merge_tx(&mut ptb, pt.clone());
     assert_eq!(ptb.finish(), pt);
+  }
+
+  #[test]
+  fn merging_pt_with_replacements_works() {
+    let recipient = IotaAddress::random_for_testing_only();
+    let object_to_replace = CallArg::Object(ObjectArg::SharedObject {
+      id: ObjectID::random(),
+      initial_shared_version: 0.into(),
+      mutable: true,
+    });
+    // Base-PTB, where coin is the argument we'd like to use in the PT that we'll be merging.
+    let (mut ptb, coin) = empty_iota_coin_ptb();
+    // In this PT we have two transfers: the first is a dummy that simply makes sure inputs and arguments
+    // are handled as intented, the other is the transfer of an object that will be replaced with the 
+    // argument coming from the base PTB after the merge.
+    let pt = {
+      let mut ptb = Ptb::new();
+      let pure_arg = ptb.pure_bytes(vec![1, 2, 3], false);
+      ptb.transfer_arg(recipient, pure_arg); 
+
+      let obj = ptb.input(object_to_replace.clone()).unwrap();
+      ptb.transfer_arg(recipient, obj);
+
+      ptb.finish()
+    };
+
+    ptb_merge_tx_with_inputs_replacement(&mut ptb, pt, vec![(object_to_replace, coin)]);
+    let pt = ptb.finish();
+
+    // What the PT should look like if created in a single PTB.
+    let expected_pt = {
+      let (mut ptb, coin) = empty_iota_coin_ptb();
+      let pure_arg = ptb.pure_bytes(vec![1, 2, 3], false);
+      ptb.transfer_arg(recipient, pure_arg); 
+
+      ptb.transfer_arg(recipient, coin);
+
+      ptb.finish()
+    };
+
+    assert_eq!(pt, expected_pt);
+    assert_eq!(pt.inputs.len(), 2);
   }
 }

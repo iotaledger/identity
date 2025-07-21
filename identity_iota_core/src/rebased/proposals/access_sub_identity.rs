@@ -67,11 +67,11 @@ where
 ///
 /// Used to encode `sub_tx` in [AccessSubIdentityTx] when no sub_tx is present (create proposal).
 #[derive(Debug)]
-pub struct NeverTx;
+pub struct EmptyTx;
 
 #[cfg_attr(feature = "send-sync", async_trait)]
 #[cfg_attr(not(feature = "send-sync"), async_trait(?Send))]
-impl Transaction for NeverTx {
+impl Transaction for EmptyTx {
   type Output = ();
   type Error = Infallible;
 
@@ -164,7 +164,7 @@ impl<'i, 'sub, F> AccessSubIdentityBuilder<'i, 'sub, F> {
     }
   }
 
-  async fn validate<C>(&self, client: &C) -> Result<ControllerToken, AccessSubIdentityBuilderErrorKind>
+  async fn get_identity_token<C>(&self, client: &C) -> Result<ControllerToken, AccessSubIdentityBuilderErrorKind>
   where
     C: CoreClientReadOnly + OptionalSync,
   {
@@ -201,11 +201,11 @@ impl<'i, 'sub> AccessSubIdentityBuilder<'i, 'sub, ()> {
   pub async fn finish<C>(
     self,
     client: &C,
-  ) -> Result<TransactionBuilder<AccessSubIdentityTx<'i, 'sub, NeverTx>>, AccessSubIdentityBuilderError>
+  ) -> Result<TransactionBuilder<AccessSubIdentityTx<'i, 'sub, EmptyTx>>, AccessSubIdentityBuilderError>
   where
     C: CoreClientReadOnly + OptionalSync,
   {
-    let _ = self.validate(client).await?;
+    let _ = self.get_identity_token(client).await?;
     let tx_kind = TxKind::Create {
       expiration: self.expiration,
     };
@@ -234,7 +234,7 @@ where
   where
     C: CoreClientReadOnly + OptionalSync,
   {
-    let sub_identity_token = self.validate(client).await?;
+    let sub_identity_token = self.get_identity_token(client).await?;
 
     // `true` if this operation can also be executed in the same transaction.
     let can_execute = self
@@ -384,7 +384,7 @@ enum TxKind<Tx> {
 /// [Transaction] that allows a controller of `identity` to access `sub_identity`
 /// by borrowing one of `identity`'s token over it.
 #[derive(Debug)]
-pub struct AccessSubIdentityTx<'i, 'sub, Tx> {
+pub struct AccessSubIdentityTx<'i, 'sub, Tx = EmptyTx> {
   identity: &'i mut OnChainIdentity,
   identity_token: ControllerToken,
   sub_identity: ObjectID,

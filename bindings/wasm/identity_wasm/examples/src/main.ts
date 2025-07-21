@@ -44,6 +44,8 @@ export async function main(example?: string) {
             return await createVP();
         case "7_revoke_vc":
             return await revokeVC();
+        case "0_did_owns_did":
+            return await didOwnsDid();
         case "4_custom_resolution":
             return await customResolution();
         case "5_domain_linkage":
@@ -62,8 +64,6 @@ export async function main(example?: string) {
             return await advancedTransaction();
         case "12_iota_keytool_integration":
             return await iotaKeytoolIntegration();
-        case "0_did_owns_did":
-            return await didOwnsDid();
         default:
             throw "Unknown example name: '" + argument + "'";
     }

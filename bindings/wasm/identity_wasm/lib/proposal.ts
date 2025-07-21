@@ -46,6 +46,15 @@ export type SubAccessFn<Tx extends Transaction<unknown>> = (
 // Augment Identity to properly support accessSubIdentity
 declare module "~identity_wasm" {
     interface OnChainIdentity {
+        /**
+         * Performs an operation on Identity `subIdentity`, owned by this Identity.
+         * # Params
+         * @param controllerToken Transaction sender's token granting access to this Identity. 
+         * @param subIdentity The sub-Identity to access.
+         * @param subFn Closure describing the operation to be performed on `subIdentity`.
+         * # Notes
+         * `subFn` cannot make use of `this` reference. 
+         */
         accessSubIdentity<Tx extends Transaction<unknown>>(
             controllerToken: ControllerToken,
             subIdentity: OnChainIdentity,
@@ -55,6 +64,7 @@ declare module "~identity_wasm" {
     }
 
     interface AccessSubIdentityProposal {
+        /** Returns an executable transaction that consumes this proposal. */
         intoTx<Tx extends Transaction<unknown>>(
             identity: OnChainIdentity,
             identityToken: ControllerToken,

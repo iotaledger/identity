@@ -648,6 +648,9 @@ async fn access_sub_identity_works() -> anyhow::Result<()> {
     .await?;
 
   assert!(sub_identity.did_document().metadata.deactivated == Some(true));
+  // Local `sub_identity`` reflects its on-chain Identity object.
+  let synced_sub_identity = get_identity(&identity_client, sub_identity.id()).await?.unwrap();
+  assert_eq!(sub_identity.did_document(), synced_sub_identity.did_document());
 
   Ok(())
 }

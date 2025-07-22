@@ -28,6 +28,7 @@ use product_common::transaction::transaction_builder::TransactionBuilder;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
+use std::fmt::Display;
 use std::ops::BitAnd;
 use std::ops::BitAndAssign;
 use std::ops::BitOr;
@@ -35,6 +36,7 @@ use std::ops::BitOrAssign;
 use std::ops::BitXor;
 use std::ops::BitXorAssign;
 use std::ops::Not;
+
 /// A token that proves ownership over an object.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -127,6 +129,14 @@ impl ControllerToken {
       Self::Controller(_) => ControllerTokenRef::Controller(obj_ref),
       Self::Delegate(_) => ControllerTokenRef::Delegate(obj_ref),
     })
+  }
+
+  #[inline(always)]
+  fn as_type_name(&self) -> &'static str {
+    match self {
+      Self::Controller(_) => "ControllerCap",
+      Self::Delegate(_) => "DelegationToken",
+    }
   }
 }
 
@@ -638,5 +648,29 @@ impl Transaction for DeleteDelegationToken {
     effects.deleted_mut().swap_remove(deleted_token_pos);
 
     Ok(())
+  }
+}
+
+/// An invalid [ControllerToken] was presented to a controller-restricted
+/// [OnChainIdentity] operation.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub struct InvalidControllerTokenForIdentity {
+  /// The ID of the [OnChainIdentity] this operation attempted to access.
+  pub identity: ObjectID,
+  /// The presented controller token.
+  pub controller_token: ControllerToken,
+}
+
+impl Display for InvalidControllerTokenForIdentity {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let token_type = self.controller_token.as_type_name();
+    let token_id = self.controller_token.id();
+    let identity_id = self.identity;
+
+    write!(
+      f,
+      "the presented {token_type} `{token_id}` does not grant access to Identity `{identity_id}`"
+    )
   }
 }

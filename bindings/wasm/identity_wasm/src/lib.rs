@@ -64,6 +64,7 @@ import {
   ProposalResult,
   DelegatePermissions,
   CoreClient,
-  CoreClientReadOnly
+  CoreClientReadOnly,
+  SubAccessFn
 } from '../lib/index';
 "#;

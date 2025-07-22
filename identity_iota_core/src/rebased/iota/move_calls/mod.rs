@@ -21,4 +21,9 @@ impl ControllerTokenRef {
       Self::Delegate(obj_ref) => *obj_ref,
     }
   }
+
+  #[inline(always)]
+  pub(crate) fn is_controller_cap(&self) -> bool {
+    matches!(self, Self::Controller(_))
+  }
 }

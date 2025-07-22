@@ -9,6 +9,7 @@ import { deleteIdentityDID } from "./0_basic/4_delete_did";
 import { createVC } from "./0_basic/5_create_vc";
 import { createVP } from "./0_basic/6_create_vp";
 import { revokeVC } from "./0_basic/7_revoke_vc";
+import { didOwnsDid } from "./1_advanced/0_did_owns_did";
 import { sdJwtVc } from "./1_advanced/10_sd_jwt_vc";
 import { advancedTransaction } from "./1_advanced/11_advanced_transactions";
 import { iotaKeytoolIntegration } from "./1_advanced/12_iota_keytool_integration";
@@ -43,6 +44,8 @@ export async function main(example?: string) {
             return await createVP();
         case "7_revoke_vc":
             return await revokeVC();
+        case "0_did_owns_did":
+            return await didOwnsDid();
         case "4_custom_resolution":
             return await customResolution();
         case "5_domain_linkage":

@@ -141,12 +141,12 @@ where
     .read()
     .await
     .package_id(network)
-    .ok_or_else(|| Error::InvalidConfig(format!("cannot find IdentityIota package ID for network {network}")))
+    .ok_or_else(|| Error::InvalidConfig(format!("cannot find `IotaIdentity` package ID for network {network}")))
 }
 
 #[cfg(test)]
 mod tests {
-  use iota_sdk::IotaClientBuilder;
+  use iota_interaction::IotaClientBuilder;
 
   use crate::rebased::client::IdentityClientReadOnly;
 

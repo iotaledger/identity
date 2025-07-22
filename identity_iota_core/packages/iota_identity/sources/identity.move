@@ -5,6 +5,7 @@ module iota_identity::identity {
     use iota::clock::Clock;
     use iota::transfer::Receiving;
     use iota::vec_map::{Self, VecMap};
+    use iota_identity::access_sub_entity_proposal::{Self, AccessSubEntity};
     use iota_identity::borrow_proposal::{Self, Borrow};
     use iota_identity::config_proposal;
     use iota_identity::controller::{DelegationToken, ControllerCap};
@@ -295,6 +296,45 @@ module iota_identity::identity {
         self.updated = clock.timestamp_ms();
 
         emit_proposal_event(self.id().to_inner(), cap.id(), proposal_id, true);
+    }
+
+    /// Creates a new `AccessSubEntity` proposal to access a sub-identity.
+    public fun propose_access_to_sub_identity(
+        self: &mut Identity,
+        cap: &DelegationToken,
+        sub_identity: &Identity,
+        expiration: Option<u64>,
+        ctx: &mut TxContext,
+    ): ID {
+        assert!(!self.deleted, EDeletedIdentity);
+        let proposal_id = self
+            .did_doc
+            .create_proposal(
+                cap,
+                access_sub_entity_proposal::new(self.id.to_inner(), sub_identity.id.to_inner()),
+                expiration,
+                ctx,
+            );
+
+        emit_proposal_event(self.id().to_inner(), cap.id(), proposal_id, false);
+        proposal_id
+    }
+
+    /// Borrows the `ControllerCap` specified in this `AccessSubEntity` action.
+    public fun borrow_controller_cap_to_sub_identity(
+        self: &mut Identity,
+        action: &mut Action<AccessSubEntity>,
+        receiving: Receiving<ControllerCap>,
+    ): ControllerCap {
+        access_sub_entity_proposal::borrow_controller_cap(action, self.uid_mut(), receiving)
+    }
+
+    public fun borrow_delegation_token_to_sub_identity(
+        self: &mut Identity,
+        action: &mut Action<AccessSubEntity>,
+        receiving: Receiving<DelegationToken>,
+    ): DelegationToken {
+        access_sub_entity_proposal::borrow_delegation_token(action, self.uid_mut(), receiving)
     }
 
     /// Creates a new `ControllerExecution` proposal.
@@ -646,6 +686,10 @@ module iota_identity::identity {
         } = self;
         object::delete(id);
         did_doc.delete();
+    }
+
+    public(package) fun uid_mut(self: &mut Identity): &mut UID {
+        &mut self.id
     }
 
     /// Checks if `data` is a state metadata representing a DID.

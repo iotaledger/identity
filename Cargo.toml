@@ -22,7 +22,7 @@ members = [
   "identity_jose",
   "identity_ecdsa_verifier",
   "identity_eddsa_verifier",
-  "examples",
+  "examples", "identity_chain_agnostic",
 ]
 
 exclude = ["bindings/wasm/identity_wasm", "bindings/grpc"]

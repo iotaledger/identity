@@ -19,5 +19,6 @@ workspace = true
 serde = ["dep:serde"]
 
 [dev-dependencies]
+anyhow = "1.0.98"
 identity_chain_agnostic = { path = ".", features = ["serde"] }
 serde_json = { workspace = true, features = ["std"] }

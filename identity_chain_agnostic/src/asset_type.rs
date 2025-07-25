@@ -392,7 +392,7 @@ fn reference_parser(input: &str) -> ParserResult<&str> {
 fn token_id_parser(input: &str) -> ParserResult<&str> {
   let (mut rem, mut output) = reference_and_token_parser(input)?;
   if output.len() > 78 {
-    let (clipped_output, clipped_rem) = output.split_at(128);
+    let (clipped_output, clipped_rem) = output.split_at(78);
     rem = clipped_rem;
     output = clipped_output;
   }

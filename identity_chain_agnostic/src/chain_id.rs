@@ -114,11 +114,22 @@ impl<'i> ChainId<'i> {
   }
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error("failed to parse chain ID")]
+#[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct ChainIdParsingError {
   source: ParseError<'static>,
+}
+
+impl Display for ChainIdParsingError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str("failed to parse chain ID")
+  }
+}
+
+impl std::error::Error for ChainIdParsingError {
+  fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    Some(&self.source)
+  }
 }
 
 impl FromStr for ChainId<'static> {
@@ -209,7 +220,7 @@ mod tests {
 
   #[test]
   fn parsing_valid_chain_ids_works() {
-    let ok = VALID_CHAIN_IDS.iter().map(|s| ChainId::parse(s)).all(|res| res.is_ok());
+    let ok = VALID_CHAIN_IDS.iter().map(ChainId::parse).all(|res| res.is_ok());
     assert!(ok);
   }
 

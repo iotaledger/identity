@@ -501,7 +501,7 @@ mod tests {
   #[test]
   fn test_all_consuming() {
     let alpha0 = take_while(|c| c.is_ascii_alphabetic());
-    let digit0 = take_while(|c| c.is_digit(10));
+    let digit0 = take_while(|c| c.is_ascii_digit() && !c.is_ascii_alphabetic());
     assert!(all_consuming(alpha0).process("abcdef").is_ok());
     let e = all_consuming(digit0).process("12345abcd").unwrap_err();
     assert_eq!(

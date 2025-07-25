@@ -155,11 +155,22 @@ fn asset_type_parser(input: &str) -> ParserResult<AssetType> {
   Ok((rem, asset_type))
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error("failed to parse asset type")]
+#[derive(Debug)]
 #[non_exhaustive]
 pub struct AssetTypeParsingError {
   source: Box<dyn std::error::Error + Send + Sync>,
+}
+
+impl Display for AssetTypeParsingError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str("failed to parse asset type")
+  }
+}
+
+impl std::error::Error for AssetTypeParsingError {
+  fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    Some(self.source.as_ref())
+  }
 }
 
 /// An asset ID, as defined in [CAIP-19](https://chainagnostic.org/CAIPs/caip-19#specification-of-asset-id).
@@ -297,11 +308,22 @@ impl FromStr for AssetId<'static> {
   }
 }
 
-#[derive(Debug, Clone, thiserror::Error)]
-#[error("failed to parse asset ID")]
+#[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct AssetIdParsingError {
   source: ParseError<'static>,
+}
+
+impl Display for AssetIdParsingError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str("failed to parse asset ID")
+  }
+}
+
+impl std::error::Error for AssetIdParsingError {
+  fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    Some(&self.source)
+  }
 }
 
 fn asset_id_parser(input: &str) -> ParserResult<AssetId> {
@@ -391,7 +413,7 @@ mod serde_impl {
     where
       S: serde::Serializer,
     {
-      serializer.serialize_str(&self.to_string())
+      serializer.serialize_str(self.as_ref())
     }
   }
 

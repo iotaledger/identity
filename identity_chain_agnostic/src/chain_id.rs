@@ -5,12 +5,13 @@
 
 use std::borrow::Cow;
 use std::fmt::Display;
+use std::hash::Hash;
 use std::str::FromStr;
 
 use crate::parser::*;
 
 /// A chain ID, as defined in [CAIP-2](https://chainagnostic.org/CAIPs/caip-2#specification).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub struct ChainId<'i> {
   data: Cow<'i, str>,
   pub(crate) separator: usize,
@@ -19,6 +20,32 @@ pub struct ChainId<'i> {
 impl<'i> Display for ChainId<'i> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.write_str(&self.data)
+  }
+}
+
+impl<'i> PartialEq for ChainId<'i> {
+  fn eq(&self, other: &Self) -> bool {
+    self.as_str() == other.as_str()
+  }
+}
+
+impl<'i> Eq for ChainId<'i> {}
+
+impl<'i> Hash for ChainId<'i> {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    self.data.hash(state)
+  }
+}
+
+impl<'i> PartialOrd for ChainId<'i> {
+  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl<'i> Ord for ChainId<'i> {
+  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    self.partial_cmp(other).unwrap()
   }
 }
 
@@ -138,9 +165,7 @@ impl<'i> TryFrom<&'i str> for ChainId<'i> {
 }
 
 pub(crate) fn chain_id_parser(input: &str) -> ParserResult<ChainId> {
-  let (rem, namespace) = namespace_parser(input)?;
-  let (rem, _colon) = char(':')(rem)?;
-  let (rem, _reference) = reference_parser(rem)?;
+  let (rem, (namespace, _reference)) = separated_pair(namespace_parser, char(':'), reference_parser)(input)?;
   let consumed = input.len() - rem.len();
 
   let chain_id = ChainId {

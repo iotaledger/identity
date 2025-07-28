@@ -5,14 +5,20 @@
 
 use std::borrow::Cow;
 use std::fmt::Display;
+use std::hash::Hash;
 use std::str::FromStr;
 
 use crate::chain_id::chain_id_parser;
 use crate::chain_id::ChainId;
 use crate::parser::*;
 
+const REFERENCE_MAX_LEN: usize = 128;
+const TOKEN_ID_MAX_LEN: usize = 78;
+const NAMESPACE_MIN_LEN: usize = 3;
+const NAMESPACE_MAX_LEN: usize = 8;
+
 /// An asset type, as defined in [CAIP-19](https://chainagnostic.org/CAIPs/caip-19).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub struct AssetType<'i> {
   data: Cow<'i, str>,
   chain_id_separator: usize,
@@ -134,10 +140,34 @@ impl FromStr for AssetType<'static> {
   }
 }
 
+impl<'i> PartialEq for AssetType<'i> {
+  fn eq(&self, other: &Self) -> bool {
+    self.as_str() == other.as_str()
+  }
+}
+
+impl<'i> Eq for AssetType<'i> {}
+
+impl<'i> Hash for AssetType<'i> {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    self.data.hash(state)
+  }
+}
+
+impl<'i> PartialOrd for AssetType<'i> {
+  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl<'i> Ord for AssetType<'i> {
+  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    self.partial_cmp(other).unwrap()
+  }
+}
+
 fn asset_type_parser(input: &str) -> ParserResult<AssetType> {
-  let (rem, chain_id) = chain_id_parser(input)?;
-  let (rem, _slash) = char('/')(rem)?;
-  let (rem, asset_id) = asset_id_parser(rem)?;
+  let (rem, (chain_id, asset_id)) = separated_pair(chain_id_parser, char('/'), asset_id_parser)(input)?;
 
   let consumed = input.len() - rem.len();
   let asset_type = AssetType {
@@ -170,7 +200,7 @@ impl std::error::Error for AssetTypeParsingError {
 }
 
 /// An asset ID, as defined in [CAIP-19](https://chainagnostic.org/CAIPs/caip-19#specification-of-asset-id).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub struct AssetId<'i> {
   data: Cow<'i, str>,
   separator: usize,
@@ -301,6 +331,32 @@ impl FromStr for AssetId<'static> {
   }
 }
 
+impl<'i> PartialEq for AssetId<'i> {
+  fn eq(&self, other: &Self) -> bool {
+    self.as_str() == other.as_str()
+  }
+}
+
+impl<'i> Eq for AssetId<'i> {}
+
+impl<'i> Hash for AssetId<'i> {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    self.data.hash(state)
+  }
+}
+
+impl<'i> PartialOrd for AssetId<'i> {
+  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl<'i> Ord for AssetId<'i> {
+  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    self.partial_cmp(other).unwrap()
+  }
+}
+
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct AssetIdParsingError {
@@ -320,9 +376,7 @@ impl std::error::Error for AssetIdParsingError {
 }
 
 fn asset_id_parser(input: &str) -> ParserResult<AssetId> {
-  let (rem, namespace) = namespace_parser(input)?;
-  let (rem, _colon) = char(':')(rem)?;
-  let (rem, reference) = reference_parser(rem)?;
+  let (rem, (namespace, _reference)) = separated_pair(namespace_parser, char(':'), reference_parser)(input)?;
   let token_id_len = if let Ok((rem, _slash)) = char('/')(rem) {
     let (_, token_id) = token_id_parser(rem)?;
     Some(token_id.len())
@@ -330,7 +384,7 @@ fn asset_id_parser(input: &str) -> ParserResult<AssetId> {
     None
   };
 
-  let consumed = namespace.len() + 1 + reference.len() + token_id_len.map(|len| len + 1).unwrap_or_default();
+  let consumed = input.len() - rem.len() + token_id_len.map(|len| len + 1).unwrap_or_default();
   let asset_id = AssetId {
     data: Cow::Borrowed(&input[..consumed]),
     separator: namespace.len(),
@@ -342,7 +396,7 @@ fn asset_id_parser(input: &str) -> ParserResult<AssetId> {
 
 fn namespace_parser(input: &str) -> ParserResult<&str> {
   let is_valid_char = |c: char| c == '-' || c.is_ascii_lowercase() || c.is_ascii_digit();
-  take_while_min_max(3, 8, is_valid_char)(input)
+  take_while_min_max(NAMESPACE_MIN_LEN, NAMESPACE_MAX_LEN, is_valid_char)(input)
 }
 
 fn perc_encoded_parser(input: &str) -> ParserResult<u8> {
@@ -353,33 +407,19 @@ fn perc_encoded_parser(input: &str) -> ParserResult<u8> {
   Ok((rem, byte))
 }
 
-fn reference_and_token_parser(input: &str) -> ParserResult<&str> {
-  let valid_char_parser = take_while_min_max(1, usize::MAX, |c: char| {
-    c == '.' || c == '-' || c.is_ascii_alphanumeric()
-  });
+fn reference_and_token_parser(input: &str, max: usize) -> ParserResult<&str> {
+  let valid_char_parser = take_while_min_max(1, max, |c: char| c == '.' || c == '-' || c.is_ascii_alphanumeric());
   recognize(many1(any((valid_char_parser, recognize(perc_encoded_parser))))).process(input)
 }
 
+#[inline(always)]
 fn reference_parser(input: &str) -> ParserResult<&str> {
-  let (mut rem, mut output) = reference_and_token_parser(input)?;
-  if output.len() > 128 {
-    let (clipped_output, clipped_rem) = output.split_at(128);
-    rem = clipped_rem;
-    output = clipped_output;
-  }
-
-  Ok((rem, output))
+  reference_and_token_parser(input, REFERENCE_MAX_LEN)
 }
 
+#[inline(always)]
 fn token_id_parser(input: &str) -> ParserResult<&str> {
-  let (mut rem, mut output) = reference_and_token_parser(input)?;
-  if output.len() > 78 {
-    let (clipped_output, clipped_rem) = output.split_at(78);
-    rem = clipped_rem;
-    output = clipped_output;
-  }
-
-  Ok((rem, output))
+  reference_and_token_parser(input, TOKEN_ID_MAX_LEN)
 }
 
 #[cfg(feature = "serde")]

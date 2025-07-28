@@ -37,20 +37,24 @@ impl Display for Expected {
   }
 }
 
+/// Error that may occure when parsing a value from an input string.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseError<'i> {
+  /// The input that was being parsed.
   pub input: Cow<'i, str>,
+  /// The type of failure encountered.
   pub kind: ParseErrorKind,
 }
 
 impl<'i> ParseError<'i> {
-  pub fn new(input: impl Into<Cow<'i, str>>, kind: ParseErrorKind) -> Self {
+  pub(crate) fn new(input: impl Into<Cow<'i, str>>, kind: ParseErrorKind) -> Self {
     Self {
       input: input.into(),
       kind,
     }
   }
 
+  /// Takes ownership of the input string.
   pub fn into_owned(self) -> ParseError<'static> {
     let Self { input, kind } = self;
     ParseError::new(Cow::Owned(input.into_owned()), kind)
@@ -71,9 +75,12 @@ impl<'i> Display for ParseError<'i> {
 
 impl<'i> std::error::Error for ParseError<'i> {}
 
+/// Possible failure of a parsing operation.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ParseErrorKind {
+  /// Encountered an unexpected character.
   UnexpectedCharacter { invalid: char, expected: Option<Expected> },
+  /// End of Input.
   EoI,
 }
 
@@ -94,9 +101,12 @@ impl Display for ParseErrorKind {
   }
 }
 
+/// A types that parses the given input into a certain output.
 pub trait Parser<'i> {
+  /// The type of the parsed output.
   type Output;
 
+  /// Runs this parser against the given input.
   fn process(&mut self, input: &'i str) -> ParserResult<'i, Self::Output>;
 }
 
@@ -128,6 +138,7 @@ impl<'i> Parser<'i> for CharParser {
   }
 }
 
+/// A parser that consume exactly one character `c` out of input.
 pub fn char<'i>(c: char) -> impl FnMut(&'i str) -> ParserResult<'i, char> {
   let mut parser = CharParser(c);
   move |input| parser.process(input)
@@ -340,6 +351,7 @@ where
   }
 }
 
+/// Repeatedly applies the given parser and returns the collected outputs.
 pub fn many1<'i, P>(parser: P) -> impl FnMut(&'i str) -> ParserResult<'i, Vec<P::Output>>
 where
   P: Parser<'i>,
@@ -366,6 +378,7 @@ where
   }
 }
 
+/// Applies the given parser and discards its output, returning the consumed input instead.
 pub fn recognize<'i, P>(parser: P) -> impl FnMut(&'i str) -> ParserResult<'i, &'i str>
 where
   P: Parser<'i>,
@@ -374,6 +387,7 @@ where
   move |input| recognize.process(input)
 }
 
+/// Applies the given parser and fails if all the input isn't consumed.
 pub fn all_consuming<'i, P>(mut parser: P) -> impl FnMut(&'i str) -> ParserResult<'i, P::Output>
 where
   P: Parser<'i>,
@@ -391,6 +405,27 @@ where
         },
       ))
     }
+  }
+}
+
+/// Parses a value from the parser `left`, then matches a value from parser `separator` and discards it,
+/// then parses another value from parser `right`, returning the two parsed values a couple.
+pub fn separated_pair<'i, L, S, R>(
+  mut left: L,
+  mut separator: S,
+  mut right: R,
+) -> impl FnMut(&'i str) -> ParserResult<'i, (L::Output, R::Output)>
+where
+  L: Parser<'i>,
+  S: Parser<'i>,
+  R: Parser<'i>,
+{
+  move |input| {
+    let (rem, left) = left.process(input)?;
+    let (rem, _sep) = separator.process(rem)?;
+    let (rem, right) = right.process(rem)?;
+
+    Ok((rem, (left, right)))
   }
 }
 
@@ -514,5 +549,15 @@ mod tests {
         }
       )
     )
+  }
+
+  #[test]
+  fn test_separated_pair() {
+    let alpha0 = take_while(|c| c.is_ascii_alphabetic());
+    let mut parser = separated_pair(alpha0, tag(": "), char('@'));
+    let (rem, (left, right)) = parser.process("abcdef: @..").unwrap();
+    assert_eq!(rem, "..");
+    assert_eq!(left, "abcdef");
+    assert_eq!(right, '@');
   }
 }

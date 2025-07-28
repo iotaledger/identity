@@ -5,7 +5,6 @@
 
 use std::borrow::Cow;
 use std::fmt::Display;
-use std::ops::Range;
 use std::str::FromStr;
 
 use crate::parser::*;
@@ -14,22 +13,20 @@ use crate::parser::*;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ChainId<'i> {
   data: Cow<'i, str>,
-  pub(crate) namespace: Range<usize>,
-  pub(crate) reference: Range<usize>,
+  pub(crate) separator: usize,
 }
 
 impl<'i> Display for ChainId<'i> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}:{}", self.namespace(), self.reference())
+    f.write_str(&self.data)
   }
 }
 
 impl<'i> ChainId<'i> {
-  pub(crate) fn new(data: &'i str, namespace: Range<usize>, reference: Range<usize>) -> Self {
+  pub(crate) fn new(data: &'i str, separator: usize) -> Self {
     Self {
       data: data.into(),
-      namespace,
-      reference,
+      separator,
     }
   }
   /// Attempts to parse a [ChainId] from the given string.
@@ -65,7 +62,7 @@ impl<'i> ChainId<'i> {
   /// ```
   #[inline(always)]
   pub fn namespace(&self) -> &str {
-    &self.data[self.namespace.clone()]
+    &self.data[..self.separator]
   }
 
   /// This chain ID's reference.
@@ -81,20 +78,14 @@ impl<'i> ChainId<'i> {
   /// ```
   #[inline(always)]
   pub fn reference(&self) -> &str {
-    &self.data[self.reference.clone()]
+    &self.data[self.separator + 1..]
   }
 
   /// Clones the internal string representation.
   pub fn into_owned(self) -> ChainId<'static> {
-    let Self {
-      data,
-      namespace,
-      reference,
-    } = self;
     ChainId {
-      data: Cow::Owned(data.into_owned()),
-      namespace,
-      reference,
+      data: Cow::Owned(self.data.into_owned()),
+      ..self
     }
   }
 
@@ -149,18 +140,12 @@ impl<'i> TryFrom<&'i str> for ChainId<'i> {
 pub(crate) fn chain_id_parser(input: &str) -> ParserResult<ChainId> {
   let (rem, namespace) = namespace_parser(input)?;
   let (rem, _colon) = char(':')(rem)?;
-  let namespace_span = 0..namespace.len();
-
-  let (rem, reference) = reference_parser(rem)?;
-  let reference_span = {
-    let offset = namespace_span.end + 1;
-    offset..offset + reference.len()
-  };
+  let (rem, _reference) = reference_parser(rem)?;
+  let consumed = input.len() - rem.len();
 
   let chain_id = ChainId {
-    data: Cow::Borrowed(&input[..reference_span.end]),
-    namespace: namespace_span,
-    reference: reference_span,
+    data: Cow::Borrowed(&input[..consumed]),
+    separator: namespace.len(),
   };
 
   Ok((rem, chain_id))

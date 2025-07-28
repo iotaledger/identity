@@ -5,7 +5,6 @@
 
 use std::borrow::Cow;
 use std::fmt::Display;
-use std::ops::Range;
 use std::str::FromStr;
 
 use crate::chain_id::chain_id_parser;
@@ -16,18 +15,17 @@ use crate::parser::*;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AssetType<'i> {
   data: Cow<'i, str>,
-  chain_id_namespace: Range<usize>,
-  chain_id_reference: Range<usize>,
-  asset_id_namespace: Range<usize>,
-  asset_id_reference: Range<usize>,
-  asset_id_token_id: Option<Range<usize>>,
+  chain_id_separator: usize,
+  separator: usize,
+  asset_id_separator: usize,
+  token_id_separator: Option<usize>,
 }
 
 impl<'i> AssetType<'i> {
   /// Attempts to parse an [AssetType] from the given string.
   /// # Example
   /// ```
-  /// # use identity_chain_agnostic::asset_id::{AssetType, AssetTypeParsingError};
+  /// # use identity_chain_agnostic::asset_type::{AssetType, AssetTypeParsingError};
   /// #
   /// # fn main() -> Result<(), AssetTypeParsingError> {
   /// let asset_type = AssetType::parse("eip155:1/slip44:60")?;
@@ -50,7 +48,7 @@ impl<'i> AssetType<'i> {
   /// Returns a string slice to the underlying string representation of this asset type.
   /// # Example
   /// ```
-  /// # use identity_chain_agnostic::asset_id::{AssetType, AssetTypeParsingError};
+  /// # use identity_chain_agnostic::asset_type::{AssetType, AssetTypeParsingError};
   /// #
   /// # fn main() -> Result<(), AssetTypeParsingError> {
   /// let asset_type = AssetType::parse("eip155:1/slip44:60")?;
@@ -74,7 +72,7 @@ impl<'i> AssetType<'i> {
   /// Returns a the [chain ID](ChainId) part of this [asset type](AssetType).
   /// # Example
   /// ```
-  /// # use identity_chain_agnostic::asset_id::{AssetType, AssetTypeParsingError};
+  /// # use identity_chain_agnostic::asset_type::{AssetType, AssetTypeParsingError};
   /// #
   /// # fn main() -> Result<(), AssetTypeParsingError> {
   /// let asset_type = AssetType::parse("eip155:1/slip44:60")?;
@@ -84,14 +82,14 @@ impl<'i> AssetType<'i> {
   /// ```
   #[inline(always)]
   pub fn chain_id(&self) -> ChainId {
-    let data = &self.data[..self.chain_id_reference.end];
-    ChainId::new(data, self.chain_id_namespace.clone(), self.chain_id_reference.clone())
+    let data = &self.data[..self.separator];
+    ChainId::new(data, self.chain_id_separator)
   }
 
   /// Returns a reference to the [asset ID](AssetId) part of this [asset type](AssetType).
   /// # Example
   /// ```
-  /// # use identity_chain_agnostic::asset_id::{AssetType, AssetTypeParsingError};
+  /// # use identity_chain_agnostic::asset_type::{AssetType, AssetTypeParsingError};
   /// #
   /// # fn main() -> Result<(), AssetTypeParsingError> {
   /// let asset_type = AssetType::parse("eip155:1/slip44:60")?;
@@ -101,12 +99,11 @@ impl<'i> AssetType<'i> {
   /// ```
   #[inline(always)]
   pub fn asset_id(&self) -> AssetId {
-    let data = &self.data[self.chain_id_reference.end + 1..];
+    let data = &self.data[self.separator + 1..];
     AssetId {
       data: data.into(),
-      namespace: self.asset_id_namespace.clone(),
-      reference: self.asset_id_reference.clone(),
-      token_id: self.asset_id_token_id.clone(),
+      separator: self.asset_id_separator,
+      token_id: self.token_id_separator,
     }
   }
 }
@@ -145,11 +142,10 @@ fn asset_type_parser(input: &str) -> ParserResult<AssetType> {
   let consumed = input.len() - rem.len();
   let asset_type = AssetType {
     data: Cow::Borrowed(&input[..consumed]),
-    chain_id_namespace: chain_id.namespace,
-    chain_id_reference: chain_id.reference,
-    asset_id_namespace: asset_id.namespace,
-    asset_id_reference: asset_id.reference,
-    asset_id_token_id: asset_id.token_id,
+    chain_id_separator: chain_id.separator,
+    separator: chain_id.as_str().len(),
+    asset_id_separator: asset_id.separator,
+    token_id_separator: asset_id.token_id,
   };
 
   Ok((rem, asset_type))
@@ -177,16 +173,15 @@ impl std::error::Error for AssetTypeParsingError {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AssetId<'i> {
   data: Cow<'i, str>,
-  namespace: Range<usize>,
-  reference: Range<usize>,
-  token_id: Option<Range<usize>>,
+  separator: usize,
+  token_id: Option<usize>,
 }
 
 impl<'i> AssetId<'i> {
   /// Attempts to parse an [AssetId] from the given string.
   /// # Example
   /// ```
-  /// # use identity_chain_agnostic::asset_id::{AssetId, AssetIdParsingError};
+  /// # use identity_chain_agnostic::asset_type::{AssetId, AssetIdParsingError};
   /// #
   /// # fn main() -> Result<(), AssetIdParsingError> {
   /// let asset_id = AssetId::parse("slip44:714")?;
@@ -207,7 +202,7 @@ impl<'i> AssetId<'i> {
   /// Returns a string slice to the underlying string representation of this asset ID.
   /// # Example
   /// ```
-  /// # use identity_chain_agnostic::asset_id::{AssetId, AssetIdParsingError};
+  /// # use identity_chain_agnostic::asset_type::{AssetId, AssetIdParsingError};
   /// #
   /// # fn main() -> Result<(), AssetIdParsingError> {
   /// let asset_id = AssetId::parse("slip44:714")?;
@@ -223,7 +218,7 @@ impl<'i> AssetId<'i> {
   /// This asset ID's namespace.
   /// # Example
   /// ```
-  /// # use identity_chain_agnostic::asset_id::{AssetId, AssetIdParsingError};
+  /// # use identity_chain_agnostic::asset_type::{AssetId, AssetIdParsingError};
   /// #
   /// # fn main() -> Result<(), AssetIdParsingError> {
   /// let asset_id = AssetId::parse("slip44:714")?;
@@ -233,13 +228,13 @@ impl<'i> AssetId<'i> {
   /// ```
   #[inline(always)]
   pub fn namespace(&self) -> &str {
-    &self.data[self.namespace.clone()]
+    &self.data[..self.separator]
   }
 
   /// This asset ID's reference.
   /// # Example
   /// ```
-  /// # use identity_chain_agnostic::asset_id::{AssetId, AssetIdParsingError};
+  /// # use identity_chain_agnostic::asset_type::{AssetId, AssetIdParsingError};
   /// #
   /// # fn main() -> Result<(), AssetIdParsingError> {
   /// let asset_id = AssetId::parse("slip44:714")?;
@@ -249,13 +244,13 @@ impl<'i> AssetId<'i> {
   /// ```
   #[inline(always)]
   pub fn reference(&self) -> &str {
-    &self.data[self.reference.clone()]
+    &self.data[self.separator + 1..]
   }
 
   /// This asset ID's token ID.
   /// # Example
   /// ```
-  /// # use identity_chain_agnostic::asset_id::{AssetId, AssetIdParsingError};
+  /// # use identity_chain_agnostic::asset_type::{AssetId, AssetIdParsingError};
   /// #
   /// # fn main() -> Result<(), AssetIdParsingError> {
   /// let asset_id_no_token_id = AssetId::parse("slip44:714")?;
@@ -268,16 +263,14 @@ impl<'i> AssetId<'i> {
   /// ```
   #[inline(always)]
   pub fn token_id(&self) -> Option<&str> {
-    self.token_id.as_ref().map(|idx| &self.data[idx.clone()])
+    self.token_id.as_ref().map(|idx| &self.data[*idx + 1..])
   }
 
   /// Clones the underlying string.
   pub fn into_owned(self) -> AssetId<'static> {
     AssetId {
       data: Cow::Owned(self.data.into_owned()),
-      namespace: self.namespace,
-      reference: self.reference,
-      token_id: self.token_id,
+      ..self
     }
   }
 }
@@ -329,33 +322,22 @@ impl std::error::Error for AssetIdParsingError {
 fn asset_id_parser(input: &str) -> ParserResult<AssetId> {
   let (rem, namespace) = namespace_parser(input)?;
   let (rem, _colon) = char(':')(rem)?;
-  let namespace_span = 0..namespace.len();
-
   let (rem, reference) = reference_parser(rem)?;
-  let reference_span = {
-    let offset = namespace_span.end + 1;
-    offset..offset + reference.len()
-  };
-
-  let mut remaining_input = rem;
-  let token_id = if let Ok((rem, _slash)) = char('/')(rem) {
-    let (rem_after_token, token_id) = token_id_parser(rem)?;
-    let offset = reference_span.end + 1;
-    remaining_input = rem_after_token;
-
-    Some(offset..offset + token_id.len())
+  let token_id_len = if let Ok((rem, _slash)) = char('/')(rem) {
+    let (_, token_id) = token_id_parser(rem)?;
+    Some(token_id.len())
   } else {
     None
   };
-  let consumed = token_id.as_ref().map(|range| range.end).unwrap_or(reference_span.end);
+
+  let consumed = namespace.len() + 1 + reference.len() + token_id_len.map(|len| len + 1).unwrap_or_default();
   let asset_id = AssetId {
     data: Cow::Borrowed(&input[..consumed]),
-    namespace: namespace_span,
-    reference: reference_span,
-    token_id,
+    separator: namespace.len(),
+    token_id: token_id_len.map(|len| consumed - len - 1),
   };
 
-  Ok((remaining_input, asset_id))
+  Ok((&input[consumed..], asset_id))
 }
 
 fn namespace_parser(input: &str) -> ParserResult<&str> {

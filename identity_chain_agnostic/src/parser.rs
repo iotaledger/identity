@@ -404,6 +404,14 @@ where
   }
 }
 
+pub(crate) fn perc_encoded_parser(input: &str) -> ParserResult<u8> {
+  let (rem, _perc) = char('%')(input)?;
+  let (rem, hex_byte) = take_while_min_max(2, 2, |c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())(rem)?;
+
+  let byte = u8::from_str_radix(hex_byte, 16).expect("valid hex byte");
+  Ok((rem, byte))
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;

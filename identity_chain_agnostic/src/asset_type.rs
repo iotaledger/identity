@@ -397,17 +397,14 @@ fn namespace_parser(input: &str) -> ParserResult<&str> {
   take_while_min_max(NAMESPACE_MIN_LEN, NAMESPACE_MAX_LEN, is_valid_char)(input)
 }
 
-fn perc_encoded_parser(input: &str) -> ParserResult<u8> {
-  let (rem, _perc) = char('%')(input)?;
-  let (rem, hex_byte) = take_while_min_max(2, 2, |c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())(rem)?;
-
-  let byte = u8::from_str_radix(hex_byte, 16).expect("valid hex byte");
-  Ok((rem, byte))
-}
-
 fn reference_and_token_parser(input: &str, max: usize) -> ParserResult<&str> {
   let valid_char_parser = take_while_min_max(1, max, |c: char| c == '.' || c == '-' || c.is_ascii_alphanumeric());
-  recognize(many1(any((valid_char_parser, recognize(perc_encoded_parser))))).process(input)
+  let (_, output) = recognize(many1(any((valid_char_parser, recognize(perc_encoded_parser))))).process(input)?;
+
+  let consumed = output.len().min(max);
+  let (output, rem) = input.split_at(consumed);
+
+  Ok((rem, output))
 }
 
 #[inline(always)]
@@ -486,5 +483,21 @@ mod tests {
       let parsed = AssetType::parse(expected).unwrap();
       assert_eq!(parsed.to_string().as_str(), *expected);
     }
+  }
+
+  #[test]
+  fn parsing_asset_id_too_long_fails() {
+    let reference: String = std::iter::repeat_n('a', 129).collect();
+    let e = AssetId::parse(&format!("object:{reference}")).unwrap_err();
+    assert_eq!(
+      e.source,
+      ParseError::new(
+        "a",
+        ParseErrorKind::UnexpectedCharacter {
+          invalid: 'a',
+          expected: Some(Expected::EoI)
+        }
+      )
+    );
   }
 }

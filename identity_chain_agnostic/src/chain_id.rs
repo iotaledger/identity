@@ -1,8 +1,6 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implementation of the types described in [CAIP-2](https://chainagnostic.org/CAIPs/caip-2).
-
 use std::borrow::Cow;
 use std::fmt::Display;
 use std::hash::Hash;
@@ -135,7 +133,7 @@ impl<'i> ChainId<'i> {
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct ChainIdParsingError {
-  source: ParseError<'static>,
+  pub(crate) source: ParseError<'static>,
 }
 
 impl Display for ChainIdParsingError {
@@ -161,6 +159,17 @@ impl<'i> TryFrom<&'i str> for ChainId<'i> {
   type Error = ChainIdParsingError;
   fn try_from(value: &'i str) -> Result<Self, Self::Error> {
     Self::parse(value)
+  }
+}
+
+impl TryFrom<String> for ChainId<'static> {
+  type Error = ChainIdParsingError;
+  fn try_from(value: String) -> Result<Self, Self::Error> {
+    let separator = ChainId::parse(value.as_str())?.separator;
+    Ok(Self {
+      data: value.into(),
+      separator,
+    })
   }
 }
 

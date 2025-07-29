@@ -15,7 +15,9 @@ serde = { workspace = true, optional = true }
 workspace = true
 
 [features]
+default = ["iota"]
 serde = ["dep:serde"]
+iota = []
 
 [dev-dependencies]
 anyhow = "1.0.98"

@@ -173,35 +173,10 @@ impl<'i, T: AsRef<str>> Parser<'i> for Tag<T> {
   }
 }
 
+/// Parses the exact input string `tag`.
 pub fn tag<'i, T: AsRef<str>>(tag: T) -> impl FnMut(&'i str) -> ParserResult<'i, &'i str> {
   let mut tag = Tag(tag);
   move |input| tag.process(input)
-}
-
-#[derive(Debug)]
-struct TakeWhile<F> {
-  pred: F,
-}
-
-impl<'i, F> Parser<'i> for TakeWhile<F>
-where
-  F: Fn(char) -> bool,
-{
-  type Output = &'i str;
-  fn process(&mut self, input: &'i str) -> ParserResult<'i, Self::Output> {
-    let consumed = input.chars().take_while(|c| (self.pred)(*c)).count();
-
-    let (parsed, rem) = input.split_at(consumed);
-    Ok((rem, parsed))
-  }
-}
-
-pub fn take_while<'i, F>(pred: F) -> impl FnMut(&'i str) -> ParserResult<'i, &'i str>
-where
-  F: Fn(char) -> bool,
-{
-  let mut take_while = TakeWhile { pred };
-  move |input| take_while.process(input)
 }
 
 #[derive(Debug)]
@@ -246,25 +221,6 @@ where
 {
   let mut parser = TakeWhileMinMax { min, max, pred };
   move |input| parser.process(input)
-}
-
-#[derive(Debug)]
-struct Take(usize);
-
-impl<'i> Parser<'i> for Take {
-  type Output = &'i str;
-  fn process(&mut self, input: &'i str) -> ParserResult<'i, Self::Output> {
-    if input.len() < self.0 {
-      Err(ParseError::new(input, ParseErrorKind::EoI))
-    } else {
-      let (output, rem) = input.split_at(self.0);
-      Ok((rem, output))
-    }
-  }
-}
-
-pub fn take<'i>(amount: usize) -> impl FnMut(&'i str) -> ParserResult<'i, &'i str> {
-  move |input| Take(amount).process(input)
 }
 
 macro_rules! impl_parser_for_tuple {
@@ -317,6 +273,25 @@ where
       .process(input)
       .or_else(|_| self.parsers.1.process(input))
       .or_else(|_| self.parsers.2.process(input))
+  }
+}
+
+impl<'i, P1, P2, P3, P4, O> Parser<'i> for Any<(P1, P2, P3, P4)>
+where
+  P1: Parser<'i, Output = O>,
+  P2: Parser<'i, Output = O>,
+  P3: Parser<'i, Output = O>,
+  P4: Parser<'i, Output = O>,
+{
+  type Output = O;
+  fn process(&mut self, input: &'i str) -> ParserResult<'i, Self::Output> {
+    self
+      .parsers
+      .0
+      .process(input)
+      .or_else(|_| self.parsers.1.process(input))
+      .or_else(|_| self.parsers.2.process(input))
+      .or_else(|_| self.parsers.3.process(input))
   }
 }
 
@@ -524,19 +499,9 @@ mod tests {
   }
 
   #[test]
-  fn test_take_while() {
-    let mut alpha0 = take_while(|c| c.is_ascii_alphabetic());
-    assert_eq!(alpha0("").unwrap(), ("", ""));
-
-    let (rem, output) = alpha0("abcdef1234").unwrap();
-    assert_eq!(rem, "1234");
-    assert_eq!(output, "abcdef");
-  }
-
-  #[test]
   fn test_all_consuming() {
-    let alpha0 = take_while(|c| c.is_ascii_alphabetic());
-    let digit0 = take_while(|c| c.is_ascii_digit() && !c.is_ascii_alphabetic());
+    let alpha0 = take_while_min_max(0, usize::MAX, |c| c.is_ascii_alphabetic());
+    let digit0 = take_while_min_max(0, usize::MAX, |c| c.is_ascii_digit() && !c.is_ascii_alphabetic());
     assert!(all_consuming(alpha0).process("abcdef").is_ok());
     let e = all_consuming(digit0).process("12345abcd").unwrap_err();
     assert_eq!(
@@ -553,7 +518,7 @@ mod tests {
 
   #[test]
   fn test_separated_pair() {
-    let alpha0 = take_while(|c| c.is_ascii_alphabetic());
+    let alpha0 = take_while_min_max(0, usize::MAX, |c| c.is_ascii_alphabetic());
     let mut parser = separated_pair(alpha0, tag(": "), char('@'));
     let (rem, (left, right)) = parser.process("abcdef: @..").unwrap();
     assert_eq!(rem, "..");

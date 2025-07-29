@@ -1,8 +1,6 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implementation of the types described in [CAIP-19](https://chainagnostic.org/CAIPs/caip-19).
-
 use std::borrow::Cow;
 use std::fmt::Display;
 use std::hash::Hash;

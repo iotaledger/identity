@@ -108,6 +108,13 @@ pub trait Parser<'i> {
 
   /// Runs this parser against the given input.
   fn process(&mut self, input: &'i str) -> ParserResult<'i, Self::Output>;
+  /// Maps the output of this parser with the given function.
+  fn map<F>(self, f: F) -> Map<Self, F>
+  where
+    Self: Sized,
+  {
+    Map { parser: self, f }
+  }
 }
 
 impl<'i, F, T> Parser<'i> for F
@@ -117,6 +124,25 @@ where
   type Output = T;
   fn process(&mut self, input: &'i str) -> ParserResult<'i, Self::Output> {
     self(input)
+  }
+}
+
+/// A [Parser] that maps its parsing output with a function.
+#[derive(Debug)]
+pub struct Map<P, F> {
+  parser: P,
+  f: F,
+}
+
+impl<'i, P, F, T> Parser<'i> for Map<P, F>
+where
+  P: Parser<'i>,
+  F: Fn(P::Output) -> T,
+{
+  type Output = T;
+
+  fn process(&mut self, input: &'i str) -> ParserResult<'i, Self::Output> {
+    self.parser.process(input).map(|(rem, output)| (rem, (self.f)(output)))
   }
 }
 
@@ -406,10 +432,13 @@ where
 
 pub(crate) fn perc_encoded_parser(input: &str) -> ParserResult<u8> {
   let (rem, _perc) = char('%')(input)?;
-  let (rem, hex_byte) = take_while_min_max(2, 2, |c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())(rem)?;
+  take_while_min_max(2, 2, |c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+    .map(|hex| u8::from_str_radix(hex, 16).unwrap())
+    .process(rem)
+}
 
-  let byte = u8::from_str_radix(hex_byte, 16).expect("valid hex byte");
-  Ok((rem, byte))
+pub(crate) fn is_lowercase_hex_char(c: char) -> bool {
+  c.is_ascii_hexdigit() && !c.is_ascii_uppercase()
 }
 
 #[cfg(test)]
@@ -532,5 +561,12 @@ mod tests {
     assert_eq!(rem, "..");
     assert_eq!(left, "abcdef");
     assert_eq!(right, '@');
+  }
+
+  #[test]
+  fn test_map() {
+    let (rem, output) = tag("ciao").map(str::len).process("ciaooooo").unwrap();
+    assert_eq!(rem, "oooo");
+    assert_eq!(output, 4);
   }
 }

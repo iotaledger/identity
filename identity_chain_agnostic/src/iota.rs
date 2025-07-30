@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use std::fmt::Display;
 use std::str::FromStr;
 
+use crate::account_id::AccountId;
 use crate::parser::*;
 use crate::ChainId;
 
@@ -428,6 +429,217 @@ fn network_parser<'i>(input: &'i str) -> ParserResult<'i, &'i str> {
   any((tag("mainnet"), tag("testnet"), tag("devnet"), iota_chain_identifier)).process(input)
 }
 
+/// An IOTA-specific [account ID](AccountId).
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+  feature = "serde",
+  serde(into = "AccountId", try_from = "AccountId", bound(deserialize = "'de: 'i"))
+)]
+pub struct IotaAccountId<'i>(AccountId<'i>);
+
+impl<'i> IotaAccountId<'i> {
+  /// Returns the string representation of this account ID.
+  #[inline(always)]
+  pub fn as_str(&self) -> &str {
+    self.0.as_str()
+  }
+
+  /// Parses an [IotaAccountId] from the given input string.
+  /// # Example
+  /// ```
+  /// # use identity_chain_agnostic::iota::{IotaNetwork, IotaAccountId, IotaAccountIdParsingError};
+  /// #
+  /// # fn main() -> Result<(), IotaAccountIdParsingError<'static>> {
+  /// let iota_account = IotaAccountId::parse("iota:testnet:0xa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2")?;
+  /// assert_eq!(iota_account.address(), "0xa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2");
+  /// assert_eq!(iota_account.network(), IotaNetwork::testnet());
+  /// # Ok(())
+  /// # }
+  /// ```
+  pub fn parse<I>(input: &'i I) -> Result<Self, IotaAccountIdParsingError<'i>>
+  where
+    I: AsRef<str> + ?Sized,
+  {
+    all_consuming(iota_account_id_parser)
+      .process(input.as_ref())
+      .map(|(_, id)| id)
+      .map_err(|source| IotaAccountIdParsingError { source })
+  }
+
+  /// Returns the [IOTA network](IotaNetwork) this account id references.
+  /// # Example
+  /// # Example
+  /// ```
+  /// # use identity_chain_agnostic::iota::{IotaNetwork, IotaAccountId, IotaAccountIdParsingError};
+  /// #
+  /// # fn main() -> Result<(), IotaAccountIdParsingError<'static>> {
+  /// let iota_account = IotaAccountId::parse("iota:testnet:0xa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2")?;
+  /// assert_eq!(iota_account.network(), IotaNetwork::testnet());
+  /// # Ok(())
+  /// # }
+  /// ```
+  pub fn network(&self) -> IotaNetwork<'_> {
+    let chain_id = IotaChainId(self.0.chain_id());
+    let network = chain_id.network();
+
+    // Safety: `network`'s lifetime is coherced to be the same lifetime as the local
+    // `chain_id`, though that's *not* the case, as `network`'s lifetime is the same
+    // as `self`'s.
+    unsafe { std::mem::transmute(network) }
+  }
+
+  /// ```
+  /// # use identity_chain_agnostic::iota::{IotaNetwork, IotaAccountId, IotaAccountIdParsingError};
+  /// #
+  /// # fn main() -> Result<(), IotaAccountIdParsingError<'static>> {
+  /// let iota_account = IotaAccountId::parse("iota:testnet:0xa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2")?;
+  /// assert_eq!(iota_account.address(), "0xa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2");
+  /// assert_eq!(iota_account.network(), IotaNetwork::testnet());
+  /// # Ok(())
+  /// # }
+  /// ```
+  #[inline(always)]
+  pub fn address(&self) -> &str {
+    self.0.address()
+  }
+}
+
+impl<'i> AsRef<AccountId<'i>> for IotaAccountId<'i> {
+  fn as_ref(&self) -> &AccountId<'i> {
+    &self.0
+  }
+}
+
+impl<'i> From<IotaAccountId<'i>> for AccountId<'i> {
+  fn from(value: IotaAccountId<'i>) -> Self {
+    value.0
+  }
+}
+
+impl<'i> TryFrom<AccountId<'i>> for IotaAccountId<'i> {
+  type Error = InvalidAccountId<'i>;
+  fn try_from(value: AccountId<'i>) -> Result<Self, Self::Error> {
+    if let Err(e) = IotaChainId::try_from(value.chain_id()) {
+      let kind = match e.kind {
+        InvalidChainIdKind::InvalidNamespace => InvalidAccountIdKind::InvalidChain,
+        InvalidChainIdKind::InvalidReference => InvalidAccountIdKind::InvalidNetwork,
+      };
+      return Err(InvalidAccountId {
+        account_id: value,
+        kind,
+      });
+    }
+
+    if !is_valid_iota_address(value.address()) {
+      return Err(InvalidAccountId {
+        account_id: value,
+        kind: InvalidAccountIdKind::InvalidAddress,
+      });
+    }
+
+    Ok(Self(value))
+  }
+}
+
+fn iota_account_id_parser<'i>(input: &'i str) -> ParserResult<'i, IotaAccountId<'i>> {
+  let (rem, (chain_id, _address)) = separated_pair(iota_chain_id_parser, char(':'), iota_address_parser)(input)?;
+  let consumed = input.len() - rem.len();
+
+  let account_id = AccountId::new(&input[..consumed], chain_id.0.separator, chain_id.as_str().len());
+  Ok((rem, IotaAccountId(account_id)))
+}
+
+fn iota_address_parser<'i>(input: &'i str) -> ParserResult<'i, &'i str> {
+  let (rem, _prefix) = tag("0x")(input)?;
+  let (rem, _address) = take_while_min_max(64, 64, is_lowercase_hex_char)(rem)?;
+  let consumed = input.len() - rem.len();
+
+  Ok((rem, &input[..consumed]))
+}
+
+fn is_valid_iota_address(input: &str) -> bool {
+  all_consuming(iota_address_parser)(input).is_ok()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IotaAccountIdParsingError<'i> {
+  source: ParseError<'i>,
+}
+
+impl<'i> IotaAccountIdParsingError<'i> {
+  /// Takes ownership of the underlying input.
+  pub fn into_owned(self) -> IotaAccountIdParsingError<'static> {
+    IotaAccountIdParsingError {
+      source: self.source.into_owned(),
+    }
+  }
+}
+
+impl<'i> Display for IotaAccountIdParsingError<'i> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str("failed to parse IOTA account ID")
+  }
+}
+
+impl std::error::Error for IotaAccountIdParsingError<'static> {
+  fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    Some(&self.source)
+  }
+}
+
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct InvalidAccountId<'i> {
+  pub account_id: AccountId<'i>,
+  pub kind: InvalidAccountIdKind,
+}
+
+impl<'i> InvalidAccountId<'i> {
+  /// Takes ownership of the underlying input.
+  pub fn into_owned(self) -> InvalidAccountId<'static> {
+    InvalidAccountId {
+      account_id: self.account_id.into_owned(),
+      ..self
+    }
+  }
+}
+
+impl<'i> Display for InvalidAccountId<'i> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(
+      f,
+      "account ID `{}` is not a valid IOTA account ID: ",
+      self.account_id.as_str()
+    )?;
+    match self.kind {
+      InvalidAccountIdKind::InvalidChain => write!(
+        f,
+        "expected `iota` chain ID's namespace, but got `{}`",
+        self.account_id.chain_id().namespace()
+      ),
+      InvalidAccountIdKind::InvalidNetwork => write!(
+        f,
+        "invalid network `{}`, expected `mainnet`, `testnet`, `devnet`, or an IOTA Chain Identifier",
+        self.account_id.chain_id().reference()
+      ),
+      InvalidAccountIdKind::InvalidAddress => write!(f, "invalid address `{}`", self.account_id.address()),
+    }
+  }
+}
+
+/// Types of failures for error [InvalidAccountId].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum InvalidAccountIdKind {
+  /// Not an IOTA chain.
+  InvalidChain,
+  /// Invalid IOTA network identifier.
+  InvalidNetwork,
+  /// Invalid IOTA address.
+  InvalidAddress,
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -488,5 +700,24 @@ mod tests {
         kind: InvalidChainIdKind::InvalidReference
       }
     )
+  }
+
+  #[test]
+  fn account_id_to_iota_account_id_conversion_works() {
+    let account_id =
+      AccountId::parse("iota:mainnet:0x1234567890123456789012345678901234567890123456789012345678901234").unwrap();
+    let _iota_account_id = IotaAccountId::try_from(account_id).unwrap();
+
+    let account_id = AccountId::parse("hedera:mainnet:0.0.1234567890-zbhlt").unwrap();
+    let e = IotaAccountId::try_from(account_id).unwrap_err();
+    assert_eq!(e.kind, InvalidAccountIdKind::InvalidChain);
+
+    let account_id = AccountId::parse("iota:errnet:0.0.1234567890-zbhlt").unwrap();
+    let e = IotaAccountId::try_from(account_id).unwrap_err();
+    assert_eq!(e.kind, InvalidAccountIdKind::InvalidNetwork);
+
+    let account_id = AccountId::parse("iota:mainnet:0.0.1234567890-zbhlt").unwrap();
+    let e = IotaAccountId::try_from(account_id).unwrap_err();
+    assert_eq!(e.kind, InvalidAccountIdKind::InvalidAddress);
   }
 }

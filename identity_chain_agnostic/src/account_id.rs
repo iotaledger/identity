@@ -50,6 +50,15 @@ impl<'i> PartialOrd for AccountId<'i> {
 }
 
 impl<'i> AccountId<'i> {
+  #[inline(always)]
+  pub(crate) fn new(data: &'i str, chain_id_separator: usize, separator: usize) -> Self {
+    Self {
+      data: data.into(),
+      chain_id_separator,
+      separator,
+    }
+  }
+
   /// Returns a reference to the underlying string representation.
   #[inline(always)]
   pub fn as_str(&self) -> &str {
@@ -75,7 +84,6 @@ impl<'i> AccountId<'i> {
     }
   }
 
-  #[inline(always)]
   /// Returns the [chain ID](ChainId) part of this [AccountId].
   /// # Example
   /// ```
@@ -87,6 +95,7 @@ impl<'i> AccountId<'i> {
   /// # Ok(())
   /// # }
   /// ```
+  #[inline(always)]
   pub fn chain_id(&self) -> ChainId<'_> {
     ChainId::new(&self.data[..self.separator], self.chain_id_separator)
   }
@@ -205,5 +214,48 @@ mod serde_impl {
       let s = <&str>::deserialize(deserializer)?;
       AccountId::parse(s).map_err(|e| D::Error::custom(e.source))
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  const VALID_ACCOUNT_IDS: &[&str] = &[
+    "eip155:1:0xab16a96D359eC26a11e2C2b3d8f8B8942d5Bfcdb",
+    "bip122:000000000019d6689c085ae165831e93:128Lkh3S7CkDTBZ8W7BbpsN3YYizJMp8p6",
+    "cosmos:cosmoshub-3:cosmos1t2uflqwqe0fsj0shcfkrvpukewcw40yjj6hdc0",
+    "polkadot:b0a8d493285c2df73290dfb7e61f870f:5hmuyxw9xdgbpptgypokw4thfyoe3ryenebr381z9iaegmfy",
+    "starknet:SN_GOERLI:0x02dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
+    "chainstd:8c3444cf8970a9e41a706fab93e7a6c4:6d9b0b4b9994e8a6afbd3dc3ed983cd51c755afb27cd1dc7825ef59c134a39f7",
+    "hedera:mainnet:0.0.1234567890-zbhlt",
+    "iota:mainnet:0x12345678901234567890123456789012345678901234",
+  ];
+
+  #[test]
+  fn parsing_valid_account_ids_works() {
+    assert!(VALID_ACCOUNT_IDS.iter().map(AccountId::parse).all(|res| res.is_ok()));
+  }
+
+  #[test]
+  fn parsing_account_id_with_address_over_128_chars_fails() {
+    let too_long = format!("achain:anetwork:{}", std::iter::repeat_n('x', 129).collect::<String>());
+    let e = AccountId::parse(&too_long).unwrap_err();
+    assert_eq!(
+      e.source,
+      ParseError::new(
+        "x",
+        ParseErrorKind::UnexpectedCharacter {
+          invalid: 'x',
+          expected: Some(Expected::EoI)
+        }
+      )
+    )
+  }
+
+  #[test]
+  fn parsing_account_id_with_empty_address_fails() {
+    let e = AccountId::parse("hedera:mainnet:").unwrap_err();
+    assert_eq!(e.source, ParseError::new("", ParseErrorKind::EoI));
   }
 }

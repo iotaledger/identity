@@ -181,6 +181,7 @@ fn account_address_parser(input: &str) -> ParserResult<'_, &str> {
   Ok((rem, output))
 }
 
+#[cfg(feature = "serde")]
 mod serde_impl {
   use super::*;
   use serde::de::Error as _;

@@ -6,11 +6,6 @@ name = "IotaIdentity"
 edition = "2024"
 
 [dependencies]
-# 'tag' keyword not supported here, therefore use rev instead.
-# Current revision is v1.2.3.
-MoveStdlib = { git = "https://github.com/iotaledger/iota.git", subdir = "crates/iota-framework/packages/move-stdlib", rev = "d9dbd00f5601f20f9d0d8381fc674f70869c7910" }
-Iota = { git = "https://github.com/iotaledger/iota.git", subdir = "crates/iota-framework/packages/iota-framework", rev = "d9dbd00f5601f20f9d0d8381fc674f70869c7910" }
-Stardust = { git = "https://github.com/iotaledger/iota.git", subdir = "crates/iota-framework/packages/stardust", rev = "d9dbd00f5601f20f9d0d8381fc674f70869c7910" }
 
 [addresses]
 iota_identity = "0x0"

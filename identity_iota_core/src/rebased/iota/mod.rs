@@ -3,4 +3,5 @@
 
 pub(crate) mod move_calls;
 pub(crate) mod package;
+mod package_registry;
 pub(crate) mod types;

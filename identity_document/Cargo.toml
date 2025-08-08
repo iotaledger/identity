@@ -17,12 +17,12 @@ identity_did = { version = "=1.6.0-beta", path = "../identity_did" }
 identity_verification = { version = "=1.6.0-beta", path = "../identity_verification", default-features = false }
 indexmap = { version = "2.0", default-features = false, features = ["std", "serde"] }
 serde.workspace = true
+serde_json.workspace = true
 strum.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
 criterion = { version = "0.4.0", default-features = false, features = ["cargo_bench_support"] }
-serde_json.workspace = true
 
 [[bench]]
 name = "deserialize_document"

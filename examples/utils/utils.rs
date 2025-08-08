@@ -94,7 +94,7 @@ pub async fn get_read_only_client() -> anyhow::Result<IdentityClientReadOnly> {
 
 pub async fn get_funded_client<K, I>(
   storage: &Storage<K, I>,
-) -> Result<IdentityClient<StorageSigner<K, I>>, anyhow::Error>
+) -> Result<IdentityClient<StorageSigner<'_, K, I>>, anyhow::Error>
 where
   K: JwkStorage,
   I: KeyIdStorage,

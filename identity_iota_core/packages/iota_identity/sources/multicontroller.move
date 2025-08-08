@@ -405,6 +405,10 @@ public(package) fun add_members<V>(
     }
 }
 
+public(package) fun owner<V>(multi: &Multicontroller<V>): ID {
+    multi.owner
+}
+
 public(package) fun remove_members<V>(multi: &mut Multicontroller<V>, mut to_remove: vector<ID>) {
     while (!to_remove.is_empty()) {
         let id = to_remove.pop_back();

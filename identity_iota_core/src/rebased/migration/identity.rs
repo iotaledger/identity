@@ -3,10 +3,13 @@
 
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::error::Error as StdError;
 
 use crate::rebased::iota::move_calls;
 
 use crate::rebased::iota::package::identity_package_id;
+use crate::rebased::proposals::AccessSubIdentityBuilder;
+use iota_interaction::types::error::IotaObjectResponseError;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::IotaKeySignature;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;
@@ -47,7 +50,6 @@ use serde;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::rebased::client::IdentityClient;
 use crate::rebased::client::IdentityClientReadOnly;
 use crate::rebased::proposals::BorrowAction;
 use crate::rebased::proposals::ConfigChange;
@@ -177,7 +179,7 @@ impl OnChainIdentity {
   pub async fn get_controller_token_for_address(
     &self,
     address: IotaAddress,
-    client: &IdentityClientReadOnly,
+    client: &(impl CoreClientReadOnly + OptionalSync),
   ) -> Result<Option<ControllerToken>, Error> {
     let maybe_controller_cap = client
       .find_object_for_address::<ControllerCap, _>(address, |token| token.controller_of() == self.id())
@@ -191,12 +193,7 @@ impl OnChainIdentity {
       .find_object_for_address::<DelegationToken, _>(address, |token| token.controller_of() == self.id())
       .await
       .map(|maybe_delegate| maybe_delegate.map(ControllerToken::from))
-      .map_err(|e| {
-        Error::Identity(format!(
-          "address {address} is not a controller nor a controller delegate for identity {}; {e}",
-          self.id()
-        ))
-      })
+      .map_err(|e| Error::RpcError(format!("{e:#}")))
   }
 
   /// Returns a [ControllerToken], owned by `client`'s sender address, that grants access to this Identity.
@@ -204,7 +201,7 @@ impl OnChainIdentity {
   /// [None] is returned if `client`'s sender address doesn't own a valid [ControllerToken].
   pub async fn get_controller_token<S: Signer<IotaKeySignature> + OptionalSync>(
     &self,
-    client: &IdentityClient<S>,
+    client: &(impl CoreClient<S> + OptionalSync),
   ) -> Result<Option<ControllerToken>, Error> {
     self
       .get_controller_token_for_address(client.sender_address(), client)
@@ -275,6 +272,7 @@ impl OnChainIdentity {
   /// Borrows a `ControllerCap` with ID `controller_cap` owned by this identity in a transaction.
   /// This proposal is used to perform operation on a sub-identity controlled
   /// by this one.
+  #[deprecated = "use `OnChainIdentity::access_sub_identity` instead."]
   pub fn controller_execution<'i, 'c>(
     &'i mut self,
     controller_cap: ObjectID,
@@ -282,6 +280,15 @@ impl OnChainIdentity {
   ) -> ProposalBuilder<'i, 'c, ControllerExecution> {
     let action = ControllerExecution::new(controller_cap, self);
     ProposalBuilder::new(self, controller_token, action)
+  }
+
+  /// Perform an action on an Identity that is controlled by this Identity.
+  pub fn access_sub_identity<'i, 'sub>(
+    &'i mut self,
+    sub_identity: &'sub mut OnChainIdentity,
+    controller_token: &ControllerToken,
+  ) -> AccessSubIdentityBuilder<'i, 'sub> {
+    AccessSubIdentityBuilder::new(self, sub_identity, controller_token)
   }
 
   /// Returns historical data for this [`OnChainIdentity`].
@@ -381,26 +388,49 @@ pub async fn get_identity(
   client: &impl CoreClientReadOnly,
   object_id: ObjectID,
 ) -> Result<Option<OnChainIdentity>, Error> {
+  use IdentityResolutionErrorKind::NotFound;
+
+  match get_identity_impl(client, object_id).await {
+    Ok(identity) => Ok(Some(identity)),
+    Err(IdentityResolutionError { kind: NotFound, .. }) => Ok(None),
+    Err(e) => {
+      // Use anyhow to format the error in such a way that all its causes are displayed too.
+      let formatted_err_msg = format!("{:#}", anyhow::Error::new(e));
+      Err(Error::ObjectLookup(formatted_err_msg))
+    }
+  }
+}
+
+pub(crate) async fn get_identity_impl(
+  client: &impl CoreClientReadOnly,
+  object_id: ObjectID,
+) -> Result<OnChainIdentity, IdentityResolutionError> {
   let response = client
     .client_adapter()
     .read_api()
     .get_object_with_options(object_id, IotaObjectDataOptions::new().with_content())
     .await
-    .map_err(|err| {
-      Error::ObjectLookup(format!(
-        "Could not get object with options for this object_id {object_id}; {err}"
-      ))
+    .map_err(|e| IdentityResolutionError {
+      kind: IdentityResolutionErrorKind::RpcError(e.into()),
+      resolving: object_id,
     })?;
 
-  // no issues with call but
-  let Some(data) = response.data else {
-    // call was successful but no data for alias id
-    return Ok(None);
-  };
+  if let Some(response_error) = response.error {
+    match response_error {
+      IotaObjectResponseError::NotExists { .. } | IotaObjectResponseError::Deleted { .. } => {
+        return Err(IdentityResolutionError {
+          resolving: object_id,
+          kind: IdentityResolutionErrorKind::NotFound,
+        })
+      }
+      _ => unreachable!(),
+    }
+  }
 
+  let data = response.data.expect("already handled errors in response");
   let network = client.network_name();
   let did = IotaDID::from_object_id(&object_id.to_string(), network);
-  let Some(IdentityData {
+  let IdentityData {
     id,
     multicontroller,
     legacy_id,
@@ -409,10 +439,7 @@ pub async fn get_identity(
     version,
     deleted,
     deleted_did,
-  }) = unpack_identity_data(&did, &data)?
-  else {
-    return Ok(None);
-  };
+  } = unpack_identity_data(data)?;
   let legacy_did = legacy_id.map(|legacy_id| IotaDID::from_object_id(&legacy_id.to_string(), client.network_name()));
 
   let did_doc = multicontroller
@@ -420,7 +447,10 @@ pub async fn get_identity(
     .as_deref()
     .map(|did_doc_bytes| IotaDocument::from_iota_document_data(did_doc_bytes, true, &did, legacy_did, created, updated))
     .transpose()
-    .map_err(|e| Error::DidDocParsingFailed(e.to_string()))?
+    .map_err(|e| IdentityResolutionError {
+      resolving: object_id,
+      kind: IdentityResolutionErrorKind::InvalidDidDocument(e.into()),
+    })?
     .unwrap_or_else(|| {
       let mut empty_did_doc = IotaDocument::new(network);
       empty_did_doc.metadata.deactivated = Some(true);
@@ -428,14 +458,42 @@ pub async fn get_identity(
       empty_did_doc
     });
 
-  Ok(Some(OnChainIdentity {
+  Ok(OnChainIdentity {
     id,
     multi_controller: multicontroller,
     did_doc,
     version,
     deleted,
     deleted_did,
-  }))
+  })
+}
+
+/// Type of failures that can be encountered when resolving an Identity.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub(crate) enum IdentityResolutionErrorKind {
+  /// RPC request to an IOTA Node failed.
+  #[error("object lookup RPC request failed")]
+  RpcError(#[source] Box<dyn StdError + Send + Sync>),
+  /// The queried object ID doesn't exist on-chain.
+  #[error("Identity does not exist")]
+  NotFound,
+  /// Type
+  #[error("invalid object type: expected `iota_identity::identity::Identity`, found `{0}`")]
+  InvalidType(String),
+  #[error("invalid or malformed DID Document")]
+  InvalidDidDocument(#[source] Box<dyn StdError + Send + Sync>),
+  #[error("malformed Identity object")]
+  Malformed(#[source] Box<dyn StdError + Send + Sync>),
+}
+
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+#[error("failed to resolve Identity `{resolving}`")]
+pub(crate) struct IdentityResolutionError {
+  pub resolving: ObjectID,
+  #[source]
+  pub kind: IdentityResolutionErrorKind,
 }
 
 fn is_identity(value: &IotaParsedMoveObject) -> bool {
@@ -449,19 +507,24 @@ fn is_identity(value: &IotaParsedMoveObject) -> bool {
 /// # Errors:
 /// * in case given data for DID is not an object
 /// * parsing identity data from object fails
-pub(crate) fn unpack_identity_data(did: &IotaDID, data: &IotaObjectData) -> Result<Option<IdentityData>, Error> {
-  let content = data
-    .content
-    .as_ref()
-    .cloned()
-    .ok_or_else(|| Error::ObjectLookup(format!("no content in retrieved object in object id {did}")))?;
+pub(crate) fn unpack_identity_data(data: IotaObjectData) -> Result<IdentityData, IdentityResolutionError> {
+  let content = data.content.ok_or_else(|| IdentityResolutionError {
+    resolving: data.object_id,
+    kind: IdentityResolutionErrorKind::RpcError("no content in RPC response".into()),
+  })?;
+
   let IotaParsedData::MoveObject(value) = content else {
-    return Err(Error::ObjectLookup(format!(
-      "given data for DID {did} is not an object"
-    )));
+    return Err(IdentityResolutionError {
+      resolving: data.object_id,
+      kind: IdentityResolutionErrorKind::InvalidType("Move Package".to_owned()),
+    });
   };
+
   if !is_identity(&value) {
-    return Ok(None);
+    return Err(IdentityResolutionError {
+      resolving: data.object_id,
+      kind: IdentityResolutionErrorKind::InvalidType(value.type_.to_canonical_string(true)),
+    });
   }
 
   #[derive(Deserialize)]
@@ -485,8 +548,12 @@ pub(crate) fn unpack_identity_data(did: &IotaDID, data: &IotaObjectData) -> Resu
     version,
     deleted,
     deleted_did,
-  } = serde_json::from_value::<TempOnChainIdentity>(value.fields.to_json_value())
-    .map_err(|err| Error::ObjectLookup(format!("could not parse identity document with DID {did}; {err}")))?;
+  } = serde_json::from_value::<TempOnChainIdentity>(value.fields.to_json_value()).map_err(|err| {
+    IdentityResolutionError {
+      resolving: data.object_id,
+      kind: IdentityResolutionErrorKind::Malformed(err.into()),
+    }
+  })?;
 
   // Parse DID document timestamps
   let created = {
@@ -501,7 +568,7 @@ pub(crate) fn unpack_identity_data(did: &IotaDID, data: &IotaObjectData) -> Resu
   };
   let version = version.try_into().expect("Move string-encoded u64 are valid u64");
 
-  Ok(Some(IdentityData {
+  Ok(IdentityData {
     id,
     multicontroller,
     legacy_id,
@@ -510,7 +577,7 @@ pub(crate) fn unpack_identity_data(did: &IotaDID, data: &IotaObjectData) -> Resu
     version,
     deleted,
     deleted_did,
-  }))
+  })
 }
 
 impl From<OnChainIdentity> for IotaDocument {

@@ -275,7 +275,8 @@ async fn resolve_multiple() {
   let resolved_dids: HashMap<CoreDID, CoreDocument> = resolver.resolve_multiple(dids).await.unwrap();
   assert_eq!(resolved_dids.len(), 0);
 
-  let resolved_dids: HashMap<CoreDID, CoreDocument> = resolver.resolve_multiple(&[did_1.clone()]).await.unwrap();
+  let resolved_dids: HashMap<CoreDID, CoreDocument> =
+    resolver.resolve_multiple(std::slice::from_ref(&did_1)).await.unwrap();
   assert_eq!(resolved_dids.len(), 1);
   assert_eq!(resolved_dids.get(&did_1).unwrap().id(), &did_1);
 }

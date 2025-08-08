@@ -7,6 +7,7 @@ use crate::common::TestClient;
 use crate::common::TEST_COIN_TYPE;
 use crate::common::TEST_GAS_BUDGET;
 use identity_iota_core::rebased::client::get_object_id_from_did;
+use identity_iota_core::rebased::migration::get_identity;
 use identity_iota_core::rebased::migration::has_previous_version;
 use identity_iota_core::rebased::migration::ControllerToken;
 use identity_iota_core::rebased::migration::DelegationToken;
@@ -389,6 +390,7 @@ async fn borrow_proposal_works() -> anyhow::Result<()> {
   Ok(())
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn controller_execution_works() -> anyhow::Result<()> {
   let test_client = get_funded_test_client().await?;
@@ -614,6 +616,42 @@ async fn controller_delegation_works() -> anyhow::Result<()> {
     .get_object_by_id::<DelegationToken>(bobs_delegation_token_id)
     .await;
   assert!(maybe_obj.is_err());
+
+  Ok(())
+}
+
+#[tokio::test]
+async fn access_sub_identity_works() -> anyhow::Result<()> {
+  let client = TestClient::new().await?;
+  let network = client.network();
+  let mut identity = client
+    .create_identity(IotaDocument::new(network))
+    .finish()
+    .build_and_execute(&client)
+    .await?
+    .output;
+  let mut sub_identity = client
+    .create_identity(IotaDocument::new(network))
+    .controller(identity.id().into(), 1)
+    .finish()
+    .build_and_execute(&client)
+    .await?
+    .output;
+  let controller_token = identity.get_controller_token(&client).await?.expect("is a controller");
+  let client_ref = &client;
+
+  identity
+    .access_sub_identity(&mut sub_identity, &controller_token)
+    .to_perform(|sub_identity, token| async move { sub_identity.deactivate_did(&token).finish(client_ref).await })
+    .finish(&client)
+    .await?
+    .build_and_execute(&client)
+    .await?;
+
+  assert!(sub_identity.did_document().metadata.deactivated == Some(true));
+  // Local `sub_identity`` reflects its on-chain Identity object.
+  let synced_sub_identity = get_identity(&client, sub_identity.id()).await?.unwrap();
+  assert_eq!(sub_identity.did_document(), synced_sub_identity.did_document());
 
   Ok(())
 }

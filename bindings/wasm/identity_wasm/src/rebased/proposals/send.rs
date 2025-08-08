@@ -162,17 +162,13 @@ impl WasmApproveSendProposal {
     client: &WasmCoreClientReadOnly,
   ) -> Result<()> {
     let managed_client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
-    let mut identity_ref = self.identity.0.write().await;
-    let tx = self
-      .proposal
-      .0
-      .write()
-      .await
-      .clone()
-      .into_tx(&mut identity_ref, &self.controller_token.0, &managed_client)
-      .await
+    let identity_ref = self.identity.0.read().await;
+    let mut proposal_ref = self.proposal.0.write().await;
+    let tx = proposal_ref
+      .approve(&identity_ref, &self.controller_token.0)
       .wasm_result()?
       .into_inner();
+
     let mut effects = wasm_effects.clone().into();
     let apply_result = tx.apply(&mut effects, &managed_client).await;
     let wasm_rem_effects = WasmIotaTransactionBlockEffects::from(&effects);

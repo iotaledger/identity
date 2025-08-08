@@ -28,9 +28,10 @@ static IOTA_IDENTITY_PACKAGE_REGISTRY: LazyLock<RwLock<PackageRegistry>> = LazyL
     // Add well-known networks.
     registry.insert_env(
       Env::new_with_alias("6364aad5", "iota"),
-      vec![object_id!(
-        "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08"
-      )],
+      vec![
+        object_id!("0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08"),
+        object_id!("0x36d0d56aea27a59f620ba32b6dd47a5e68d810714468bd270fda5ad37a478767"),
+      ],
     );
     registry.insert_env(
       Env::new_with_alias("2304aa97", "testnet"),

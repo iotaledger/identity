@@ -44,6 +44,7 @@ static IOTA_IDENTITY_PACKAGE_REGISTRY: LazyLock<RwLock<PackageRegistry>> = LazyL
       vec![
         object_id!("0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103"),
         object_id!("0x6a976d3da90db5d27f8a0c13b3268a37e582b455cfc7bf72d6461f6e8f668823"),
+        object_id!("0xc04befdea27caa7e277f0b738bfcd29fc463cd2a5885ae7f0a9fd3e2d635a8b8"),
       ],
     );
 

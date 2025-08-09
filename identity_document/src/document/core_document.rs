@@ -1,4 +1,4 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use core::convert::TryInto as _;
@@ -7,6 +7,7 @@ use core::fmt::Formatter;
 use std::collections::HashMap;
 use std::convert::Infallible;
 
+use identity_did::DIDCompositeJwk;
 use identity_did::DIDJwk;
 use identity_verification::jose::jwk::Jwk;
 use identity_verification::jose::jws::DecodedJws;
@@ -983,6 +984,63 @@ impl CoreDocument {
       .verify(signature_verifier, public_key)
       .map_err(Error::JwsVerificationError)
   }
+
+  /// Decodes and verifies the provided PQ/T JWS according to the passed [`JwsVerificationOptions`] with a
+  /// traditional [`JwsVerifier`] and PQ [`JwsVerifier`].
+  ///
+  /// Regardless of which options are passed the following conditions must be met in order for a verification attempt to
+  /// take place.
+  /// - The JWS must be encoded according to the JWS compact serialization.
+  /// - The `kid` value in the protected header must be an identifier of a verification method in this DID document, or
+  ///   set explicitly in the `options`.
+  //
+  // NOTE: This is tested in `identity_storage` and `identity_credential`.
+  pub fn verify_jws_hybrid<'jws, TRV: JwsVerifier, PQV: JwsVerifier>(
+    &self,
+    jws: &'jws str,
+    detached_payload: Option<&'jws [u8]>,
+    traditional_verifier: &TRV,
+    pq_verifier: &PQV,
+    options: &JwsVerificationOptions,
+  ) -> Result<DecodedJws<'jws>> {
+    let validation_item = Decoder::new()
+      .decode_compact_serialization(jws.as_bytes(), detached_payload)
+      .map_err(Error::JwsVerificationError)?;
+
+    let nonce: Option<&str> = options.nonce.as_deref();
+    // Validate the nonce
+    if validation_item.nonce() != nonce {
+      return Err(Error::JwsVerificationError(
+        identity_verification::jose::error::Error::InvalidParam("invalid nonce value"),
+      ));
+    }
+
+    let method_url_query: DIDUrlQuery<'_> = match &options.method_id {
+      Some(method_id) => method_id.into(),
+      None => validation_item
+        .kid()
+        .ok_or(Error::JwsVerificationError(
+          identity_verification::jose::error::Error::InvalidParam("missing kid value"),
+        ))?
+        .into(),
+    };
+
+    let composite_public_key = self
+      .resolve_method(method_url_query, options.method_scope)
+      .ok_or(Error::MethodNotFound)?
+      .data()
+      .try_composite_public_key()
+      .map_err(Error::InvalidKeyMaterial)?;
+
+    validation_item
+      .verify_hybrid(
+        traditional_verifier,
+        pq_verifier,
+        composite_public_key.traditional_public_key(),
+        composite_public_key.pq_public_key(),
+      )
+      .map_err(Error::JwsVerificationError)
+  }
 }
 
 impl CoreDocument {
@@ -993,6 +1051,24 @@ impl CoreDocument {
 
     DocumentBuilder::default()
       .id(did_jwk.into())
+      .verification_method(verification_method)
+      .assertion_method(verification_method_id.clone())
+      .authentication(verification_method_id.clone())
+      .capability_invocation(verification_method_id.clone())
+      .capability_delegation(verification_method_id.clone())
+      .build()
+  }
+}
+
+impl CoreDocument {
+  /// Creates a [`CoreDocument`] from a did:compositejwk DID.
+  pub fn expand_did_compositejwk(did_compositejwk: DIDCompositeJwk) -> Result<Self, Error> {
+    let verification_method =
+      VerificationMethod::try_from(did_compositejwk.clone()).map_err(Error::InvalidKeyMaterial)?;
+    let verification_method_id = verification_method.id().clone();
+
+    DocumentBuilder::default()
+      .id(did_compositejwk.into())
       .verification_method(verification_method)
       .assertion_method(verification_method_id.clone())
       .authentication(verification_method_id.clone())

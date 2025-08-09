@@ -1,5 +1,7 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
+
+use identity_iota::verification::jwk::CompositeAlgId;
 use identity_iota::verification::jws::JwsAlgorithm;
 use js_sys::JsString;
 use std::str::FromStr;
@@ -25,6 +27,10 @@ extern "C" {
   pub type WasmJwkParamsRsa;
   #[wasm_bindgen(typescript_type = "JwkParamsOct")]
   pub type WasmJwkParamsOct;
+  #[wasm_bindgen(typescript_type = "JwkParamsAkp")]
+  pub type WasmJwkParamsAkp;
+  #[wasm_bindgen(typescript_type = "CompositeAlgId")]
+  pub type WasmCompositeAlgId;
 }
 
 impl TryFrom<WasmJwsAlgorithm> for JwsAlgorithm {
@@ -35,6 +41,18 @@ impl TryFrom<WasmJwsAlgorithm> for JwsAlgorithm {
         .map_err(|err| js_sys::Error::new(&err.to_string()).into())
     } else {
       Err(js_sys::Error::new("invalid JwsAlgorithm").into())
+    }
+  }
+}
+
+impl TryFrom<WasmCompositeAlgId> for CompositeAlgId {
+  type Error = JsValue;
+  fn try_from(value: WasmCompositeAlgId) -> Result<Self, Self::Error> {
+    if let Ok(js_string) = value.dyn_into::<JsString>() {
+      CompositeAlgId::from_str(String::from(js_string).as_ref())
+        .map_err(|err| js_sys::Error::new(&err.to_string()).into())
+    } else {
+      Err(js_sys::Error::new("invalid CompositeAlgId").into())
     }
   }
 }

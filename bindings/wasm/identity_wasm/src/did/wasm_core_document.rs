@@ -1,4 +1,4 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use std::rc::Rc;
@@ -24,6 +24,7 @@ use crate::credential::WasmJwt;
 use crate::credential::WasmPresentation;
 use crate::did::service::WasmService;
 use crate::did::wasm_did_url::WasmDIDUrl;
+use crate::did::WasmDIDCompositeJwk;
 use crate::did::WasmDIDJwk;
 use crate::error::Result;
 use crate::error::WasmResult;
@@ -772,6 +773,14 @@ impl WasmCoreDocument {
   #[wasm_bindgen(js_name = expandDIDJwk)]
   pub fn expand_did_jwk(did: WasmDIDJwk) -> Result<WasmCoreDocument> {
     CoreDocument::expand_did_jwk(did.0).wasm_result().map(Self::from)
+  }
+
+  /// Creates a {@link CoreDocument} from the given {@link DIDCompositeJwk}.
+  #[wasm_bindgen(js_name = expandDIDCompositeJwk)]
+  pub fn expand_did_compositejwk(did: WasmDIDCompositeJwk) -> Result<WasmCoreDocument> {
+    CoreDocument::expand_did_compositejwk(did.0)
+      .wasm_result()
+      .map(Self::from)
   }
 }
 

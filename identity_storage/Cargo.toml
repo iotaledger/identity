@@ -26,6 +26,7 @@ identity_verification = { version = "=1.6.0-beta", path = "../identity_verificat
 iota-crypto = { version = "0.23.2", default-features = false, features = ["ed25519", "random"], optional = true }
 json-proof-token = { workspace = true, optional = true }
 k256 = { version = "0.13.3", default-features = false, features = ["std", "ecdsa", "ecdsa-core", "jwk"], optional = true }
+oqs = { workspace = true, optional = true }
 p256 = { version = "0.13.2", default-features = false, features = ["std", "ecdsa", "ecdsa-core", "jwk"], optional = true }
 rand = { version = "0.8.5", default-features = false, features = ["std", "std_rng"], optional = true }
 seahash = { version = "4.1.0", default-features = false }
@@ -83,6 +84,12 @@ keytool = [
   "p256",
   "dep:fastcrypto",
 ]
+
+# Enables PQC (JwkStoragePQ implementation needed)
+pqc = []
+pqc-liboqs = ["pqc", "memstore", "dep:oqs"]
+hybrid = ["pqc", "dep:iota-crypto"]
+hybrid-liboqs = ["hybrid", "pqc-liboqs"]
 
 [lints]
 workspace = true

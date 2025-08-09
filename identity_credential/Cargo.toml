@@ -79,6 +79,6 @@ jpt-bbs-plus = [
   "dep:json-proof-token",
   "dep:futures",
 ]
-
+hybrid = ["credential", "validator"]
 [lints]
 workspace = true

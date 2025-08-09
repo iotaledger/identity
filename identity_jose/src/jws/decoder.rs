@@ -1,4 +1,4 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use core::str;
@@ -6,7 +6,10 @@ use std::borrow::Cow;
 
 use crate::error::Error;
 use crate::error::Result;
+use crate::jwk::CompositeAlgId;
 use crate::jwk::Jwk;
+use crate::jwk::PostQuantumJwk;
+use crate::jwk::TraditionalJwk;
 use crate::jws::JwsAlgorithm;
 use crate::jws::JwsHeader;
 use crate::jwu::create_message;
@@ -167,6 +170,89 @@ impl<'a> JwsValidationItem<'a> {
     // Call verifier
     verifier
       .verify(input, public_key)
+      .map_err(Error::SignatureVerificationError)?;
+
+    Ok(DecodedJws {
+      protected,
+      unprotected,
+      claims,
+    })
+  }
+
+  /// Hybrid signature verification.
+  pub fn verify_hybrid<TRV, PQV>(
+    self,
+    traditional_verifier: &TRV,
+    pq_verifier: &PQV,
+    traditional_pk: &TraditionalJwk,
+    pq_pk: &PostQuantumJwk,
+  ) -> Result<DecodedJws<'a>>
+  where
+    TRV: JwsVerifier,
+    PQV: JwsVerifier,
+  {
+    // Destructure data
+    let JwsValidationItem {
+      headers,
+      claims,
+      signing_input,
+      decoded_signature,
+    } = self;
+
+    let (protected, unprotected): (JwsHeader, Option<Box<JwsHeader>>) = match headers {
+      DecodedHeaders::Protected(protected) => (protected, None),
+      DecodedHeaders::Both { protected, unprotected } => (protected, Some(unprotected)),
+      DecodedHeaders::Unprotected(_) => return Err(Error::MissingHeader("missing protected header")),
+    };
+
+    // Extract and validate alg from the protected header.
+    let alg: JwsAlgorithm = protected.alg().ok_or(Error::ProtectedHeaderWithoutAlg)?;
+
+    let domain = match alg {
+      JwsAlgorithm::IdMldsa44Ed25519 => CompositeAlgId::IdMldsa44Ed25519.domain(),
+      JwsAlgorithm::IdMldsa65Ed25519 => CompositeAlgId::IdMldsa65Ed25519.domain(),
+      _ => return Err(Error::JwsAlgorithmParsingError),
+    };
+
+    // M' = Prefix || Domain || len(ctx) || ctx || M
+    //Prefix: CompositeAlgorithmSignatures2025
+    let mut input = CompositeAlgId::COMPOSITE_SIGNATURE_PREFIX.to_vec();
+
+    //Domain: id-MLDSA44-Ed25519 or id-MLDSA65-Ed25519
+    input.extend_from_slice(domain);
+
+    //len(ctx) = 0
+    input.push(0x00);
+
+    //M
+    input.extend(signing_input);
+
+    traditional_pk.check_alg(JwsAlgorithm::EdDSA.name())?;
+
+    let (extracted_signature_t, extracted_signature_pq) =
+      decoded_signature.split_at(crypto::signatures::ed25519::Signature::LENGTH);
+
+    // Construct verification input
+    let input1 = VerificationInput {
+      alg: JwsAlgorithm::EdDSA,
+      signing_input: input.clone().into(),
+      decoded_signature: extracted_signature_t.into(),
+    };
+
+    // Call the traditional verifier
+    traditional_verifier
+      .verify(input1, traditional_pk)
+      .map_err(Error::SignatureVerificationError)?;
+
+    let input2 = VerificationInput {
+      alg,
+      signing_input: input.into(),
+      decoded_signature: extracted_signature_pq.into(),
+    };
+
+    // Call the PQ verifier
+    pq_verifier
+      .verify(input2, pq_pk)
       .map_err(Error::SignatureVerificationError)?;
 
     Ok(DecodedJws {

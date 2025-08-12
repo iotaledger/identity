@@ -37,7 +37,7 @@ serde-wasm-bindgen = "0.6.5"
 serde_json = { version = "1.0", default-features = false }
 serde_repr = { version = "0.1", default-features = false }
 # Want to use the nice API of tokio::sync::RwLock for now even though we can't use threads.
-tokio = { version = "1.44", default-features = false, features = ["sync"] }
+tokio = { version = "1.46.1", default-features = false, features = ["sync"] }
 tsify = "0.4.5"
 wasm-bindgen = { version = "0.2.100", features = ["serde-serialize"] }
 wasm-bindgen-futures = { version = "0.4", default-features = false }

@@ -33,7 +33,7 @@ secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", def
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-tokio = { version = "1.43", default-features = false, features = ["macros", "sync"], optional = true }
+tokio = { version = "1.46.1", default-features = false, features = ["macros", "sync"], optional = true }
 zkryptium = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -48,7 +48,7 @@ identity_ecdsa_verifier = { version = "=1.6.0-beta", path = "../identity_ecdsa_v
 identity_eddsa_verifier = { version = "=1.6.0-beta", path = "../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
 once_cell = { version = "1.18", default-features = false }
 product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.7.0", package = "product_common", default-features = false }
-tokio = { version = "1.43", default-features = false, features = ["macros", "sync", "rt"] }
+tokio = { version = "1.46.1", default-features = false, features = ["macros", "sync", "rt"] }
 
 [features]
 default = ["iota-document", "memstore"]

@@ -44,7 +44,7 @@ identity_eddsa_verifier = { path = "../identity_eddsa_verifier", default-feature
 iota-crypto = { version = "0.23.2", default-features = false, features = ["ed25519", "std", "random"] }
 josekit = "0.8"
 proptest = { version = "1.4.0", default-features = false, features = ["std"] }
-tokio = { version = "1.43", default-features = false, features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.46.1", default-features = false, features = ["rt-multi-thread", "macros"] }
 
 [package.metadata.docs.rs]
 # To build locally:

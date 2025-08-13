@@ -12,6 +12,7 @@ use crate::IotaDocument;
 use crate::StateMetadataDocument;
 use crate::StateMetadataEncoding;
 use async_trait::async_trait;
+use futures::Stream;
 use identity_verification::jwk::Jwk;
 use iota_interaction::move_types::language_storage::StructTag;
 use iota_interaction::rpc_types::IotaObjectData;
@@ -121,6 +122,22 @@ impl<S> IdentityClient<S> {
     T: MoveType + DeserializeOwned + Send + Sync + PartialEq,
   {
     AuthenticatedAssetBuilder::new(content)
+  }
+
+  /// Returns the [IotaAddress] wrapped by this client.
+  #[inline(always)]
+  pub fn address(&self) -> IotaAddress {
+    IotaAddress::from(&self.public_key)
+  }
+
+  /// Returns the list of **all** unique DIDs the address wrapped by this client can access as a controller.
+  pub async fn controlled_dids(&self) -> Vec<IotaDID> {
+    self.dids_controlled_by(self.address()).await
+  }
+
+  /// Returns a stream yielding the unique DIDs the address wrapped by this client can access as a controller.
+  pub fn controlled_dids_streamed(&self) -> impl Stream<Item = IotaDID> + use<'_, S> {
+    self.streamed_dids_controlled_by(self.address())
   }
 }
 

@@ -30,7 +30,7 @@ iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag
 # required for doc test
 anyhow = "1.0.64"
 identity_iota = { version = "=1.6.0-beta", path = "./", features = ["memstore"] }
-iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.4.1-rc" }
+iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.4.1" }
 rand = "0.8.5"
 secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag = "v0.3.0" }
 tokio = { version = "1.46.1", features = ["full"] }

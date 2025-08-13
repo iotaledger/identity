@@ -10,7 +10,7 @@ anyhow = "1.0.62"
 identity_eddsa_verifier = { path = "../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
 identity_storage = { path = "../identity_storage" }
 identity_stronghold = { path = "../identity_stronghold", default-features = false, features = ["send-sync-storage"] }
-iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.4.1-rc" }
+iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.4.1" }
 iota-sdk-legacy = { package = "iota-sdk", version = "1.0", default-features = false, features = ["tls", "client", "stronghold"] }
 json-proof-token.workspace = true
 product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.7.0", package = "product_common", features = ["core-client", "transaction"] }

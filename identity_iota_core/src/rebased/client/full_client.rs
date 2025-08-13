@@ -4,6 +4,7 @@
 use std::ops::Deref;
 
 use crate::iota_interaction_adapter::IotaClientAdapter;
+use crate::rebased::client::QueryControlledDidsError;
 use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
 use crate::rebased::migration::CreateIdentity;
@@ -131,12 +132,12 @@ impl<S> IdentityClient<S> {
   }
 
   /// Returns the list of **all** unique DIDs the address wrapped by this client can access as a controller.
-  pub async fn controlled_dids(&self) -> Vec<IotaDID> {
+  pub async fn controlled_dids(&self) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
     self.dids_controlled_by(self.address()).await
   }
 
   /// Returns a stream yielding the unique DIDs the address wrapped by this client can access as a controller.
-  pub fn controlled_dids_streamed(&self) -> impl Stream<Item = IotaDID> + use<'_, S> {
+  pub fn controlled_dids_streamed(&self) -> impl Stream<Item = Result<IotaDID, QueryControlledDidsError>> + use<'_, S> {
     self.streamed_dids_controlled_by(self.address())
   }
 }

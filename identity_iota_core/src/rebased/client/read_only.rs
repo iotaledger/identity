@@ -12,6 +12,7 @@ use async_trait::async_trait;
 use futures::stream::FuturesUnordered;
 use futures::Stream;
 use futures::StreamExt as _;
+use futures::TryStreamExt as _;
 use identity_core::common::Url;
 use identity_did::DID;
 use iota_interaction::rpc_types::IotaObjectDataFilter;
@@ -208,6 +209,11 @@ impl IdentityClientReadOnly {
   /// Returns a stream yielding the unique DIDs the given address can access as a controller.
   /// # Notes
   /// This is a streaming version of [dids_controlled_by](Self::dids_controlled_by).
+  /// # Errors
+  /// This stream might return a [QueryControlledDidsError] when the underlying RPC call fails.
+  /// When an error occurs, the stream might successfully yield a value if polled again, depending
+  /// on the actual RPC error.
+  /// [QueryControlledDidsError]'s source can be downcasted to [SDK's Error](iota_interaction::error::Error).
   /// # Example
   /// ```
   /// # use identity_iota_core::rebased::client::IdentityClientReadOnly;
@@ -223,15 +229,18 @@ impl IdentityClientReadOnly {
   /// let address = "0x666638f5118b8f894c4e60052f9bc47d6fcfb04fdb990c9afbb988848b79c475".parse()?;
   /// let mut controlled_dids = identity_client.streamed_dids_controlled_by(address);
   /// assert_eq!(
-  ///   controlled_dids.next().await,
-  ///   Some(IotaDID::parse(
+  ///   controlled_dids.next().await.unwrap()?,
+  ///   IotaDID::parse(
   ///     "did:iota:testnet:0x052cfb920024f7a640dc17f7f44c6042ea0038d26972c2cff5c7ba31c82fbb08"
-  ///   )?)
+  ///   )?,
   /// );
   /// # Ok(())
   /// # }
   /// ```
-  pub fn streamed_dids_controlled_by(&self, address: IotaAddress) -> impl Stream<Item = IotaDID> + use<'_> {
+  pub fn streamed_dids_controlled_by(
+    &self,
+    address: IotaAddress,
+  ) -> impl Stream<Item = Result<IotaDID, QueryControlledDidsError>> + use<'_> {
     // Create a filter that matches objects of type ControllerCap or DelegationToken with any package ID in history.
     let all_struct_tags = history_type_tags::<ControllerCap>(&self.package_history)
       .chain(history_type_tags::<DelegationToken>(&self.package_history))
@@ -243,13 +252,13 @@ impl IdentityClientReadOnly {
     );
 
     // Create a stream that returns unique DIDs.
-    let stream = async_stream::stream! {
+    let stream = async_stream::try_stream! {
       let mut page = self
       .client_adapter()
       .read_api()
       .get_owned_objects(address, Some(query.clone()), None, None)
       .await
-      .unwrap(); // TODO.
+      .map_err(|e| QueryControlledDidsError { address, source: e.into() })?;
       let mut identities = HashSet::new();
 
       loop {
@@ -272,7 +281,7 @@ impl IdentityClientReadOnly {
             .read_api()
             .get_owned_objects(address, Some(query.clone()), page.next_cursor, None)
             .await
-            .unwrap();
+            .map_err(|e| QueryControlledDidsError { address, source: e.into() })?;
         } else {
           // End of content: current page is exhausted and no more pages are available.
           break;
@@ -288,6 +297,10 @@ impl IdentityClientReadOnly {
   /// Returns the list of **all** unique DIDs the given address has access to as a controller.
   /// # Notes
   /// For a streaming version of this API see [dids_controlled_by_streamed](Self::dids_controlled_by_streamed).
+  /// # Errors
+  /// This method might return a [QueryControlledDidsError] when the underlying RPC call fails.
+  /// [QueryControlledDidsError]'s source can be downcasted to [SDK's Error](iota_interaction::error::Error)
+  /// in order to check whether calling this method again might return a successfull result.
   /// # Example
   /// ```
   /// # use identity_iota_core::rebased::client::IdentityClientReadOnly;
@@ -300,7 +313,7 @@ impl IdentityClientReadOnly {
   /// # let identity_client = IdentityClientReadOnly::new(iota_client).await?;
   /// #
   /// let address = "0x666638f5118b8f894c4e60052f9bc47d6fcfb04fdb990c9afbb988848b79c475".parse()?;
-  /// let controlled_dids = identity_client.dids_controlled_by(address).await;
+  /// let controlled_dids = identity_client.dids_controlled_by(address).await?;
   /// assert_eq!(
   ///   controlled_dids,
   ///   vec![IotaDID::parse(
@@ -310,9 +323,19 @@ impl IdentityClientReadOnly {
   /// # Ok(())
   /// # }
   /// ```
-  pub async fn dids_controlled_by(&self, address: IotaAddress) -> Vec<IotaDID> {
-    self.streamed_dids_controlled_by(address).collect().await
+  pub async fn dids_controlled_by(&self, address: IotaAddress) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
+    self.streamed_dids_controlled_by(address).try_collect().await
   }
+}
+
+/// Error that might occur when querying an address for its controlled DIDs.
+#[derive(Debug, thiserror::Error)]
+#[error("failed to query the DIDs controlled by address `{address}`")]
+#[non_exhaustive]
+pub struct QueryControlledDidsError {
+  /// The queried address.
+  pub address: IotaAddress,
+  source: Box<dyn std::error::Error + Send + Sync>,
 }
 
 /// Returns the list of all type ID for a given move type where the package ID is taken from history.

@@ -147,9 +147,9 @@ impl WasmIdentityClient {
     self.read_only().dids_controlled_by(address).await
   }
 
-   /// Returns the list of DIDs the address wrapped by this client can access as a controller.
-   /// # Errors
-   /// @throws {QueryControlledDidsError} when the underlying RPC calls fail;
+  /// Returns the list of DIDs the address wrapped by this client can access as a controller.
+  /// # Errors
+  /// @throws {QueryControlledDidsError} when the underlying RPC calls fail;
   #[wasm_bindgen(js_name = controlledDids)]
   pub async fn controlled_dids(&self) -> std::result::Result<Vec<WasmIotaDID>, js_sys::Error> {
     self.dids_controlled_by(&self.address().to_string()).await

@@ -15,6 +15,7 @@ use futures::StreamExt as _;
 use futures::TryStreamExt as _;
 use identity_core::common::Url;
 use identity_did::DID;
+use iota_interaction::move_types::language_storage::StructTag;
 use iota_interaction::rpc_types::IotaObjectDataFilter;
 use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaObjectResponseQuery;
@@ -23,7 +24,6 @@ use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::TypeTag;
 use iota_interaction::IotaClientTrait;
 use iota_interaction::MoveType;
-use move_core_types::language_storage::StructTag;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
 
@@ -240,7 +240,7 @@ impl IdentityClientReadOnly {
   pub fn streamed_dids_controlled_by(
     &self,
     address: IotaAddress,
-  ) -> impl Stream<Item = Result<IotaDID, QueryControlledDidsError>> + use<'_> {
+  ) -> impl Stream<Item = Result<IotaDID, QueryControlledDidsError>> + Unpin + use<'_> {
     // Create a filter that matches objects of type ControllerCap or DelegationToken with any package ID in history.
     let all_struct_tags = history_type_tags::<ControllerCap>(&self.package_history)
       .chain(history_type_tags::<DelegationToken>(&self.package_history))

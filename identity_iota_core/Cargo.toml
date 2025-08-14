@@ -24,7 +24,7 @@ num-derive = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false, features = ["std"] }
 once_cell = { version = "1.18", default-features = false, features = ["std"] }
 prefix-hex = { version = "0.7", default-features = false }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.7.0", package = "product_common", default-features = false }
+product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.0", package = "product_common", default-features = false }
 ref-cast = { version = "1.0.14", default-features = false }
 serde.workspace = true
 serde_json.workspace = true
@@ -46,15 +46,15 @@ serde-aux = { version = "4.5.0", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 iota-config = { git = "https://github.com/iotaledger/iota.git", package = "iota-config", tag = "v1.4.1", optional = true }
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.7.0", package = "iota_interaction", optional = true }
-iota_interaction_rust = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.7.0", package = "iota_interaction_rust", optional = true }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.0", package = "iota_interaction", optional = true }
+iota_interaction_rust = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.0", package = "iota_interaction_rust", optional = true }
 iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.4.1", optional = true }
 move-core-types = { git = "https://github.com/iotaledger/iota.git", package = "move-core-types", tag = "v1.4.1", optional = true }
 shared-crypto = { git = "https://github.com/iotaledger/iota.git", package = "shared-crypto", tag = "v1.4.1", optional = true }
 tokio = { version = "1.46.1", default-features = false, features = ["macros", "sync", "rt", "process"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.7.0", package = "iota_interaction", default-features = false, optional = true }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.0", package = "iota_interaction", default-features = false, optional = true }
 
 # Dependency iota_interaction_ts is always used on wasm32 platform. It is not controlled by the "iota-client" feature
 # because it's unclear how to implement this. wasm32 build will most probably always use the "iota-client" feature

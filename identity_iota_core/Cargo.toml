@@ -40,6 +40,7 @@ iota-crypto = { version = "0.23", optional = true }
 itertools = { version = "0.13.0", optional = true }
 phf = { version = "0.11.2", features = ["macros"] }
 
+async-stream = { version = "0.3", optional = true }
 rand = { version = "0.8.5", optional = true }
 secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag = "v0.3.0", default-features = false, optional = true }
 serde-aux = { version = "4.5.0", optional = true }
@@ -98,6 +99,7 @@ iota-client = [
   "dep:secret-storage",
   "dep:serde-aux",
   "product_common/transaction",
+  "dep:async-stream",
 ]
 # Enables an high level integration with IOTA Gas Station.
 gas-station = ["product_common/gas-station"]

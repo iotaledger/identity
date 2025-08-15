@@ -152,8 +152,8 @@ impl WasmIotaDID {
     WasmDIDUrl::from(self.0.to_url())
   }
 
-  /// Returns the hex-encoded AliasId with a '0x' prefix, from the DID tag.
-  #[wasm_bindgen(js_name = toAliasId)]
+  /// Returns the hex-encoded ObjectID with a '0x' prefix, from the DID tag.
+  #[wasm_bindgen(js_name = toObjectID)]
   pub fn to_object_id(&self) -> String {
     self.0.to_string()
   }

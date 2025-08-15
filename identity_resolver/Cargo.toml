@@ -30,7 +30,7 @@ features = ["iota-client"]
 optional = true
 
 [dev-dependencies]
-tokio = { version = "1.43", default-features = false, features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.46.1", default-features = false, features = ["rt-multi-thread", "macros"] }
 
 [features]
 default = ["revocation-bitmap", "iota", "send-sync-client"]

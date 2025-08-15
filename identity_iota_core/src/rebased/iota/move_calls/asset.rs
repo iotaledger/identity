@@ -31,8 +31,8 @@ fn try_to_argument<T: MoveType + Serialize>(
         .map_err(|e| Error::InvalidArgument(e.to_string()))?;
       Ok(ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
         package,
-        module: ident_str!("public_vc").into(),
-        function: ident_str!("new").into(),
+        module: "public_vc".to_string(),
+        function: "new".to_string(),
         type_arguments: vec![],
         arguments: vec![values],
       }))))
@@ -58,9 +58,9 @@ pub(crate) fn new_asset<T: Serialize + MoveType>(
 
   ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
     package,
-    module: ident_str!("asset").into(),
-    function: ident_str!("new_with_config").into(),
-    type_arguments: vec![T::move_type(package)],
+    module: "asset".to_string(),
+    function: "new_with_config".to_string(),
+    type_arguments: vec![T::move_type(package).into()],
     arguments: vec![inner, mutable, transferable, deletable],
   })));
 

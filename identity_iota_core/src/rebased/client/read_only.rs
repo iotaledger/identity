@@ -216,6 +216,7 @@ impl IdentityClientReadOnly {
   /// [QueryControlledDidsError]'s source can be downcasted to [SDK's Error](iota_interaction::error::Error).
   /// # Example
   /// ```
+  /// # use std::pin::pin;
   /// # use identity_iota_core::rebased::client::IdentityClientReadOnly;
   /// # use identity_iota_core::IotaDID;
   /// # use iota_sdk::IotaClientBuilder;
@@ -227,7 +228,7 @@ impl IdentityClientReadOnly {
   /// # let identity_client = IdentityClientReadOnly::new(iota_client).await?;
   /// #
   /// let address = "0x666638f5118b8f894c4e60052f9bc47d6fcfb04fdb990c9afbb988848b79c475".parse()?;
-  /// let mut controlled_dids = identity_client.streamed_dids_controlled_by(address);
+  /// let mut controlled_dids = pin!(identity_client.streamed_dids_controlled_by(address));
   /// assert_eq!(
   ///   controlled_dids.next().await.unwrap()?,
   ///   IotaDID::parse(
@@ -240,7 +241,7 @@ impl IdentityClientReadOnly {
   pub fn streamed_dids_controlled_by(
     &self,
     address: IotaAddress,
-  ) -> impl Stream<Item = Result<IotaDID, QueryControlledDidsError>> + Unpin + use<'_> {
+  ) -> impl Stream<Item = Result<IotaDID, QueryControlledDidsError>> + use<'_> {
     // Create a filter that matches objects of type ControllerCap or DelegationToken with any package ID in history.
     let all_struct_tags = history_type_tags::<ControllerCap>(&self.package_history)
       .chain(history_type_tags::<DelegationToken>(&self.package_history))
@@ -252,7 +253,7 @@ impl IdentityClientReadOnly {
     );
 
     // Create a stream that returns unique DIDs.
-    let stream = async_stream::try_stream! {
+    async_stream::try_stream! {
       let mut page = self
       .client_adapter()
       .read_api()
@@ -287,11 +288,7 @@ impl IdentityClientReadOnly {
           break;
         }
       }
-    };
-
-    // Pin the stream on the heap so that callers can consume it directly without having
-    // to pin it themselves.
-    Box::pin(stream)
+    }
   }
 
   /// Returns the list of **all** unique DIDs the given address has access to as a controller.

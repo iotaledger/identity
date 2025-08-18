@@ -1,4 +1,4 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use crypto::hashes::sha::SHA256;
@@ -13,6 +13,7 @@ use crate::jwk::EcxCurve;
 use crate::jwk::EdCurve;
 use crate::jwk::JwkOperation;
 use crate::jwk::JwkParams;
+use crate::jwk::JwkParamsAkp;
 use crate::jwk::JwkParamsEc;
 use crate::jwk::JwkParamsOct;
 use crate::jwk::JwkParamsOkp;
@@ -261,6 +262,9 @@ impl Jwk {
       (JwkType::Okp, value @ JwkParams::Okp(_)) => {
         self.set_params_unchecked(value);
       }
+      (JwkType::Akp, value @ JwkParams::Akp(_)) => {
+        self.set_params_unchecked(value);
+      }
       (_, _) => {
         return Err(Error::InvalidParam("`params` type does not match `kty`"));
       }
@@ -339,6 +343,22 @@ impl Jwk {
     }
   }
 
+  /// Returns the [`JwkParamsAkp`] in this JWK if it is of type `Akp`.
+  pub fn try_akp_params(&self) -> Result<&JwkParamsAkp> {
+    match self.params() {
+      JwkParams::Akp(params) => Ok(params),
+      _ => Err(Error::KeyError("Akp")),
+    }
+  }
+
+  /// Returns a mutable reference to the [`JwkParamsAkp`] in this JWK if it is of type `Akp`.
+  pub fn try_akp_params_mut(&mut self) -> Result<&mut JwkParamsAkp> {
+    match self.params_mut() {
+      JwkParams::Akp(params) => Ok(params),
+      _ => Err(Error::KeyError("Akp")),
+    }
+  }
+
   // ===========================================================================
   // Thumbprint
   // ===========================================================================
@@ -386,6 +406,9 @@ impl Jwk {
       // Implementation according to https://www.rfc-editor.org/rfc/rfc8037#section-2.
       JwkParams::Okp(JwkParamsOkp { crv, x, .. }) => {
         format!(r#"{{"crv":"{crv}","kty":"{kty}","x":"{x}"}}"#)
+      }
+      JwkParams::Akp(JwkParamsAkp { public, .. }) => {
+        format!(r#"{{"kty":"{kty}","pub":"{public}"}}"#)
       }
     }
   }
@@ -439,6 +462,7 @@ impl Jwk {
       JwkParams::Rsa(params) => params.is_private(),
       JwkParams::Oct(_) => true,
       JwkParams::Okp(params) => params.is_private(),
+      JwkParams::Akp(params) => params.is_private(),
     }
   }
 

@@ -1,4 +1,4 @@
-// Copyright 2020-2024 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use jsonprooftoken::encoding::SerializationType;
@@ -8,6 +8,7 @@ use wasm_bindgen::prelude::*;
 pub enum WasmSerializationType {
   COMPACT = 0,
   JSON = 1,
+  CBOR = 2,
 }
 
 impl From<WasmSerializationType> for SerializationType {
@@ -15,6 +16,7 @@ impl From<WasmSerializationType> for SerializationType {
     match value {
       WasmSerializationType::COMPACT => SerializationType::COMPACT,
       WasmSerializationType::JSON => SerializationType::JSON,
+      WasmSerializationType::CBOR => SerializationType::CBOR,
     }
   }
 }
@@ -24,6 +26,7 @@ impl From<SerializationType> for WasmSerializationType {
     match value {
       SerializationType::COMPACT => WasmSerializationType::COMPACT,
       SerializationType::JSON => WasmSerializationType::JSON,
+      SerializationType::CBOR => WasmSerializationType::CBOR,
     }
   }
 }

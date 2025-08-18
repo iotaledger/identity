@@ -78,6 +78,7 @@
     "@iota/notarization": "^0.1.6",
     "@noble/ed25519": "^1.7.3",
     "@noble/hashes": "^1.4.0",
+    "@noble/post-quantum": "^0.2",
     "@types/node-fetch": "^2.6.2",
     "base64-arraybuffer": "^1.0.2",
     "jose": "^5.9.6",

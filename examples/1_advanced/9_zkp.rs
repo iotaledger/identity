@@ -84,7 +84,7 @@ async fn main() -> anyhow::Result<()> {
     &identity_client,
     &storage_issuer,
     JwkMemStore::BLS12381G2_KEY_TYPE,
-    ProofAlgorithm::BLS12381_SHA256,
+    ProofAlgorithm::BBS,
   )
   .await?;
 

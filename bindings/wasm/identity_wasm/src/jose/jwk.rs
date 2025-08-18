@@ -1,4 +1,4 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use identity_iota::verification::jose::jwk::Jwk;
@@ -11,6 +11,7 @@ use crate::common::ArrayString;
 use crate::error::WasmResult;
 use crate::jose::ArrayJwkOperation;
 use crate::jose::IJwkParams;
+use crate::jose::WasmJwkParamsAkp;
 use crate::jose::WasmJwkParamsEc;
 use crate::jose::WasmJwkParamsOct;
 use crate::jose::WasmJwkParamsOkp;
@@ -135,7 +136,9 @@ impl WasmJwk {
   pub fn params_ec(&self) -> crate::error::Result<Option<WasmJwkParamsEc>> {
     if let JwkParams::Ec(params_ec) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
-      Ok(Some(JsValue::from_serde(params_ec).wasm_result()?.unchecked_into()))
+      Ok(Some(
+        serde_wasm_bindgen::to_value(params_ec).wasm_result()?.unchecked_into(),
+      ))
     } else {
       Ok(None)
     }
@@ -146,7 +149,9 @@ impl WasmJwk {
   pub fn params_okp(&self) -> crate::error::Result<Option<WasmJwkParamsOkp>> {
     if let JwkParams::Okp(params_okp) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
-      Ok(Some(JsValue::from_serde(params_okp).wasm_result()?.unchecked_into()))
+      Ok(Some(
+        serde_wasm_bindgen::to_value(params_okp).wasm_result()?.unchecked_into(),
+      ))
     } else {
       Ok(None)
     }
@@ -157,7 +162,9 @@ impl WasmJwk {
   pub fn params_oct(&self) -> crate::error::Result<Option<WasmJwkParamsOct>> {
     if let JwkParams::Oct(params_oct) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
-      Ok(Some(JsValue::from_serde(params_oct).wasm_result()?.unchecked_into()))
+      Ok(Some(
+        serde_wasm_bindgen::to_value(params_oct).wasm_result()?.unchecked_into(),
+      ))
     } else {
       Ok(None)
     }
@@ -168,7 +175,22 @@ impl WasmJwk {
   pub fn params_rsa(&self) -> crate::error::Result<Option<WasmJwkParamsRsa>> {
     if let JwkParams::Rsa(params_rsa) = self.0.params() {
       // WARNING: this does not validate the return type. Check carefully.
-      Ok(Some(JsValue::from_serde(params_rsa).wasm_result()?.unchecked_into()))
+      Ok(Some(
+        serde_wasm_bindgen::to_value(params_rsa).wasm_result()?.unchecked_into(),
+      ))
+    } else {
+      Ok(None)
+    }
+  }
+
+  /// If this JWK is of kty AKP, returns those parameters.
+  #[wasm_bindgen(js_name = paramsAkp)]
+  pub fn params_akp(&self) -> crate::error::Result<Option<WasmJwkParamsAkp>> {
+    if let JwkParams::Akp(params_akp) = self.0.params() {
+      // WARNING: this does not validate the return type. Check carefully.
+      Ok(Some(
+        serde_wasm_bindgen::to_value(params_akp).wasm_result()?.unchecked_into(),
+      ))
     } else {
       Ok(None)
     }
@@ -221,7 +243,7 @@ impl_wasm_clone!(WasmJwk, Jwk);
 
 #[wasm_bindgen(typescript_custom_section)]
 const I_JWK: &'static str = r#"
-type IJwkParams = IJwkEc | IJwkRsa | IJwkOkp | IJwkOct
+type IJwkParams = IJwkEc | IJwkRsa | IJwkOkp | IJwkOct | IJwkAkp
 /** A JSON Web Key with EC params. */
 export interface IJwkEc extends IJwk, JwkParamsEc {
   kty: JwkType.Ec
@@ -237,6 +259,10 @@ export interface IJwkOkp extends IJwk, JwkParamsOkp {
 /** A JSON Web Key with OCT params. */
 export interface IJwkOct extends IJwk, JwkParamsOct {
   kty: JwkType.Oct
+}
+/** A JSON Web Key with AKP params. */
+export interface IJwkAkp extends IJwk, JwkParamsAkp {
+  kty: JwkType.Akp
 }
 "#;
 
@@ -420,4 +446,14 @@ interface JwkParamsOct {
    * 
    * [More Info](https://tools.ietf.org/html/rfc7518#section-6.4.1) */
   k: string
+}"#;
+
+#[wasm_bindgen(typescript_custom_section)]
+const IJWK_PARAMS_AKP: &str = r#"
+/** Parameters for Algorithm Key Pair (AKP).
+ * 
+ * [More Info](https://datatracker.ietf.org/doc/html/draft-ietf-cose-dilithium-06#name-algorithm-key-pair-type) */
+interface JwkParamsAkp {
+  pub: string,
+  priv?: string
 }"#;

@@ -1,9 +1,10 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use core::future::Future;
 use futures::stream::FuturesUnordered;
 use futures::TryStreamExt;
+use identity_did::DIDCompositeJwk;
 use identity_did::DIDJwk;
 use identity_did::DID;
 use std::collections::HashSet;
@@ -261,6 +262,24 @@ impl<DOC: From<CoreDocument> + 'static> Resolver<DOC, SendSyncCommand<DOC>> {
   pub fn attach_did_jwk_handler(&mut self) {
     let handler = |did_jwk: DIDJwk| async move { CoreDocument::expand_did_jwk(did_jwk) };
     self.attach_handler(DIDJwk::METHOD.to_string(), handler)
+  }
+}
+
+impl<DOC: From<CoreDocument> + 'static> Resolver<DOC, SingleThreadedCommand<DOC>> {
+  /// Attaches a handler capable of resolving `did:compositejwk` DIDs.
+  pub fn attach_did_compositejwk_handler(&mut self) {
+    let handler =
+      |did_compositejwk: DIDCompositeJwk| async move { CoreDocument::expand_did_compositejwk(did_compositejwk) };
+    self.attach_handler(DIDCompositeJwk::METHOD.to_string(), handler)
+  }
+}
+
+impl<DOC: From<CoreDocument> + 'static> Resolver<DOC, SendSyncCommand<DOC>> {
+  /// Attaches a handler capable of resolving `did:compositejwk` DIDs.
+  pub fn attach_did_compositejwk_handler(&mut self) {
+    let handler =
+      |did_compositejwk: DIDCompositeJwk| async move { CoreDocument::expand_did_compositejwk(did_compositejwk) };
+    self.attach_handler(DIDCompositeJwk::METHOD.to_string(), handler)
   }
 }
 

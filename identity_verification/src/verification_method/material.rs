@@ -1,6 +1,7 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::jose::jwk::CompositeJwk;
 use crate::jose::jwk::Jwk;
 use core::fmt::Debug;
 use core::fmt::Formatter;
@@ -27,6 +28,8 @@ pub enum MethodData {
   PublicKeyBase58(String),
   /// Verification Material in the JSON Web Key format.
   PublicKeyJwk(Jwk),
+  /// Verification Material containing two keys in JSON Web Key format, one traditional and one PQ.
+  CompositeJwk(CompositeJwk),
   /// Arbitrary verification material.
   #[serde(untagged)]
   Custom(CustomMethodData),
@@ -59,7 +62,7 @@ impl MethodData {
   /// represented as a vector of bytes.
   pub fn try_decode(&self) -> Result<Vec<u8>> {
     match self {
-      Self::PublicKeyJwk(_) | Self::Custom(_) => Err(Error::InvalidMethodDataTransformation(
+      Self::PublicKeyJwk(_) | Self::Custom(_) | Self::CompositeJwk(_) => Err(Error::InvalidMethodDataTransformation(
         "method data is not base encoded",
       )),
       Self::PublicKeyMultibase(input) => {
@@ -67,6 +70,20 @@ impl MethodData {
       }
       Self::PublicKeyBase58(input) => BaseEncoding::decode_base58(input).map_err(|_| Error::InvalidKeyDataBase58),
     }
+  }
+
+  /// Returns the wrapped `CompositePublicKey` if the format is [`MethodData::CompositePublicKey`].
+  pub fn composite_public_key(&self) -> Option<&CompositeJwk> {
+    if let Self::CompositeJwk(ref c) = self {
+      Some(c)
+    } else {
+      None
+    }
+  }
+
+  /// Fallible version of [`Self::composite_public_key`](Self::composite_public_key).
+  pub fn try_composite_public_key(&self) -> Result<&CompositeJwk> {
+    self.composite_public_key().ok_or(Error::NotCompositePublicKey)
   }
 
   /// Returns the wrapped `Jwk` if the format is [`MethodData::PublicKeyJwk`].
@@ -99,6 +116,7 @@ impl Debug for MethodData {
       Self::PublicKeyJwk(inner) => f.write_fmt(format_args!("PublicKeyJwk({inner:#?})")),
       Self::PublicKeyMultibase(inner) => f.write_fmt(format_args!("PublicKeyMultibase({inner})")),
       Self::PublicKeyBase58(inner) => f.write_fmt(format_args!("PublicKeyBase58({inner})")),
+      Self::CompositeJwk(inner) => f.write_fmt(format_args!("CompositePublicKey({inner:#?})")),
       Self::Custom(CustomMethodData { name, data }) => f.write_fmt(format_args!("{name}({data})")),
     }
   }

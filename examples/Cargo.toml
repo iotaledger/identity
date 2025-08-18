@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 anyhow = "1.0.62"
 identity_eddsa_verifier = { path = "../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
+identity_pqc_verifier = { path = "../identity_pqc_verifier", default-features = true }
 identity_storage = { path = "../identity_storage" }
 identity_stronghold = { path = "../identity_stronghold", default-features = false, features = ["send-sync-storage"] }
 iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.4.1" }
@@ -34,6 +35,7 @@ features = [
   "sd-jwt",
   "status-list-2021",
   "keytool",
+  "hybrid-liboqs",
   "gas-station",
   "default-http-client",
 ]
@@ -112,6 +114,14 @@ name = "10_zkp_revocation"
 [[example]]
 path = "1_advanced/11_linked_verifiable_presentation.rs"
 name = "11_linked_verifiable_presentation"
+
+[[example]]
+path = "1_advanced/pq.rs"
+name = "pq"
+
+[[example]]
+path = "1_advanced/hybrid.rs"
+name = "hybrid"
 
 [[example]]
 path = "1_advanced/12_advanced_transactions.rs"

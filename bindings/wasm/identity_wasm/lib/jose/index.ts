@@ -1,3 +1,4 @@
+export * from "./composite_jwk";
 export * from "./ec_curve";
 export * from "./ed_curve";
 export * from "./jwk_operation";

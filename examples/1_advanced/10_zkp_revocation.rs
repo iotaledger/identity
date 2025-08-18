@@ -139,7 +139,7 @@ async fn main() -> anyhow::Result<()> {
     &storage_issuer,
     JwkMemStore::BLS12381G2_KEY_TYPE,
     None,
-    Some(ProofAlgorithm::BLS12381_SHA256),
+    Some(ProofAlgorithm::BBS),
   )
   .await?;
 
@@ -326,7 +326,7 @@ async fn main() -> anyhow::Result<()> {
   // Step 2b: Waiting for the next validityTimeframe, will result in the Credential timeframe interval NOT valid
   // ===========================================================================
 
-  thread::sleep(SleepDuration::from_secs(61));
+  thread::sleep(SleepDuration::from_secs(63));
 
   let timeframe_result = JptPresentationValidatorUtils::check_timeframes_with_validity_timeframe_2024(
     &decoded_presented_credential.credential,

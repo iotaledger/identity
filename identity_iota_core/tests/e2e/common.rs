@@ -304,7 +304,7 @@ impl TestClient {
     Ok(())
   }
 
-  pub async fn new_user_client(&self) -> anyhow::Result<IdentityClient<MemSigner>> {
+  pub async fn new_user_client(&self) -> anyhow::Result<IdentityClient<MemSigner<'_>>> {
     let generate = self
       .storage
       .key_storage()

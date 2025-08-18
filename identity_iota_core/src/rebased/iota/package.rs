@@ -28,15 +28,17 @@ static IOTA_IDENTITY_PACKAGE_REGISTRY: LazyLock<RwLock<PackageRegistry>> = LazyL
     // Add well-known networks.
     registry.insert_env(
       Env::new_with_alias("6364aad5", "iota"),
-      vec![object_id!(
-        "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08"
-      )],
+      vec![
+        object_id!("0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08"),
+        object_id!("0x36d0d56aea27a59f620ba32b6dd47a5e68d810714468bd270fda5ad37a478767"),
+      ],
     );
     registry.insert_env(
       Env::new_with_alias("2304aa97", "testnet"),
       vec![
         object_id!("0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555"),
         object_id!("0x3403da7ec4cd2ff9bdf6f34c0b8df5a2bd62c798089feb0d2ebf1c2e953296dc"),
+        object_id!("0x29359d33a2e84f04407da0d6cff15dd8ad271c75493ef6b78f381993e4c0abb0"),
       ],
     );
     registry.insert_env(
@@ -44,6 +46,7 @@ static IOTA_IDENTITY_PACKAGE_REGISTRY: LazyLock<RwLock<PackageRegistry>> = LazyL
       vec![
         object_id!("0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103"),
         object_id!("0x6a976d3da90db5d27f8a0c13b3268a37e582b455cfc7bf72d6461f6e8f668823"),
+        object_id!("0xc04befdea27caa7e277f0b738bfcd29fc463cd2a5885ae7f0a9fd3e2d635a8b8"),
       ],
     );
 
@@ -141,12 +144,12 @@ where
     .read()
     .await
     .package_id(network)
-    .ok_or_else(|| Error::InvalidConfig(format!("cannot find IdentityIota package ID for network {network}")))
+    .ok_or_else(|| Error::InvalidConfig(format!("cannot find `IotaIdentity` package ID for network {network}")))
 }
 
 #[cfg(test)]
 mod tests {
-  use iota_sdk::IotaClientBuilder;
+  use iota_interaction::IotaClientBuilder;
 
   use crate::rebased::client::IdentityClientReadOnly;
 

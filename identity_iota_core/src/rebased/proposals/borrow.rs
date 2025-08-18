@@ -9,6 +9,7 @@ use crate::rebased::iota::package::identity_package_id;
 
 use crate::rebased::migration::ControllerToken;
 
+use iota_interaction::OptionalSend;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::transaction::transaction_builder::Transaction;
 use product_common::transaction::transaction_builder::TransactionBuilder;
@@ -46,7 +47,7 @@ cfg_if::cfg_if! {
       impl<T> BorrowIntentFnT for T where T: FnOnce(&mut Ptb, &HashMap<ObjectID, (Argument, IotaObjectData)>) {}
       /// Boxed dynamic trait object of {@link BorrowIntentFnT}
       #[allow(unreachable_pub)]
-      pub type BorrowIntentFn = Box<dyn BorrowIntentFnT + Send>;
+      pub type BorrowIntentFn = Box<dyn BorrowIntentFnT>;
     } else {
       use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
       /// Instances of BorrowIntentFnT can be used as user-provided function to describe how
@@ -91,6 +92,33 @@ impl MoveType for BorrowAction {
 }
 
 impl<F> BorrowAction<F> {
+  /// Returns a new [BorrowAction].
+  pub fn new<I>(objects: I) -> Self
+  where
+    I: IntoIterator<Item = ObjectID>,
+  {
+    Self {
+      objects: objects.into_iter().collect(),
+      intent_fn: Mutex::new(None),
+    }
+  }
+
+  /// Returns a new [BorrowAction], attempting to directly execute the borrow.
+  pub fn new_with_intent<I>(objects: I, intent: F) -> Self
+  where
+    I: IntoIterator<Item = ObjectID>,
+  {
+    Self {
+      objects: objects.into_iter().collect(),
+      intent_fn: Mutex::new(Some(intent)),
+    }
+  }
+
+  /// Returns a reference to the list of objects that will be borrowed.
+  pub fn objects(&self) -> &[ObjectID] {
+    &self.objects
+  }
+
   /// Adds an object to the lists of objects that will be borrowed when executing
   /// this action in a proposal.
   pub fn borrow_object(&mut self, object_id: ObjectID) {
@@ -161,7 +189,7 @@ impl<'i, 'c, F> ProposalBuilder<'i, 'c, BorrowAction<F>> {
 #[cfg_attr(feature = "send-sync", async_trait)]
 impl<F> ProposalT for Proposal<BorrowAction<F>>
 where
-  F: BorrowIntentFnT + Send + Sync,
+  F: BorrowIntentFnT + OptionalSend + OptionalSync,
 {
   type Action = BorrowAction<F>;
   type Output = ();
@@ -343,7 +371,7 @@ where
 #[cfg_attr(feature = "send-sync", async_trait)]
 impl<F> Transaction for UserDrivenTx<'_, BorrowActionWithIntent<F>>
 where
-  F: BorrowIntentFnT + Send,
+  F: BorrowIntentFnT + OptionalSend,
 {
   type Output = ();
   type Error = Error;

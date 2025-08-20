@@ -85,7 +85,7 @@ impl<'i> AssetType<'i> {
   /// # }
   /// ```
   #[inline(always)]
-  pub fn chain_id(&self) -> ChainId {
+  pub fn chain_id(&self) -> ChainId<'_> {
     let data = &self.data[..self.separator];
     ChainId::new(data, self.chain_id_separator)
   }
@@ -102,7 +102,7 @@ impl<'i> AssetType<'i> {
   /// # }
   /// ```
   #[inline(always)]
-  pub fn asset_id(&self) -> AssetId {
+  pub fn asset_id(&self) -> AssetId<'_> {
     let data = &self.data[self.separator + 1..];
     AssetId {
       data: data.into(),
@@ -164,7 +164,7 @@ impl<'i> Ord for AssetType<'i> {
   }
 }
 
-fn asset_type_parser(input: &str) -> ParserResult<AssetType> {
+fn asset_type_parser(input: &str) -> ParserResult<'_, AssetType<'_>> {
   let (rem, (chain_id, asset_id)) = separated_pair(chain_id_parser, char('/'), asset_id_parser)(input)?;
 
   let consumed = input.len() - rem.len();
@@ -373,7 +373,7 @@ impl std::error::Error for AssetIdParsingError {
   }
 }
 
-fn asset_id_parser(input: &str) -> ParserResult<AssetId> {
+fn asset_id_parser(input: &str) -> ParserResult<'_, AssetId<'_>> {
   let (rem, (namespace, _reference)) = separated_pair(namespace_parser, char(':'), reference_parser)(input)?;
   let token_id_len = if let Ok((rem, _slash)) = char('/')(rem) {
     let (_, token_id) = token_id_parser(rem)?;
@@ -392,12 +392,12 @@ fn asset_id_parser(input: &str) -> ParserResult<AssetId> {
   Ok((&input[consumed..], asset_id))
 }
 
-fn namespace_parser(input: &str) -> ParserResult<&str> {
+fn namespace_parser(input: &str) -> ParserResult<'_, &str> {
   let is_valid_char = |c: char| c == '-' || c.is_ascii_lowercase() || c.is_ascii_digit();
   take_while_min_max(NAMESPACE_MIN_LEN, NAMESPACE_MAX_LEN, is_valid_char)(input)
 }
 
-fn reference_and_token_parser(input: &str, max: usize) -> ParserResult<&str> {
+fn reference_and_token_parser(input: &str, max: usize) -> ParserResult<'_, &str> {
   let valid_char_parser = take_while_min_max(1, max, |c: char| c == '.' || c == '-' || c.is_ascii_alphanumeric());
   let (_, output) = recognize(many1(any((valid_char_parser, recognize(perc_encoded_parser))))).process(input)?;
 
@@ -408,12 +408,12 @@ fn reference_and_token_parser(input: &str, max: usize) -> ParserResult<&str> {
 }
 
 #[inline(always)]
-fn reference_parser(input: &str) -> ParserResult<&str> {
+fn reference_parser(input: &str) -> ParserResult<'_, &str> {
   reference_and_token_parser(input, REFERENCE_MAX_LEN)
 }
 
 #[inline(always)]
-fn token_id_parser(input: &str) -> ParserResult<&str> {
+fn token_id_parser(input: &str) -> ParserResult<'_, &str> {
   reference_and_token_parser(input, TOKEN_ID_MAX_LEN)
 }
 

@@ -91,7 +91,7 @@ impl<'i> AccountId<'i> {
   /// #
   /// # fn main() -> Result<(), AccountIdParsingError<'static>> {
   /// let account_id = AccountId::parse("hedera:mainnet:0.0.1234567890-zbhlt")?;
-  /// assert_eq!(account_id.chain_id().namespace(), "hedera");
+  /// assert_eq!(account_id.chain_id().namespace().as_str(), "hedera");
   /// # Ok(())
   /// # }
   /// ```

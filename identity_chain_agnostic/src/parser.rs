@@ -430,7 +430,7 @@ where
   }
 }
 
-pub(crate) fn perc_encoded_parser(input: &str) -> ParserResult<u8> {
+pub(crate) fn perc_encoded_parser(input: &str) -> ParserResult<'_, u8> {
   let (rem, _perc) = char('%')(input)?;
   take_while_min_max(2, 2, |c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
     .map(|hex| u8::from_str_radix(hex, 16).unwrap())

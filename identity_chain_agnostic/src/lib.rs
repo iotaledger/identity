@@ -15,6 +15,6 @@ pub mod asset_type;
 mod parser;
 
 pub use account_id::AccountId;
-pub use asset_type::AssetId;
-pub use asset_type::AssetType;
+// pub use asset_type::AssetId;
+// pub use asset_type::AssetType;
 pub use chain_id::ChainId;

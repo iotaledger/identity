@@ -9,164 +9,36 @@ use std::str::FromStr;
 
 use crate::parser::*;
 
-/// An owned chain identifier, as defined in [CAIP-2](https://chainagnostic.org/CAIPs/caip-2#specification).
-#[derive(Debug, Clone, Eq)]
-pub struct ChainIdBuf {
-  data: Box<str>,
-  #[allow(unused)]
-  separator: usize,
+/// A chain ID, as defined in [CAIP-2](https://chainagnostic.org/CAIPs/caip-2#specification).
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ChainId {
+  pub namespace: Namespace,
+  pub reference: Reference,
 }
 
-impl ChainIdBuf {
-  /// Creates a new [ChainIdBuf] from a valid [Namespace] and [Reference].
+impl Display for ChainId {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}:{}", self.namespace, self.reference)
+  }
+}
+
+impl ChainId {
+  /// Returns a new chain ID from the given namespace and reference.
   /// # Example
   /// ```
-  /// # use identity_chain_agnostic::chain_id::ChainIdBuf;
+  /// # use identity_chain_agnostic::chain_id::ChainId;
   /// # use std::str::FromStr;
   /// #
   /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-  /// let chain_id = ChainIdBuf::new("iota".parse()?, "mainnet".parse()?);
-  /// assert_eq!(chain_id.as_str(), "iota:mainnet");
+  /// let chain_id = ChainId::new("iota".parse()?, "mainnet".parse()?);
+  /// assert_eq!(chain_id.to_string().as_str(), "iota:mainnet");
   /// # Ok(())
   /// # }
   /// ```
-  pub fn new(namespace: Namespace<'_>, reference: Reference<'_>) -> Self {
-    Self {
-      data: format!("{namespace}:{reference}").into_boxed_str(),
-      separator: namespace.len(),
-    }
+  pub const fn new(namespace: Namespace, reference: Reference) -> Self {
+    Self { namespace, reference }
   }
 
-  /// Sets the value for this chain ID namespace.
-  #[inline(always)]
-  pub fn set_namespace(&mut self, namespace: Namespace<'_>) {
-    self.data = format!("{namespace}:{}", self.reference()).into_boxed_str();
-  }
-
-  /// Attempts to set this chain ID namespace with the given string.
-  /// # Errors
-  /// - Returns an [InvalidNamespace] error if the given string is not a valid chain ID namespace.
-  pub fn try_set_namespace(&mut self, namespace: impl AsRef<str>) -> Result<(), InvalidNamespace> {
-    let namespace = Namespace::parse(namespace.as_ref())?;
-    self.set_namespace(namespace);
-
-    Ok(())
-  }
-
-  /// Sets the value for this chain ID reference.
-  #[inline(always)]
-  pub fn set_reference(&mut self, reference: Reference<'_>) {
-    self.data = format!("{}:{reference}", self.namespace()).into_boxed_str();
-  }
-
-  /// Attempts to set this chain ID reference with the given string.
-  /// # Errors
-  /// - Returns an [InvalidReference] error if the given string is not a valid chain ID reference.
-  pub fn try_set_reference(&mut self, reference: impl AsRef<str>) -> Result<(), InvalidReference> {
-    let reference = Reference::parse(reference.as_ref())?;
-    self.set_reference(reference);
-
-    Ok(())
-  }
-
-  /// Returns a reference to a borrowed chain ID type.
-  #[inline(always)]
-  pub const fn as_chain_id(&self) -> &ChainId<'_> {
-    self.as_static_chain_id()
-  }
-
-  #[inline(always)]
-  const fn as_static_chain_id(&self) -> &ChainId<'static> {
-    // Safety: ChainIdBuf and ChainIdBorrow have the same repr.
-    unsafe { &*(self as *const ChainIdBuf as *const ChainId) }
-  }
-}
-
-impl Display for ChainIdBuf {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.write_str(&self.data)
-  }
-}
-
-impl PartialEq for ChainIdBuf {
-  fn eq(&self, other: &Self) -> bool {
-    self.as_str() == other.as_str()
-  }
-}
-
-impl Hash for ChainIdBuf {
-  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-    self.data.hash(state)
-  }
-}
-
-impl PartialOrd for ChainIdBuf {
-  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-    Some(self.cmp(other))
-  }
-}
-
-impl Ord for ChainIdBuf {
-  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-    self.partial_cmp(other).unwrap()
-  }
-}
-
-impl Deref for ChainIdBuf {
-  type Target = ChainId<'static>;
-  fn deref(&self) -> &Self::Target {
-    self.as_static_chain_id()
-  }
-}
-
-impl AsRef<ChainId<'static>> for ChainIdBuf {
-  fn as_ref(&self) -> &ChainId<'static> {
-    self.as_static_chain_id()
-  }
-}
-
-/// A chain ID, as defined in [CAIP-2](https://chainagnostic.org/CAIPs/caip-2#specification).
-#[derive(Debug, Eq)]
-pub struct ChainId<'i> {
-  data: &'i str,
-  pub(crate) separator: usize,
-}
-
-impl<'i> Display for ChainId<'i> {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.write_str(self.data)
-  }
-}
-
-impl<'i> PartialEq for ChainId<'i> {
-  fn eq(&self, other: &Self) -> bool {
-    self.as_str() == other.as_str()
-  }
-}
-
-impl<'i> Hash for ChainId<'i> {
-  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-    self.data.hash(state)
-  }
-}
-
-impl<'i> PartialOrd for ChainId<'i> {
-  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-    Some(self.cmp(other))
-  }
-}
-
-impl<'i> Ord for ChainId<'i> {
-  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-    self.partial_cmp(other).unwrap()
-  }
-}
-
-impl<'i> ChainId<'i> {
-  #[inline(always)]
-  pub(crate) const fn new(data: &'i str, separator: usize) -> Self {
-    Self { data, separator }
-  }
   /// Attempts to parse a [ChainId] from the given string.
   /// # Example
   /// ```
@@ -178,7 +50,7 @@ impl<'i> ChainId<'i> {
   /// # Ok(())
   /// # }
   /// ```
-  pub fn parse(s: &'i str) -> Result<Self, ChainIdParsingError> {
+  pub fn parse(s: &str) -> Result<Self, ChainIdParsingError> {
     all_consuming(chain_id_parser)
       .process(s)
       .map(|(_, output)| output)
@@ -186,61 +58,6 @@ impl<'i> ChainId<'i> {
         input: s.to_owned(),
         source: e.into_owned(),
       })
-  }
-  /// This chain ID's namespace.
-  /// # Example
-  /// ```
-  /// # use identity_chain_agnostic::chain_id::{ChainId, ChainIdParsingError};
-  /// #
-  /// # fn main() -> Result<(), ChainIdParsingError> {
-  /// let chain_id = ChainId::parse("eip155:1")?;
-  /// assert_eq!(chain_id.namespace().as_str(), "eip155");
-  /// # Ok(())
-  /// # }
-  /// ```
-  #[inline(always)]
-  pub fn namespace(&self) -> Namespace<'_> {
-    Namespace::new_unchecked(&self.data[..self.separator])
-  }
-
-  /// This chain ID's reference.
-  /// # Example
-  /// ```
-  /// # use identity_chain_agnostic::chain_id::{ChainId, ChainIdParsingError};
-  /// #
-  /// # fn main() -> Result<(), ChainIdParsingError> {
-  /// let chain_id = ChainId::parse("eip155:1")?;
-  /// assert_eq!(chain_id.reference().as_str(), "1");
-  /// # Ok(())
-  /// # }
-  /// ```
-  #[inline(always)]
-  pub fn reference(&self) -> Reference<'_> {
-    Reference::new_unchecked(&self.data[self.separator + 1..])
-  }
-
-  /// Returns a string slice to the underlying string representation of this chain ID.
-  /// # Example
-  /// ```
-  /// # use identity_chain_agnostic::chain_id::{ChainId, ChainIdParsingError};
-  /// #
-  /// # fn main() -> Result<(), ChainIdParsingError> {
-  /// let chain_id = ChainId::parse("eip155:1")?;
-  /// assert_eq!(chain_id.as_str(), "eip155:1");
-  /// # Ok(())
-  /// # }
-  /// ```
-  pub fn as_str(&self) -> &str {
-    self.data
-  }
-
-  /// Returns an owned version of this chain ID.
-  #[inline(always)]
-  pub fn to_owned(&self) -> ChainIdBuf {
-    ChainIdBuf {
-      data: self.data.into(),
-      separator: self.separator,
-    }
   }
 }
 
@@ -263,65 +80,46 @@ impl std::error::Error for ChainIdParsingError {
   }
 }
 
-impl FromStr for ChainIdBuf {
+impl FromStr for ChainId {
   type Err = ChainIdParsingError;
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    Ok(ChainId::parse(s)?.to_owned())
+    Self::parse(s)
   }
 }
 
-impl<'i> TryFrom<&'i str> for ChainId<'i> {
-  type Error = ChainIdParsingError;
-  fn try_from(value: &'i str) -> Result<Self, Self::Error> {
-    Self::parse(value)
-  }
-}
-
-impl TryFrom<String> for ChainIdBuf {
-  type Error = ChainIdParsingError;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
-    let separator = ChainId::parse(value.as_str())?.separator;
-    Ok(Self {
-      data: value.into_boxed_str(),
-      separator,
-    })
-  }
-}
-
-pub(crate) fn chain_id_parser(input: &str) -> ParserResult<'_, ChainId<'_>> {
-  let (rem, (namespace, _reference)) = separated_pair(namespace_parser, char(':'), reference_parser)(input)?;
-  let consumed = input.len() - rem.len();
-
-  let chain_id = ChainId {
-    data: &input[..consumed],
-    separator: namespace.len(),
-  };
-
-  Ok((rem, chain_id))
+pub(crate) fn chain_id_parser(input: &str) -> ParserResult<'_, ChainId> {
+  separated_pair(namespace_parser, char(':'), reference_parser)
+    .map(|(namespace, reference)| ChainId::new(namespace, reference))
+    .process(input)
 }
 
 /// A valid chain ID's namespace.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-pub struct Namespace<'i>(Cow<'i, str>);
+pub struct Namespace(Box<str>);
 
-impl<'i> Deref for Namespace<'i> {
+impl Deref for Namespace {
   type Target = str;
   fn deref(&self) -> &Self::Target {
     &self.0
   }
 }
 
-impl<'i> Display for Namespace<'i> {
+impl AsRef<str> for Namespace {
+  fn as_ref(&self) -> &str {
+    &self.0
+  }
+}
+
+impl Display for Namespace {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.write_str(&self.0)
   }
 }
 
-impl<'i> Namespace<'i> {
-  #[inline(always)]
-  pub(crate) const fn new_unchecked(s: &'i str) -> Self {
-    Self(Cow::Borrowed(s))
+impl Namespace {
+  pub(crate) fn new_unchecked(s: impl Into<Box<str>>) -> Self {
+    Self(s.into())
   }
 
   /// Attempts to parse a valid chain ID namespace from the given string.
@@ -335,27 +133,25 @@ impl<'i> Namespace<'i> {
   /// # Ok(())
   /// # }
   /// ```
-  pub fn parse(s: impl Into<Cow<'i, str>>) -> Result<Self, InvalidNamespace> {
+  pub fn parse<'i>(s: impl Into<Cow<'i, str>>) -> Result<Self, InvalidNamespace> {
     let s = s.into();
     all_consuming(namespace_parser)
       .process(&s)
       .map_err(|e| InvalidNamespace { source: e.into_owned() })?;
 
-    Ok(Self(s))
+    Ok(Self(s.into()))
   }
 
   /// Returns this namespace string representation.
-  #[inline(always)]
   pub fn as_str(&self) -> &str {
     &self.0
   }
 }
 
-impl<'i> FromStr for Namespace<'i> {
+impl FromStr for Namespace {
   type Err = InvalidNamespace;
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    Namespace::parse(s)?;
-    Ok(Self(Cow::Owned(s.to_owned())))
+    Namespace::parse(s)
   }
 }
 
@@ -379,33 +175,31 @@ impl std::error::Error for InvalidNamespace {
 /// A valid chain ID's reference.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-pub struct Reference<'i>(Cow<'i, str>);
+pub struct Reference(Box<str>);
 
-impl<'i> Deref for Reference<'i> {
+impl Deref for Reference {
   type Target = str;
   fn deref(&self) -> &Self::Target {
     &self.0
   }
 }
 
-impl<'i> Display for Reference<'i> {
+impl Display for Reference {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.write_str(&self.0)
   }
 }
 
-impl<'i> FromStr for Reference<'i> {
+impl FromStr for Reference {
   type Err = InvalidReference;
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    Reference::parse(s)?;
-    Ok(Self(Cow::Owned(s.to_owned())))
+    Reference::parse(s)
   }
 }
 
-impl<'i> Reference<'i> {
-  #[inline(always)]
-  pub(crate) const fn new_unchecked(s: &'i str) -> Self {
-    Self(Cow::Borrowed(s))
+impl Reference {
+  pub(crate) fn new_unchecked(s: impl Into<Box<str>>) -> Self {
+    Self(s.into())
   }
 
   /// Attempts to parse a valid chain ID reference from the given string.
@@ -419,17 +213,16 @@ impl<'i> Reference<'i> {
   /// # Ok(())
   /// # }
   /// ```
-  pub fn parse(s: impl Into<Cow<'i, str>>) -> Result<Self, InvalidReference> {
+  pub fn parse<'i>(s: impl Into<Cow<'i, str>>) -> Result<Self, InvalidReference> {
     let s = s.into();
     all_consuming(reference_parser)
       .process(&s)
       .map_err(|e| InvalidReference { source: e.into_owned() })?;
 
-    Ok(Self(s))
+    Ok(Self(s.into()))
   }
 
   /// Return this reference's string representation.
-  #[inline(always)]
   pub fn as_str(&self) -> &str {
     &self.0
   }
@@ -452,14 +245,18 @@ impl std::error::Error for InvalidReference {
   }
 }
 
-fn namespace_parser(input: &str) -> ParserResult<'_, &str> {
+fn namespace_parser(input: &str) -> ParserResult<'_, Namespace> {
   let valid_chars = |c: char| !c.is_ascii_uppercase() && c == '-' || c.is_ascii_lowercase() || c.is_ascii_digit();
-  take_while_min_max(3, 8, valid_chars)(input)
+  take_while_min_max(3, 8, valid_chars)
+    .map(Namespace::new_unchecked)
+    .process(input)
 }
 
-fn reference_parser(input: &str) -> ParserResult<'_, &str> {
+fn reference_parser(input: &str) -> ParserResult<'_, Reference> {
   let valid_chars = |c: char| c.is_ascii_alphanumeric() || c == '-' || c == '_';
-  take_while_min_max(1, 32, valid_chars)(input)
+  take_while_min_max(1, 32, valid_chars)
+    .map(Reference::new_unchecked)
+    .process(input)
 }
 
 #[cfg(feature = "serde")]
@@ -470,16 +267,16 @@ mod serde_impl {
   use serde::Deserialize;
   use serde::Serialize;
 
-  impl<'i> Serialize for ChainId<'i> {
+  impl Serialize for ChainId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
       S: serde::Serializer,
     {
-      serializer.serialize_str(self.as_str())
+      serializer.serialize_str(&self.to_string())
     }
   }
 
-  impl<'de> Deserialize<'de> for ChainId<'de> {
+  impl<'de> Deserialize<'de> for ChainId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
       D: serde::Deserializer<'de>,

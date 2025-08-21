@@ -1,6 +1,10 @@
+// Copyright 2020-2025 IOTA Stiftung
+// SPDX-License-Identifier: Apache-2.0
+
 use std::borrow::Cow;
 use std::fmt::Display;
 
+/// The result of a parser application.
 pub type ParserResult<'i, T> = Result<(&'i str, T), ParseError<'i>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -439,6 +443,28 @@ pub(crate) fn perc_encoded_parser(input: &str) -> ParserResult<'_, u8> {
 
 pub(crate) fn is_lowercase_hex_char(c: char) -> bool {
   c.is_ascii_hexdigit() && !c.is_ascii_uppercase()
+}
+
+/// Applies parser `prefix` discarding its output, and then applies `parser`.
+pub fn preceded<'i, P, T>(prefix: P, parser: T) -> impl FnMut(&'i str) -> ParserResult<'i, T::Output>
+where
+  P: Parser<'i>,
+  T: Parser<'i>,
+{
+  let mut parser = (prefix, parser).map(|(_, output)| output);
+  move |input| parser.process(input)
+}
+
+/// Returns `None` instead of an error when the given parser fails.
+pub fn opt<'i, P>(parser: P) -> impl FnMut(&'i str) -> ParserResult<'i, Option<P::Output>>
+where
+  P: Parser<'i>,
+{
+  let mut parser = parser.map(Some);
+  move |input| match parser.process(input) {
+    Ok(res) => Ok(res),
+    _ => Ok((input, None)),
+  }
 }
 
 #[cfg(test)]

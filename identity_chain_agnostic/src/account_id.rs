@@ -8,315 +8,88 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use crate::chain_id::chain_id_parser;
-use crate::chain_id::ChainIdParsingError;
 use crate::parser::*;
 use crate::ChainId;
 
 const ACCOUNT_ADDRESS_MAX_LEN: usize = 128;
 
-/// An owned chain-agnostic account ID, as defined in [CAIP-10](https://chainagnostic.org/CAIPs/caip-10).
-#[derive(Debug, Clone, Eq)]
-#[allow(unused)]
-pub struct AccountIdBuf {
-  data: Box<str>,
-  chain_id_separator: usize,
-  separator: usize,
-}
-
-impl AccountIdBuf {
-  /// Returns a new [AccountIdBuf] from the given arguments.
-  pub fn new(chain_id: &ChainId<'_>, address: &AccountAddress<'_>) -> Self {
-    let chain_id_separator = chain_id.separator;
-    let separator = chain_id.as_str().len();
-    let data = format!("{chain_id}:{address}").into_boxed_str();
-
-    Self {
-      data,
-      chain_id_separator,
-      separator,
-    }
-  }
-
-  /// Sets the chain ID of this account ID.
-  pub fn set_chain_id(&mut self, chain_id: &ChainId<'_>) {
-    *self = AccountIdBuf::new(chain_id, &self.address());
-  }
-
-  /// Attempts to set the chain ID of this account ID with the given string.
-  /// # Errors
-  /// - Returns an [ChainIdParsingError] if the given string is not a valid [ChainId].
-  pub fn try_set_chain_id(&mut self, chain_id: impl AsRef<str>) -> Result<(), ChainIdParsingError> {
-    let chain_id = ChainId::parse(chain_id.as_ref())?;
-    *self = AccountIdBuf::new(&chain_id, &self.address());
-
-    Ok(())
-  }
-
-  /// Sets the address of this account ID.
-  pub fn set_address(&mut self, address: &AccountAddress<'_>) {
-    *self = AccountIdBuf::new(&self.chain_id(), address);
-  }
-
-  /// Attempts to set the address of this account ID with the given string.
-  /// # Errors
-  /// - Returns an [InvalidAccountAddress] if the given string is not a valid [AccountAddress].
-  pub fn try_set_address(&mut self, address: impl AsRef<str>) -> Result<(), InvalidAccountAddress> {
-    let address = AccountAddress::parse(address.as_ref())?;
-    *self = AccountIdBuf::new(&self.chain_id(), &address);
-
-    Ok(())
-  }
-
-  #[inline(always)]
-  const fn as_static_account_id(&self) -> &AccountId<'static> {
-    unsafe { &*(self as *const AccountIdBuf as *const AccountId) }
-  }
-
-  #[inline(always)]
-  pub const fn as_account_id(&self) -> &AccountId<'_> {
-    self.as_static_account_id()
-  }
-}
-
-impl Deref for AccountIdBuf {
-  type Target = AccountId<'static>;
-  fn deref(&self) -> &Self::Target {
-    self.as_static_account_id()
-  }
-}
-
-impl Display for AccountIdBuf {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.write_str(self.as_str())
-  }
-}
-
-impl PartialEq for AccountIdBuf {
-  fn eq(&self, other: &Self) -> bool {
-    self.data == other.data
-  }
-}
-
-impl Ord for AccountIdBuf {
-  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-    self.data.cmp(&other.data)
-  }
-}
-
-impl PartialOrd for AccountIdBuf {
-  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-    Some(self.cmp(other))
-  }
-}
-
-impl Hash for AccountIdBuf {
-  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-    self.data.hash(state)
-  }
-}
-
 /// A chain-agnostic account ID, as defined in [CAIP-10](https://chainagnostic.org/CAIPs/caip-10).
-#[derive(Debug, Eq)]
-pub struct AccountId<'i> {
-  data: &'i str,
-  chain_id_separator: usize,
-  separator: usize,
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct AccountId {
+  pub chain_id: ChainId,
+  pub address: AccountAddress,
 }
 
-impl<'i> AsRef<str> for AccountId<'i> {
-  fn as_ref(&self) -> &str {
-    &self.data
-  }
-}
-
-impl<'i> Display for AccountId<'i> {
+impl Display for AccountId {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.write_str(self.as_str())
+    write!(f, "{}:{}", self.chain_id, self.address)
   }
 }
 
-impl<'i> PartialEq for AccountId<'i> {
-  fn eq(&self, other: &Self) -> bool {
-    self.data == other.data
-  }
-}
-
-impl<'i> Ord for AccountId<'i> {
-  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-    self.data.cmp(&other.data)
-  }
-}
-
-impl<'i> PartialOrd for AccountId<'i> {
-  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-    Some(self.cmp(other))
-  }
-}
-
-impl<'i> Hash for AccountId<'i> {
-  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-    self.data.hash(state)
-  }
-}
-
-impl<'i> AccountId<'i> {
-  #[inline(always)]
-  pub(crate) fn new(data: &'i str, chain_id_separator: usize, separator: usize) -> Self {
-    Self {
-      data: data.into(),
-      chain_id_separator,
-      separator,
-    }
-  }
-
-  /// Returns a reference to the underlying string representation.
-  #[inline(always)]
-  pub fn as_str(&self) -> &str {
-    &self.data
+impl AccountId {
+  /// Returns a new [AccountId] with the given [ChainId] and [AccountAddress].
+  pub const fn new(chain_id: ChainId, address: AccountAddress) -> Self {
+    Self { chain_id, address }
   }
 
   /// Parses an [AccountId] from the given input string.
-  pub fn parse<I>(input: &'i I) -> Result<Self, AccountIdParsingError<'i>>
-  where
-    I: AsRef<str> + ?Sized,
-  {
+  pub fn parse(input: &str) -> Result<Self, AccountIdParsingError> {
     all_consuming(account_id_parser)
       .process(input.as_ref())
       .map(|(_, id)| id)
-      .map_err(|e| AccountIdParsingError { source: e })
-  }
-
-  /// Returns an owned version of this [AccountId].
-  pub fn to_owned(&self) -> AccountIdBuf {
-    AccountIdBuf {
-      data: self.data.into(),
-      chain_id_separator: self.chain_id_separator,
-      separator: self.separator,
-    }
-  }
-
-  /// Returns the [chain ID](ChainId) part of this [AccountId].
-  /// # Example
-  /// ```
-  /// # use identity_chain_agnostic::account_id::{AccountId, AccountIdParsingError};
-  /// #
-  /// # fn main() -> Result<(), AccountIdParsingError<'static>> {
-  /// let account_id = AccountId::parse("hedera:mainnet:0.0.1234567890-zbhlt")?;
-  /// assert_eq!(account_id.chain_id().namespace().as_str(), "hedera");
-  /// # Ok(())
-  /// # }
-  /// ```
-  #[inline(always)]
-  pub fn chain_id(&self) -> ChainId<'_> {
-    ChainId::new(&self.data[..self.separator], self.chain_id_separator)
-  }
-
-  /// Returns a string slice to the account address part of this [AccountId].
-  /// # Example
-  /// ```
-  /// # use identity_chain_agnostic::account_id::{AccountId, AccountIdParsingError};
-  /// #
-  /// # fn main() -> Result<(), AccountIdParsingError<'static>> {
-  /// let account_id = AccountId::parse("hedera:mainnet:0.0.1234567890-zbhlt")?;
-  /// assert_eq!(account_id.address().as_str(), "0.0.1234567890-zbhlt");
-  /// # Ok(())
-  /// # }
-  /// ```
-  #[inline(always)]
-  pub fn address(&self) -> AccountAddress<'_> {
-    AccountAddress::new_unchecked(&self.data[self.separator + 1..])
+      .map_err(|e| AccountIdParsingError { source: e.into_owned() })
   }
 }
 
-impl FromStr for AccountIdBuf {
-  type Err = AccountIdParsingError<'static>;
+impl FromStr for AccountId {
+  type Err = AccountIdParsingError;
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    AccountId::parse(s).map(|id| id.to_owned()).map_err(|e| e.into_owned())
-  }
-}
-
-impl<'i> TryFrom<&'i str> for AccountId<'i> {
-  type Error = AccountIdParsingError<'i>;
-  fn try_from(value: &'i str) -> Result<Self, Self::Error> {
-    Self::parse(value)
-  }
-}
-
-impl TryFrom<String> for AccountIdBuf {
-  type Error = AccountIdParsingError<'static>;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
-    let (chain_id_separator, separator) = AccountId::parse(&value)
-      .map(|id| (id.chain_id_separator, id.separator))
-      .map_err(AccountIdParsingError::into_owned)?;
-
-    Ok(Self {
-      data: value.into_boxed_str(),
-      chain_id_separator,
-      separator,
-    })
+    AccountId::parse(s)
   }
 }
 
 /// Error that may accure when parsing an [AccountId] from a string.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
-pub struct AccountIdParsingError<'i> {
-  source: ParseError<'i>,
+pub struct AccountIdParsingError {
+  source: ParseError<'static>,
 }
 
-impl<'i> AccountIdParsingError<'i> {
-  /// Takes ownership of the input.
-  pub fn into_owned(self) -> AccountIdParsingError<'static> {
-    AccountIdParsingError {
-      source: self.source.into_owned(),
-    }
-  }
+fn account_id_parser(input: &str) -> ParserResult<'_, AccountId> {
+  separated_pair(chain_id_parser, char(':'), account_address_parser)
+    .map(|(chain_id, address)| AccountId::new(chain_id, address))
+    .process(input)
 }
 
-fn account_id_parser<'i>(input: &'i str) -> ParserResult<'i, AccountId<'i>> {
-  let (rem, (chain_id, _address)) = separated_pair(chain_id_parser, char(':'), account_address_parser)(input)?;
-  let consumed = input.len() - rem.len();
-
-  Ok((
-    rem,
-    AccountId {
-      data: input[..consumed].into(),
-      chain_id_separator: chain_id.separator,
-      separator: chain_id.as_str().len(),
-    },
-  ))
-}
-
-fn account_address_parser(input: &str) -> ParserResult<'_, &str> {
+fn account_address_parser(input: &str) -> ParserResult<'_, AccountAddress> {
   let valid_chars = take_while_min_max(1, ACCOUNT_ADDRESS_MAX_LEN, |c| {
     c == '.' || c == '-' || c.is_ascii_alphanumeric()
   });
-  let (_, output) = recognize(many1(any((valid_chars, recognize(perc_encoded_parser))))).process(input)?;
 
+  let (_, output) = recognize(many1(any((valid_chars, recognize(perc_encoded_parser))))).process(input)?;
   let consumed = output.len().min(ACCOUNT_ADDRESS_MAX_LEN);
   let (output, rem) = input.split_at(consumed);
 
-  Ok((rem, output))
+  Ok((rem, AccountAddress::new_unchecked(output)))
 }
 
 /// A valid Account ID address.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct AccountAddress<'i>(Cow<'i, str>);
+pub struct AccountAddress(Box<str>);
 
-impl<'i> AccountAddress<'i> {
-  #[inline(always)]
-  pub(crate) const fn new_unchecked(s: &'i str) -> Self {
-    Self(Cow::Borrowed(s))
+impl AccountAddress {
+  pub(crate) fn new_unchecked(s: impl Into<Box<str>>) -> Self {
+    Self(s.into())
   }
 
   /// Attempts to parse a valid [AccountAddress] from the given string.
-  pub fn parse(input: impl Into<Cow<'i, str>>) -> Result<Self, InvalidAccountAddress> {
+  pub fn parse<'i>(input: impl Into<Cow<'i, str>>) -> Result<Self, InvalidAccountAddress> {
     let input = input.into();
     all_consuming(account_address_parser)
       .process(input.as_ref())
       .map_err(|e| InvalidAccountAddress { source: e.into_owned() })?;
 
-    Ok(Self(input))
+    Ok(Self(input.into()))
   }
 
   /// Returns the string representation for this [AccountAddress].
@@ -325,13 +98,13 @@ impl<'i> AccountAddress<'i> {
   }
 }
 
-impl Display for AccountAddress<'_> {
+impl Display for AccountAddress {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.write_str(&self)
+    f.write_str(self)
   }
 }
 
-impl Deref for AccountAddress<'_> {
+impl Deref for AccountAddress {
   type Target = str;
   fn deref(&self) -> &Self::Target {
     &self.0
@@ -363,16 +136,16 @@ mod serde_impl {
   use serde::Deserialize;
   use serde::Serialize;
 
-  impl<'i> Serialize for AccountId<'i> {
+  impl Serialize for AccountId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
       S: serde::Serializer,
     {
-      serializer.serialize_str(self.as_str())
+      serializer.serialize_str(&self.to_string())
     }
   }
 
-  impl<'de> Deserialize<'de> for AccountId<'de> {
+  impl<'de> Deserialize<'de> for AccountId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
       D: serde::Deserializer<'de>,
@@ -400,7 +173,10 @@ mod tests {
 
   #[test]
   fn parsing_valid_account_ids_works() {
-    assert!(VALID_ACCOUNT_IDS.iter().map(AccountId::parse).all(|res| res.is_ok()));
+    assert!(VALID_ACCOUNT_IDS
+      .iter()
+      .map(|s| AccountId::parse(s))
+      .all(|res| res.is_ok()));
   }
 
   #[test]

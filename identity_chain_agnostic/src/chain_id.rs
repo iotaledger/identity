@@ -9,8 +9,8 @@ use std::str::FromStr;
 
 use crate::parser::*;
 
-/// An owned chain identifier.
-#[derive(Debug, Clone)]
+/// An owned chain identifier, as defined in [CAIP-2](https://chainagnostic.org/CAIPs/caip-2#specification).
+#[derive(Debug, Clone, Eq)]
 pub struct ChainIdBuf {
   data: Box<str>,
   #[allow(unused)]
@@ -82,6 +82,36 @@ impl ChainIdBuf {
   }
 }
 
+impl Display for ChainIdBuf {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str(&self.data)
+  }
+}
+
+impl PartialEq for ChainIdBuf {
+  fn eq(&self, other: &Self) -> bool {
+    self.as_str() == other.as_str()
+  }
+}
+
+impl Hash for ChainIdBuf {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    self.data.hash(state)
+  }
+}
+
+impl PartialOrd for ChainIdBuf {
+  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl Ord for ChainIdBuf {
+  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    self.partial_cmp(other).unwrap()
+  }
+}
+
 impl Deref for ChainIdBuf {
   type Target = ChainId<'static>;
   fn deref(&self) -> &Self::Target {
@@ -96,7 +126,7 @@ impl AsRef<ChainId<'static>> for ChainIdBuf {
 }
 
 /// A chain ID, as defined in [CAIP-2](https://chainagnostic.org/CAIPs/caip-2#specification).
-#[derive(Debug)]
+#[derive(Debug, Eq)]
 pub struct ChainId<'i> {
   data: &'i str,
   pub(crate) separator: usize,
@@ -113,8 +143,6 @@ impl<'i> PartialEq for ChainId<'i> {
     self.as_str() == other.as_str()
   }
 }
-
-impl<'i> Eq for ChainId<'i> {}
 
 impl<'i> Hash for ChainId<'i> {
   fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -135,7 +163,8 @@ impl<'i> Ord for ChainId<'i> {
 }
 
 impl<'i> ChainId<'i> {
-  pub(crate) fn new(data: &'i str, separator: usize) -> Self {
+  #[inline(always)]
+  pub(crate) const fn new(data: &'i str, separator: usize) -> Self {
     Self { data, separator }
   }
   /// Attempts to parse a [ChainId] from the given string.
@@ -171,7 +200,7 @@ impl<'i> ChainId<'i> {
   /// ```
   #[inline(always)]
   pub fn namespace(&self) -> Namespace<'_> {
-    Namespace(self.data[..self.separator].into())
+    Namespace::new_unchecked(&self.data[..self.separator])
   }
 
   /// This chain ID's reference.
@@ -187,7 +216,7 @@ impl<'i> ChainId<'i> {
   /// ```
   #[inline(always)]
   pub fn reference(&self) -> Reference<'_> {
-    Reference(self.data[self.separator + 1..].into())
+    Reference::new_unchecked(&self.data[self.separator + 1..])
   }
 
   /// Returns a string slice to the underlying string representation of this chain ID.
@@ -224,7 +253,7 @@ pub struct ChainIdParsingError {
 
 impl Display for ChainIdParsingError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "failed to parse chain ID from string \"{}\"", self.input)
+    write!(f, "invalid chain ID \"{}\"", self.input)
   }
 }
 
@@ -271,7 +300,7 @@ pub(crate) fn chain_id_parser(input: &str) -> ParserResult<'_, ChainId<'_>> {
   Ok((rem, chain_id))
 }
 
-/// A chain ID's namespace.
+/// A valid chain ID's namespace.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct Namespace<'i>(Cow<'i, str>);
@@ -290,6 +319,11 @@ impl<'i> Display for Namespace<'i> {
 }
 
 impl<'i> Namespace<'i> {
+  #[inline(always)]
+  pub(crate) const fn new_unchecked(s: &'i str) -> Self {
+    Self(Cow::Borrowed(s))
+  }
+
   /// Attempts to parse a valid chain ID namespace from the given string.
   /// # Example
   /// ```
@@ -342,7 +376,7 @@ impl std::error::Error for InvalidNamespace {
   }
 }
 
-/// A chain ID's reference.
+/// A valid chain ID's reference.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct Reference<'i>(Cow<'i, str>);
@@ -369,6 +403,11 @@ impl<'i> FromStr for Reference<'i> {
 }
 
 impl<'i> Reference<'i> {
+  #[inline(always)]
+  pub(crate) const fn new_unchecked(s: &'i str) -> Self {
+    Self(Cow::Borrowed(s))
+  }
+
   /// Attempts to parse a valid chain ID reference from the given string.
   /// # Example
   /// ```

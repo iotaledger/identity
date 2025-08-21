@@ -3,18 +3,122 @@
 
 use std::borrow::Cow;
 use std::fmt::Display;
+use std::hash::Hash;
+use std::ops::Deref;
 use std::str::FromStr;
 
 use crate::chain_id::chain_id_parser;
+use crate::chain_id::ChainIdParsingError;
 use crate::parser::*;
 use crate::ChainId;
 
 const ACCOUNT_ADDRESS_MAX_LEN: usize = 128;
 
-/// A chain-agnostic account ID, as defined in [CAIP-10](https://chainagnostic.org/CAIPs/caip-10).
+/// An owned chain-agnostic account ID, as defined in [CAIP-10](https://chainagnostic.org/CAIPs/caip-10).
 #[derive(Debug, Clone, Eq)]
+#[allow(unused)]
+pub struct AccountIdBuf {
+  data: Box<str>,
+  chain_id_separator: usize,
+  separator: usize,
+}
+
+impl AccountIdBuf {
+  /// Returns a new [AccountIdBuf] from the given arguments.
+  pub fn new(chain_id: &ChainId<'_>, address: &AccountAddress<'_>) -> Self {
+    let chain_id_separator = chain_id.separator;
+    let separator = chain_id.as_str().len();
+    let data = format!("{chain_id}:{address}").into_boxed_str();
+
+    Self {
+      data,
+      chain_id_separator,
+      separator,
+    }
+  }
+
+  /// Sets the chain ID of this account ID.
+  pub fn set_chain_id(&mut self, chain_id: &ChainId<'_>) {
+    *self = AccountIdBuf::new(chain_id, &self.address());
+  }
+
+  /// Attempts to set the chain ID of this account ID with the given string.
+  /// # Errors
+  /// - Returns an [ChainIdParsingError] if the given string is not a valid [ChainId].
+  pub fn try_set_chain_id(&mut self, chain_id: impl AsRef<str>) -> Result<(), ChainIdParsingError> {
+    let chain_id = ChainId::parse(chain_id.as_ref())?;
+    *self = AccountIdBuf::new(&chain_id, &self.address());
+
+    Ok(())
+  }
+
+  /// Sets the address of this account ID.
+  pub fn set_address(&mut self, address: &AccountAddress<'_>) {
+    *self = AccountIdBuf::new(&self.chain_id(), address);
+  }
+
+  /// Attempts to set the address of this account ID with the given string.
+  /// # Errors
+  /// - Returns an [InvalidAccountAddress] if the given string is not a valid [AccountAddress].
+  pub fn try_set_address(&mut self, address: impl AsRef<str>) -> Result<(), InvalidAccountAddress> {
+    let address = AccountAddress::parse(address.as_ref())?;
+    *self = AccountIdBuf::new(&self.chain_id(), &address);
+
+    Ok(())
+  }
+
+  #[inline(always)]
+  const fn as_static_account_id(&self) -> &AccountId<'static> {
+    unsafe { &*(self as *const AccountIdBuf as *const AccountId) }
+  }
+
+  #[inline(always)]
+  pub const fn as_account_id(&self) -> &AccountId<'_> {
+    self.as_static_account_id()
+  }
+}
+
+impl Deref for AccountIdBuf {
+  type Target = AccountId<'static>;
+  fn deref(&self) -> &Self::Target {
+    self.as_static_account_id()
+  }
+}
+
+impl Display for AccountIdBuf {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str(self.as_str())
+  }
+}
+
+impl PartialEq for AccountIdBuf {
+  fn eq(&self, other: &Self) -> bool {
+    self.data == other.data
+  }
+}
+
+impl Ord for AccountIdBuf {
+  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    self.data.cmp(&other.data)
+  }
+}
+
+impl PartialOrd for AccountIdBuf {
+  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl Hash for AccountIdBuf {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    self.data.hash(state)
+  }
+}
+
+/// A chain-agnostic account ID, as defined in [CAIP-10](https://chainagnostic.org/CAIPs/caip-10).
+#[derive(Debug, Eq)]
 pub struct AccountId<'i> {
-  data: Cow<'i, str>,
+  data: &'i str,
   chain_id_separator: usize,
   separator: usize,
 }
@@ -49,6 +153,12 @@ impl<'i> PartialOrd for AccountId<'i> {
   }
 }
 
+impl<'i> Hash for AccountId<'i> {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    self.data.hash(state)
+  }
+}
+
 impl<'i> AccountId<'i> {
   #[inline(always)]
   pub(crate) fn new(data: &'i str, chain_id_separator: usize, separator: usize) -> Self {
@@ -76,11 +186,12 @@ impl<'i> AccountId<'i> {
       .map_err(|e| AccountIdParsingError { source: e })
   }
 
-  /// Takes ownership of the underlying string.
-  pub fn into_owned(self) -> AccountId<'static> {
-    AccountId {
-      data: Cow::Owned(self.data.into_owned()),
-      ..self
+  /// Returns an owned version of this [AccountId].
+  pub fn to_owned(&self) -> AccountIdBuf {
+    AccountIdBuf {
+      data: self.data.into(),
+      chain_id_separator: self.chain_id_separator,
+      separator: self.separator,
     }
   }
 
@@ -107,22 +218,20 @@ impl<'i> AccountId<'i> {
   /// #
   /// # fn main() -> Result<(), AccountIdParsingError<'static>> {
   /// let account_id = AccountId::parse("hedera:mainnet:0.0.1234567890-zbhlt")?;
-  /// assert_eq!(account_id.address(), "0.0.1234567890-zbhlt");
+  /// assert_eq!(account_id.address().as_str(), "0.0.1234567890-zbhlt");
   /// # Ok(())
   /// # }
   /// ```
   #[inline(always)]
-  pub fn address(&self) -> &str {
-    &self.data[self.separator + 1..]
+  pub fn address(&self) -> AccountAddress<'_> {
+    AccountAddress::new_unchecked(&self.data[self.separator + 1..])
   }
 }
 
-impl FromStr for AccountId<'static> {
+impl FromStr for AccountIdBuf {
   type Err = AccountIdParsingError<'static>;
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    AccountId::parse(s)
-      .map(AccountId::into_owned)
-      .map_err(|e| e.into_owned())
+    AccountId::parse(s).map(|id| id.to_owned()).map_err(|e| e.into_owned())
   }
 }
 
@@ -133,7 +242,7 @@ impl<'i> TryFrom<&'i str> for AccountId<'i> {
   }
 }
 
-impl TryFrom<String> for AccountId<'static> {
+impl TryFrom<String> for AccountIdBuf {
   type Error = AccountIdParsingError<'static>;
   fn try_from(value: String) -> Result<Self, Self::Error> {
     let (chain_id_separator, separator) = AccountId::parse(&value)
@@ -141,7 +250,7 @@ impl TryFrom<String> for AccountId<'static> {
       .map_err(AccountIdParsingError::into_owned)?;
 
     Ok(Self {
-      data: value.into(),
+      data: value.into_boxed_str(),
       chain_id_separator,
       separator,
     })
@@ -188,6 +297,63 @@ fn account_address_parser(input: &str) -> ParserResult<'_, &str> {
   let (output, rem) = input.split_at(consumed);
 
   Ok((rem, output))
+}
+
+/// A valid Account ID address.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct AccountAddress<'i>(Cow<'i, str>);
+
+impl<'i> AccountAddress<'i> {
+  #[inline(always)]
+  pub(crate) const fn new_unchecked(s: &'i str) -> Self {
+    Self(Cow::Borrowed(s))
+  }
+
+  /// Attempts to parse a valid [AccountAddress] from the given string.
+  pub fn parse(input: impl Into<Cow<'i, str>>) -> Result<Self, InvalidAccountAddress> {
+    let input = input.into();
+    all_consuming(account_address_parser)
+      .process(input.as_ref())
+      .map_err(|e| InvalidAccountAddress { source: e.into_owned() })?;
+
+    Ok(Self(input))
+  }
+
+  /// Returns the string representation for this [AccountAddress].
+  pub fn as_str(&self) -> &str {
+    &self.0
+  }
+}
+
+impl Display for AccountAddress<'_> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str(&self)
+  }
+}
+
+impl Deref for AccountAddress<'_> {
+  type Target = str;
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+/// Error that may occur when parsing an [AccountAddress] from a given string.
+#[derive(Debug)]
+pub struct InvalidAccountAddress {
+  source: ParseError<'static>,
+}
+
+impl Display for InvalidAccountAddress {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str("invalid account address")
+  }
+}
+
+impl std::error::Error for InvalidAccountAddress {
+  fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    Some(&self.source)
+  }
 }
 
 #[cfg(feature = "serde")]

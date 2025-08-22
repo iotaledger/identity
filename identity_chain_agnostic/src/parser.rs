@@ -441,7 +441,7 @@ pub(crate) fn perc_encoded_parser(input: &str) -> ParserResult<'_, u8> {
     .process(rem)
 }
 
-pub(crate) fn is_lowercase_hex_char(c: char) -> bool {
+pub fn is_lowercase_hex_char(c: char) -> bool {
   c.is_ascii_hexdigit() && !c.is_ascii_uppercase()
 }
 
@@ -465,6 +465,29 @@ where
     Ok(res) => Ok(res),
     _ => Ok((input, None)),
   }
+}
+
+/// Fills the given buffer by repeatedly applying the supplied parser.
+pub fn fill<'i, P>(mut parser: P, buf: &mut [P::Output]) -> impl FnMut(&'i str) -> ParserResult<'i, ()> + use<'i, '_, P>
+where
+  P: Parser<'i>,
+{
+  move |mut input| {
+    for v in buf.iter_mut() {
+      let (rem, output) = parser.process(input)?;
+      input = rem;
+      *v = output;
+    }
+
+    Ok((input, ()))
+  }
+}
+
+/// Parses a single lowercase hex encoded byte.
+pub fn lowercase_hex_digit<'i>(input: &'i str) -> ParserResult<'i, u8> {
+  take_while_min_max(2, 2, is_lowercase_hex_char)
+    .map(|hex_byte| u8::from_str_radix(hex_byte, 16).unwrap())
+    .process(input)
 }
 
 #[cfg(test)]

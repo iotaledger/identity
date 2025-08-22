@@ -11,10 +11,10 @@ pub mod asset_type;
 #[cfg(feature = "iota")]
 /// IOTA-specific implementation for [CAIP-2](https://chainagnostic.org/CAIPs/caip-2),
 /// [CAIP-10](https://chainagnostic.org/CAIPs/caip-10), and [CAIP-19](https://chainagnostic.org/CAIPs/caip-19).
-// pub mod iota;
+pub mod iota;
 mod parser;
 
 pub use account_id::AccountId;
-// pub use asset_type::AssetId;
-// pub use asset_type::AssetType;
+pub use asset_type::AssetId;
+pub use asset_type::AssetType;
 pub use chain_id::ChainId;

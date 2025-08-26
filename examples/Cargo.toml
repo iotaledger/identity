@@ -13,7 +13,7 @@ identity_stronghold = { path = "../identity_stronghold", default-features = fals
 iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.5.0-rc" }
 iota-sdk-legacy = { package = "iota-sdk", version = "1.0", default-features = false, features = ["tls", "client", "stronghold"] }
 json-proof-token.workspace = true
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.0", package = "product_common", features = ["core-client", "transaction"] }
+product_common = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-5-0-rc-upstream-merge", package = "product_common", features = ["core-client", "transaction"] }
 rand = "0.8.5"
 sd-jwt-payload = { version = "0.2.1", default-features = false, features = ["sha"] }
 secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag = "v0.3.0" }

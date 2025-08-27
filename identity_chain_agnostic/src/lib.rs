@@ -13,6 +13,7 @@ pub mod asset_type;
 /// [CAIP-10](https://chainagnostic.org/CAIPs/caip-10), and [CAIP-19](https://chainagnostic.org/CAIPs/caip-19).
 pub mod iota;
 mod parser;
+pub mod resource;
 
 pub use account_id::AccountId;
 pub use asset_type::AssetId;

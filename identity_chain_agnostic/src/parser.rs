@@ -455,6 +455,16 @@ where
   move |input| parser.process(input)
 }
 
+/// Applies the first parser than applies `terminator` discarding its result. Returns the output of the first parser.
+pub fn terminated<'i, P, T>(parser: P, terminator: T) -> impl FnMut(&'i str) -> ParserResult<'i, P::Output>
+where
+  P: Parser<'i>,
+  T: Parser<'i>,
+{
+  let mut parser = (parser, terminator);
+  move |input| parser.process(input).map(|(rem, (output, _))| (rem, output))
+}
+
 /// Returns `None` instead of an error when the given parser fails.
 pub fn opt<'i, P>(parser: P) -> impl FnMut(&'i str) -> ParserResult<'i, Option<P::Output>>
 where
@@ -488,6 +498,111 @@ pub fn lowercase_hex_digit<'i>(input: &'i str) -> ParserResult<'i, u8> {
   take_while_min_max(2, 2, is_lowercase_hex_char)
     .map(|hex_byte| u8::from_str_radix(hex_byte, 16).unwrap())
     .process(input)
+}
+
+#[derive(Debug)]
+pub struct IteratorParser<'i, P> {
+  input: &'i str,
+  parser: P,
+  failure: Option<ParseError<'i>>,
+}
+
+impl<'i, P> Iterator for IteratorParser<'i, P>
+where
+  P: Parser<'i>,
+{
+  type Item = P::Output;
+  fn next(&mut self) -> Option<Self::Item> {
+    if self.failure.is_some() {
+      return None;
+    }
+
+    match self.parser.process(self.input) {
+      Ok((rem, output)) => {
+        self.input = rem;
+        Some(output)
+      }
+      Err(e) => {
+        self.failure = Some(e);
+        None
+      }
+    }
+  }
+}
+
+impl<'i, P> IteratorParser<'i, P> {
+  fn new(input: &'i str, parser: P) -> Self {
+    Self {
+      input,
+      parser,
+      failure: None,
+    }
+  }
+
+  /// Returns the unconsumed input.
+  pub fn remaining_input(&self) -> &'i str {
+    self.input
+  }
+
+  /// Returns the parser's error, if any.
+  pub fn failure(&self) -> Option<&ParseError<'i>> {
+    self.failure.as_ref()
+  }
+
+  /// Consumes this iterator returning the parser's error, if any.
+  pub fn into_failure(self) -> Option<ParseError<'i>> {
+    self.failure
+  }
+}
+
+pub fn iterator<'i, P>(input: &'i str, parser: P) -> IteratorParser<'i, P>
+where
+  P: Parser<'i>,
+{
+  IteratorParser::new(input, parser)
+}
+
+/// Matches any character from the given string.
+pub fn any_of<'i>(valid_chars: &str) -> impl FnMut(&'i str) -> ParserResult<'i, &'i str> + use<'i, '_> {
+  take_while_min_max(1, 1, |c| valid_chars.contains(c))
+}
+
+/// Matches 1 or more ASCII alphabetic characters.
+pub fn alpha1<'i>(input: &'i str) -> ParserResult<'i, &'i str> {
+  take_while_min_max(1, usize::MAX, |c| c.is_ascii_alphabetic())(input)
+}
+
+/// Matches 1 or more ASCII digits.
+pub fn digit1<'i>(input: &'i str) -> ParserResult<'i, &'i str> {
+  take_while_min_max(1, usize::MAX, |c| c.is_ascii_digit())(input)
+}
+
+/// Matches one or more ASCII alphanumeric characters.
+pub fn alphanumeric1<'i>(input: &'i str) -> ParserResult<'i, &'i str> {
+  let mut iter = iterator(input, any((alpha1, digit1)));
+  // Parser iterator must yield at least one result.
+  let Some(_) = iter.next() else {
+    let mut e = iter.into_failure().expect("parser failed");
+    if let ParseErrorKind::UnexpectedCharacter {
+      invalid,
+      expected: None,
+    } = e.kind
+    {
+      e.kind = ParseErrorKind::UnexpectedCharacter {
+        invalid,
+        expected: Some(Expected::Regex("[0-9A-Za-z]+".to_owned())),
+      };
+    }
+    return Err(e);
+  };
+
+  // Exhaust the iterator.
+  while let Some(_) = iter.next() {}
+
+  let rem = iter.remaining_input();
+  let consumed = input.len() - rem.len();
+
+  Ok((rem, &input[..consumed]))
 }
 
 #[cfg(test)]
@@ -617,5 +732,20 @@ mod tests {
     let (rem, output) = tag("ciao").map(str::len).process("ciaooooo").unwrap();
     assert_eq!(rem, "oooo");
     assert_eq!(output, 4);
+  }
+
+  #[test]
+  fn test_alphanumeric1() {
+    assert_eq!(alphanumeric1("abcdefg12345"), Ok(("", "abcdefg12345")));
+    assert_eq!(
+      alphanumeric1("!@#%").unwrap_err(),
+      ParseError::new(
+        "!@#%",
+        ParseErrorKind::UnexpectedCharacter {
+          invalid: '!',
+          expected: Some(Expected::Regex("[0-9A-Za-z]+".to_owned()))
+        }
+      )
+    )
   }
 }

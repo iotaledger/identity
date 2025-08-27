@@ -45,12 +45,12 @@ secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag
 serde-aux = { version = "4.5.0", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-iota-config = { git = "https://github.com/iotaledger/iota.git", package = "iota-config", tag = "v1.5.0-rc", optional = true }
+iota-config = { git = "https://github.com/iotaledger/iota.git", package = "iota-config", tag = "v1.5.0", optional = true }
 iota_interaction = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-5-0-rc-upstream-merge", package = "iota_interaction", optional = true }
 iota_interaction_rust = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-5-0-rc-upstream-merge", package = "iota_interaction_rust", optional = true }
-iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.5.0-rc", optional = true }
-move-core-types = { git = "https://github.com/iotaledger/iota.git", package = "move-core-types", tag = "v1.5.0-rc", optional = true }
-shared-crypto = { git = "https://github.com/iotaledger/iota.git", package = "shared-crypto", tag = "v1.5.0-rc", optional = true }
+iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.5.0", optional = true }
+move-core-types = { git = "https://github.com/iotaledger/iota.git", package = "move-core-types", tag = "v1.5.0", optional = true }
+shared-crypto = { git = "https://github.com/iotaledger/iota.git", package = "shared-crypto", tag = "v1.5.0", optional = true }
 tokio = { version = "1.46.1", default-features = false, features = ["macros", "sync", "rt", "process"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

@@ -24,7 +24,7 @@ identity_verification = { version = "=1.6.0-beta", path = "../identity_verificat
 iota_interaction.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.0", package = "iota_interaction", default-features = false }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.1", package = "iota_interaction", default-features = false }
 
 [dev-dependencies]
 # required for doc test

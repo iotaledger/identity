@@ -27,6 +27,8 @@ impl SdJwtVcPresentationBuilder {
       parsed_claims: mut vc_claims,
     } = token;
     // Make sure to set the parsed claims back into the SD-JWT Token.
+    // The reason we do this is to make sure that the underlying SdJwtPresetationBuilder
+    // that operates on the wrapped SdJwt token can handle the claims.
     std::mem::swap(sd_jwt.claims_mut(), &mut vc_claims.sd_jwt_claims);
     let builder = sd_jwt.into_presentation(hasher).map_err(Error::SdJwt)?;
 

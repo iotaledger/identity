@@ -21,6 +21,7 @@ use serde_json::Value;
 use super::resolver;
 use super::Resolver;
 
+mod presentation;
 mod validation;
 
 pub(crate) const ISSUER_SECRET: &[u8] = b"0123456789ABCDEF0123456789ABCDEF";

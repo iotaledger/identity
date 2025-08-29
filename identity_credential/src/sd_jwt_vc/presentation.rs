@@ -23,9 +23,13 @@ impl SdJwtVcPresentationBuilder {
   /// Prepare a presentation for a given [`SdJwtVc`].
   pub fn new(token: SdJwtVc, hasher: &dyn Hasher) -> Result<Self> {
     let SdJwtVc {
-      sd_jwt,
-      parsed_claims: vc_claims,
+      mut sd_jwt,
+      parsed_claims: mut vc_claims,
     } = token;
+    // Make sure to set the parsed claims back into the SD-JWT Token.
+    // The reason we do this is to make sure that the underlying SdJwtPresetationBuilder
+    // that operates on the wrapped SdJwt token can handle the claims.
+    std::mem::swap(sd_jwt.claims_mut(), &mut vc_claims.sd_jwt_claims);
     let builder = sd_jwt.into_presentation(hasher).map_err(Error::SdJwt)?;
 
     Ok(Self { vc_claims, builder })
@@ -47,8 +51,11 @@ impl SdJwtVcPresentationBuilder {
   }
 
   /// Returns the resulting [`SdJwtVc`] together with all removed disclosures.
-  pub fn finish(self) -> Result<(SdJwtVc, Vec<Disclosure>)> {
-    let (sd_jwt, disclosures) = self.builder.finish()?;
+  pub fn finish(mut self) -> Result<(SdJwtVc, Vec<Disclosure>)> {
+    let (mut sd_jwt, disclosures) = self.builder.finish()?;
+    // Move the token's claim back into parsed VC claims.
+    std::mem::swap(sd_jwt.claims_mut(), &mut self.vc_claims.sd_jwt_claims);
+
     Ok((SdJwtVc::new(sd_jwt, self.vc_claims), disclosures))
   }
 }

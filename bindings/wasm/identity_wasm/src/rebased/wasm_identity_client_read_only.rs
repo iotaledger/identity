@@ -1,12 +1,14 @@
 // Copyright 2020-2023 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
+use std::error::Error;
 use std::rc::Rc;
 use std::str::FromStr;
 
 use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use identity_iota::iota::rebased::migration::Identity;
 use identity_iota::iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction_ts::bindings::WasmIotaClient;
 use product_common::core_client::CoreClientReadOnly as _;
 use wasm_bindgen::prelude::*;
@@ -113,4 +115,53 @@ impl WasmIdentityClientReadOnly {
       .map_err(|err| JsError::new(&format!("failed to resolve identity by object id; {err:?}")))?;
     Ok(IdentityContainer(inner_value))
   }
+
+  /// Returns the list of DIDs the given address can access as a controller.
+  /// # Errors
+  /// @throws {QueryControlledDidsError} when the underlying RPC calls fail;
+  /// @throws {Error} when the passed `address` string is not a valid IOTA address.
+  #[wasm_bindgen(js_name = didsControlledBy)]
+  pub async fn dids_controlled_by(&self, address: &str) -> Result<Vec<WasmIotaDID>, js_sys::Error> {
+    let address = IotaAddress::from_str(address).map_err(|e| js_sys::Error::new(&format!("{e:#}")))?;
+    let dids = self
+      .0
+      .dids_controlled_by(address)
+      .await
+      .map_err(|e| {
+        let address = e.address.to_string();
+        let source = js_sys::Error::new(&format!("{:#}", e.source().unwrap()));
+        WasmQueryControlledDidsError::new(&address, source)
+      })?
+      .into_iter()
+      .map(WasmIotaDID)
+      .collect();
+
+    Ok(dids)
+  }
+}
+
+#[wasm_bindgen(typescript_custom_section)]
+const WASM_QUERY_CONTROLLED_DIDS_ERROR: &str = r#"
+/**
+ * Error that may occur when querying the DIDs controlled by a given address.
+ * @extends Error
+ */
+export class QueryControlledDidsError extends Error {
+  /** The IOTA address that was being queried */
+  address: string;
+  /** @costructor */
+  constructor(address: string, source: Error) {
+    const msg = `failed to query the DIDs controlled by address \`${address}\``;
+    this.address = address;
+    super(msg, { cause: source });
+  }
+}
+"#;
+
+#[wasm_bindgen]
+extern "C" {
+  #[wasm_bindgen(typescript_type = QueryControlledDidsError, extends = js_sys::Error)]
+  pub type WasmQueryControlledDidsError;
+  #[wasm_bindgen(constructor)]
+  pub fn new(address: &str, source: js_sys::Error) -> WasmQueryControlledDidsError;
 }

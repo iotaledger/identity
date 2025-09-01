@@ -142,8 +142,8 @@ impl ControllerToken {
 
 /// A token that authenticates its bearer as a controller of a specific shared object.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(from = "IotaControllerCap")]
 pub struct ControllerCap {
-  #[serde(deserialize_with = "deserialize_from_uid")]
   id: ObjectID,
   controller_of: ObjectID,
   can_delegate: bool,
@@ -206,6 +206,32 @@ impl From<ControllerCap> for ControllerToken {
   fn from(cap: ControllerCap) -> Self {
     Self::Controller(cap)
   }
+}
+
+#[derive(Debug, Deserialize)]
+struct IotaControllerCap {
+  id: UID,
+  controller_of: ObjectID,
+  can_delegate: bool,
+  #[allow(unused)]
+  access_token: Referent<DelegationToken>,
+}
+
+impl From<IotaControllerCap> for ControllerCap {
+  fn from(value: IotaControllerCap) -> Self {
+    Self {
+      id: *value.id.object_id(),
+      controller_of: value.controller_of,
+      can_delegate: value.can_delegate,
+    }
+  }
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
+struct Referent<T> {
+  id: IotaAddress,
+  value: Option<T>,
 }
 
 /// A token minted by a controller that allows another entity to act in

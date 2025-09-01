@@ -544,11 +544,6 @@ impl<'i, P> IteratorParser<'i, P> {
     self.input
   }
 
-  /// Returns the parser's error, if any.
-  pub fn failure(&self) -> Option<&ParseError<'i>> {
-    self.failure.as_ref()
-  }
-
   /// Consumes this iterator returning the parser's error, if any.
   pub fn into_failure(self) -> Option<ParseError<'i>> {
     self.failure

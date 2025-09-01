@@ -3,15 +3,18 @@
 
 use std::fmt::Display;
 use std::fmt::Write as _;
+use std::ops::Deref;
 
 use crate::chain_id::chain_id_parser;
 use crate::parser::*;
 use crate::ChainId;
 
+/// A URL-like address that can reference arbitrary data
+/// on a specific chain.
 #[derive(Debug)]
 pub struct OnChainResourceLocator {
   pub chain_id: ChainId,
-  locator: RelativeUrl,
+  pub locator: RelativeUrl,
 }
 
 impl OnChainResourceLocator {
@@ -43,25 +46,12 @@ impl OnChainResourceLocator {
       })
       .map(|(_, out)| out)
   }
+}
 
-  pub fn path(&self) -> &str {
-    self.locator.path()
-  }
-
-  pub fn path_segments(&self) -> impl Iterator<Item = &str> {
-    self.locator.path_segments()
-  }
-
-  pub fn query(&self) -> Option<&str> {
-    self.locator.query()
-  }
-
-  pub fn query_pairs(&self) -> impl Iterator<Item = (&str, &str)> {
-    self.locator.query_pairs()
-  }
-
-  pub fn fragment(&self) -> Option<&str> {
-    self.locator.fragment()
+impl Deref for OnChainResourceLocator {
+  type Target = RelativeUrl;
+  fn deref(&self) -> &Self::Target {
+    &self.locator
   }
 }
 
@@ -83,7 +73,7 @@ impl std::error::Error for InvalidOnChainResourceLocator {
   }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct RelativeUrl {
   data: Box<str>,
   query_start: Option<u32>,
@@ -310,7 +300,7 @@ fn resource_parser(input: &str) -> ParserResult<'_, OnChainResourceLocator> {
     .process(input)
 }
 
-fn relative_url_parser(input: &str) -> ParserResult<'_, RelativeUrl> {
+pub(crate) fn relative_url_parser(input: &str) -> ParserResult<'_, RelativeUrl> {
   let (after_path, _path) = path_parser(input)?;
   let (after_query, maybe_query_pairs) = opt(preceded(char('?'), query_parser))(after_path)?;
   let query_start = maybe_query_pairs.map(|_| (input.len() - after_path.len()) as u32);

@@ -16,7 +16,7 @@ use crate::parser::ParseError;
 use crate::parser::Parser as _;
 use crate::parser::ParserResult;
 use crate::resource::relative_url_parser;
-use crate::resource::OnChainResourceLocator;
+use crate::resource::ChainAgnosticResourceLocator;
 use crate::resource::RelativeUrl;
 
 /// A URL-like address used to locate arbitrary resources on an IOTA network.
@@ -65,7 +65,7 @@ impl Display for IotaResourceLocator {
   }
 }
 
-impl From<IotaResourceLocator> for OnChainResourceLocator {
+impl From<IotaResourceLocator> for ChainAgnosticResourceLocator {
   fn from(value: IotaResourceLocator) -> Self {
     let chain_id = value.network.into();
     let mut url = value.relative_url;
@@ -73,7 +73,7 @@ impl From<IotaResourceLocator> for OnChainResourceLocator {
       .set_path(&format!("{}{}", value.object_id, url.path().trim_start_matches('/')))
       .expect("valid_path");
 
-    OnChainResourceLocator { chain_id, locator: url }
+    ChainAgnosticResourceLocator { chain_id, locator: url }
   }
 }
 

@@ -12,19 +12,19 @@ use crate::ChainId;
 /// A URL-like address that can reference arbitrary data
 /// on a specific chain.
 #[derive(Debug)]
-pub struct OnChainResourceLocator {
+pub struct ChainAgnosticResourceLocator {
   pub chain_id: ChainId,
   pub locator: RelativeUrl,
 }
 
-impl OnChainResourceLocator {
-  /// Parses an [OnChainResourceLocator] from the given string.
+impl ChainAgnosticResourceLocator {
+  /// Parses an [ChainAgnosticResourceLocator] from the given string.
   /// # Example
   /// ```
-  /// # use identity_chain_agnostic::resource::InvalidOnChainResourceLocator;
-  /// # use identity_chain_agnostic::resource::OnChainResourceLocator;
-  /// # fn main() -> Result<(), InvalidOnChainResourceLocator> {
-  /// let resource = OnChainResourceLocator::parse("chain:id/a/very/long/path?key=value#frag")?;
+  /// # use identity_chain_agnostic::resource::InvalidChainAgnosticResourceLocator;
+  /// # use identity_chain_agnostic::resource::ChainAgnosticResourceLocator;
+  /// # fn main() -> Result<(), InvalidChainAgnosticResourceLocator> {
+  /// let resource = ChainAgnosticResourceLocator::parse("chain:id/a/very/long/path?key=value#frag")?;
   /// assert_eq!(
   ///   resource.path_segments().collect::<Vec<_>>(),
   ///   vec!["a", "very", "long", "path"],
@@ -37,10 +37,10 @@ impl OnChainResourceLocator {
   /// #   Ok(())
   /// # }
   /// ```
-  pub fn parse(input: &str) -> Result<Self, InvalidOnChainResourceLocator> {
+  pub fn parse(input: &str) -> Result<Self, InvalidChainAgnosticResourceLocator> {
     all_consuming(resource_parser)
       .process(input)
-      .map_err(|e| InvalidOnChainResourceLocator {
+      .map_err(|e| InvalidChainAgnosticResourceLocator {
         input: input.to_owned(),
         source: e.into_owned(),
       })
@@ -48,7 +48,7 @@ impl OnChainResourceLocator {
   }
 }
 
-impl Deref for OnChainResourceLocator {
+impl Deref for ChainAgnosticResourceLocator {
   type Target = RelativeUrl;
   fn deref(&self) -> &Self::Target {
     &self.locator
@@ -56,18 +56,18 @@ impl Deref for OnChainResourceLocator {
 }
 
 #[derive(Debug)]
-pub struct InvalidOnChainResourceLocator {
+pub struct InvalidChainAgnosticResourceLocator {
   pub input: String,
   source: ParseError<'static>,
 }
 
-impl Display for InvalidOnChainResourceLocator {
+impl Display for InvalidChainAgnosticResourceLocator {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "invalid resource resource \"{}\"", self.input)
+    write!(f, "invalid resource locator \"{}\"", self.input)
   }
 }
 
-impl std::error::Error for InvalidOnChainResourceLocator {
+impl std::error::Error for InvalidChainAgnosticResourceLocator {
   fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
     Some(&self.source)
   }
@@ -292,9 +292,9 @@ impl std::error::Error for InvalidRelativeUrl {
   }
 }
 
-fn resource_parser(input: &str) -> ParserResult<'_, OnChainResourceLocator> {
+fn resource_parser(input: &str) -> ParserResult<'_, ChainAgnosticResourceLocator> {
   separated_pair(chain_id_parser, char('/'), relative_url_parser)
-    .map(|(chain_id, locator)| OnChainResourceLocator { chain_id, locator })
+    .map(|(chain_id, locator)| ChainAgnosticResourceLocator { chain_id, locator })
     .process(input)
 }
 

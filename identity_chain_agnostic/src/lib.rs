@@ -23,4 +23,4 @@ pub use account_id::AccountId;
 pub use asset_type::AssetId;
 pub use asset_type::AssetType;
 pub use chain_id::ChainId;
-pub use resource::OnChainResourceLocator;
+pub use resource::ChainAgnosticResourceLocator;

@@ -111,10 +111,10 @@ impl RelativeUrl {
       .unwrap_or(self.data.len() as u32) as usize;
     let path = &self.data[..end];
     // Make sure default "/" path is returned in case path is empty.
-    if path != "" {
-      path
-    } else {
+    if path.is_empty() {
       "/"
+    } else {
+      path
     }
   }
 
@@ -149,14 +149,12 @@ impl RelativeUrl {
     self.data = data.into_boxed_str();
 
     // Update query and fragment starts, if any.
-    self
-      .query_start
-      .as_mut()
-      .map(|idx| *idx = (*idx as i32 + offset) as u32);
-    self
-      .fragment_start
-      .as_mut()
-      .map(|idx| *idx = (*idx as i32 + offset) as u32);
+    if let Some(idx) = self.query_start.as_mut() {
+      *idx = (*idx as i32 + offset) as u32;
+    }
+    if let Some(idx) = self.fragment_start.as_mut() {
+      *idx = (*idx as i32 + offset) as u32;
+    }
 
     Ok(())
   }

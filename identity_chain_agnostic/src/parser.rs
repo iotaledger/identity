@@ -592,7 +592,7 @@ pub fn alphanumeric1<'i>(input: &'i str) -> ParserResult<'i, &'i str> {
   };
 
   // Exhaust the iterator.
-  while let Some(_) = iter.next() {}
+  for _ in iter.by_ref() {}
 
   let rem = iter.remaining_input();
   let consumed = input.len() - rem.len();

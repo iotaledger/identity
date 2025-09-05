@@ -42,28 +42,21 @@ impl Display for IotaNetwork {
   }
 }
 
+#[allow(non_upper_case_globals)]
 impl IotaNetwork {
   /// IOTA Mainnet.
-  pub const fn mainnet() -> Self {
-    Self(IotaNetworkRepr::Mainnet)
-  }
-
+  pub const Mainnet: Self = Self(IotaNetworkRepr::Mainnet);
   /// IOTA Testnet.
-  pub const fn testnet() -> Self {
-    Self(IotaNetworkRepr::Testnet)
-  }
-
+  pub const Testnet: Self = Self(IotaNetworkRepr::Testnet);
   /// IOTA Devnet.
-  pub const fn devnet() -> Self {
-    Self(IotaNetworkRepr::Devnet)
-  }
+  pub const Devnet: Self = Self(IotaNetworkRepr::Devnet);
 
   /// Returns the last 8 hex characters of this [IotaNetwork]'s genesis digest.
   /// # Example
   /// ```
   /// # use identity_chain_agnostic::iota::IotaNetwork;
   /// # fn main() {
-  /// let iota_mainnet = IotaNetwork::mainnet();
+  /// let iota_mainnet = IotaNetwork::Mainnet;
   /// assert_eq!(iota_mainnet.as_genesis_digest(), "6364aad5");
   /// # }
   /// ```
@@ -116,7 +109,7 @@ impl IotaNetwork {
   /// let custom_network = IotaNetwork::custom("a1b2c3d4")?;
   /// assert_eq!(custom_network.as_genesis_digest(), "a1b2c3d4");
   ///
-  /// let iota_mainnet = IotaNetwork::mainnet();
+  /// let iota_mainnet = IotaNetwork::Mainnet;
   /// let mainnet = IotaNetwork::custom(iota_mainnet.as_genesis_digest())?;
   /// assert_eq!(mainnet.as_str(), "6364aad5");
   /// # Some(())
@@ -131,6 +124,11 @@ impl IotaNetwork {
     Some(network)
   }
 
+  /// Returns `true` if self is a custom IOTA network.
+  pub fn is_custom(&self) -> bool {
+    matches!(self.0, IotaNetworkRepr::Custom(_))
+  }
+
   fn custom_unchecked(id: &str) -> Self {
     Self(IotaNetworkRepr::Custom(id.into()))
   }
@@ -143,8 +141,8 @@ impl IotaNetwork {
   /// ```
   /// # use identity_chain_agnostic::iota::IotaNetwork;
   /// # fn test() -> Option<()> {
-  /// assert_eq!(IotaNetwork::mainnet().as_str(), "mainnet");
-  /// assert_eq!(IotaNetwork::testnet().as_str(), "testnet");
+  /// assert_eq!(IotaNetwork::Mainnet.as_str(), "mainnet");
+  /// assert_eq!(IotaNetwork::Testnet.as_str(), "testnet");
   /// assert_eq!(
   ///   IotaNetwork::from_genesis_digest("a1b2c3d4")?.as_str(),
   ///   "a1b2c3d4"
@@ -207,7 +205,7 @@ impl IotaChainId {
   /// # use identity_chain_agnostic::iota::{IotaChainId, IotaChainIdParseError, IotaNetwork};
   /// # fn main() -> Result<(), IotaChainIdParseError> {
   /// let iota_chain_id = IotaChainId::parse("iota:mainnet")?;
-  /// assert_eq!(iota_chain_id.network, IotaNetwork::mainnet());
+  /// assert_eq!(iota_chain_id.network, IotaNetwork::Mainnet);
   /// # Ok(())
   /// # }
   /// ```
@@ -223,7 +221,7 @@ impl IotaChainId {
   /// ```
   /// # use identity_chain_agnostic::iota::{IotaChainId, IotaNetwork};
   /// # fn main() {
-  /// let iota_testnet_chain_id = IotaChainId::new(IotaNetwork::testnet());
+  /// let iota_testnet_chain_id = IotaChainId::new(IotaNetwork::Testnet);
   /// assert_eq!(iota_testnet_chain_id.to_string().as_str(), "iota:testnet");
   /// # }
   /// ```
@@ -339,9 +337,9 @@ pub(crate) fn network_parser(input: &str) -> ParserResult<'_, IotaNetwork> {
   let iota_genesis_digest = take_while_min_max(IOTA_CHAIN_ID_LEN, IOTA_CHAIN_ID_LEN, |c| {
     c.is_ascii_hexdigit() && !c.is_ascii_uppercase()
   });
-  let mainnet_parser = tag("mainnet").map(|_| IotaNetwork::mainnet());
-  let testnet_parser = tag("testnet").map(|_| IotaNetwork::testnet());
-  let devnet_parser = tag("devnet").map(|_| IotaNetwork::devnet());
+  let mainnet_parser = tag("mainnet").map(|_| IotaNetwork::Mainnet);
+  let testnet_parser = tag("testnet").map(|_| IotaNetwork::Testnet);
+  let devnet_parser = tag("devnet").map(|_| IotaNetwork::Devnet);
   let custom_parser = iota_genesis_digest.map(IotaNetwork::custom_unchecked);
   any((mainnet_parser, testnet_parser, devnet_parser, custom_parser)).process(input)
 }

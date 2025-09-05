@@ -5,6 +5,9 @@ mod address;
 mod network;
 mod resource;
 
+#[cfg(feature = "resolver")]
+pub mod resolver;
+
 pub use address::*;
 pub use network::*;
 pub use resource::*;

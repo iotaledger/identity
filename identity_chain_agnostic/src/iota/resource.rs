@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::fmt::Display;
+use std::str::FromStr;
 
 use crate::iota::address::iota_address_parser;
 use crate::iota::address::IotaAddress;
@@ -20,7 +21,7 @@ use crate::resource::ChainAgnosticResourceLocator;
 use crate::resource::RelativeUrl;
 
 /// A URL-like address used to locate arbitrary resources on an IOTA network.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IotaResourceLocator {
   pub network: IotaNetwork,
   pub object_id: IotaAddress,
@@ -62,6 +63,13 @@ impl IotaResourceLocator {
 impl Display for IotaResourceLocator {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "iota:{}/{}/{}", self.network, self.object_id, self.relative_url)
+  }
+}
+
+impl FromStr for IotaResourceLocator {
+  type Err = ParseError<'static>;
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    Self::parse(s).map_err(|e| e.into_owned())
   }
 }
 

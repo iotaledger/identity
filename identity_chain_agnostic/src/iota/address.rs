@@ -1,6 +1,7 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
+use std::fmt::Debug;
 use std::fmt::Display;
 use std::str::FromStr;
 
@@ -35,6 +36,7 @@ impl IotaAccountId {
   pub const fn new(network: IotaNetwork, address: IotaAddress) -> Self {
     Self { network, address }
   }
+
   /// Parses an [IotaAccountId] from the given input string.
   /// # Example
   /// ```
@@ -43,7 +45,7 @@ impl IotaAccountId {
   /// # fn main() -> Result<(), IotaAccountIdParsingError> {
   /// let iota_account = IotaAccountId::parse("iota:testnet:0xa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2")?;
   /// assert_eq!(iota_account.address.to_string().as_str(), "0xa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2");
-  /// assert_eq!(iota_account.network, IotaNetwork::testnet());
+  /// assert_eq!(iota_account.network, IotaNetwork::Testnet);
   /// # Ok(())
   /// # }
   /// ```
@@ -93,8 +95,14 @@ fn iota_account_id_parser(input: &str) -> ParserResult<'_, IotaAccountId> {
 }
 
 /// An IOTA address.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct IotaAddress([u8; 32]);
+
+impl Debug for IotaAddress {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_tuple("IotaAddress").field(&self.to_string()).finish()
+  }
+}
 
 impl IotaAddress {
   /// Returns this address' byte representation.

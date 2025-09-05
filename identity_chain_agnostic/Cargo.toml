@@ -10,16 +10,30 @@ rust-version.workspace = true
 
 [dependencies]
 serde = { workspace = true, optional = true }
+iota-client = { git = "https://github.com/iotaledger/iota-rust-sdk.git", branch = "sdk-bindings", package = "iota-graphql-client", optional = true }
+iota-types = { git = "https://github.com/iotaledger/iota-rust-sdk.git", branch = "sdk-bindings", package = "iota-sdk-types", optional = true }
+tokio = { version = "1", default-features = false, features = [
+  "sync",
+], optional = true }
+serde_json = { workspace = true, optional = true }
 
 [lints]
 workspace = true
 
 [features]
-default = ["iota"]
+default = ["iota", "resolver"]
 serde = ["dep:serde"]
 iota = []
+resolver = [
+  "iota",
+  "dep:iota-client",
+  "dep:iota-types",
+  "dep:tokio",
+  "dep:serde_json",
+]
 
 [dev-dependencies]
 anyhow = "1.0.98"
 identity_chain_agnostic = { path = ".", features = ["serde"] }
 serde_json = { workspace = true, features = ["std"] }
+tokio = { version = "1", features = ["macros", "sync"] }

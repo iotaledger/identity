@@ -23,10 +23,13 @@ use identity_storage::KeyType;
 use identity_storage::StorageSigner;
 use identity_stronghold::StrongholdStorage;
 use iota_sdk::types::base_types::IotaAddress;
+use iota_sdk::IotaClient;
 use iota_sdk::IotaClientBuilder;
 use iota_sdk::IOTA_LOCAL_NETWORK_URL;
 use iota_sdk_legacy::client::secret::stronghold::StrongholdSecretManager;
 use iota_sdk_legacy::client::Password;
+use notarization::NotarizationClient;
+use notarization::NotarizationClientReadOnly;
 use rand::distributions::DistString;
 use secret_storage::Signer;
 use serde_json::Value;
@@ -75,12 +78,20 @@ pub fn random_stronghold_path() -> PathBuf {
   file.to_owned()
 }
 
-pub async fn get_read_only_client() -> anyhow::Result<IdentityClientReadOnly> {
+pub fn get_iota_endpoint() -> String {
+  std::env::var("API_ENDPOINT").unwrap_or_else(|_| IOTA_LOCAL_NETWORK_URL.to_string())
+}
+
+pub async fn get_iota_client() -> anyhow::Result<IotaClient> {
   let api_endpoint = std::env::var("API_ENDPOINT").unwrap_or_else(|_| IOTA_LOCAL_NETWORK_URL.to_string());
-  let iota_client = IotaClientBuilder::default()
+  IotaClientBuilder::default()
     .build(&api_endpoint)
     .await
-    .map_err(|err| anyhow::anyhow!(format!("failed to connect to network; {}", err)))?;
+    .map_err(|err| anyhow::anyhow!(format!("failed to connect to network; {}", err)))
+}
+
+pub async fn get_read_only_client() -> anyhow::Result<IdentityClientReadOnly> {
+  let iota_client = get_iota_client().await?;
   let package_id = std::env::var("IOTA_IDENTITY_PKG_ID")
     .map_err(|e| {
       anyhow::anyhow!("env variable IOTA_IDENTITY_PKG_ID must be set in order to run the examples").context(e)
@@ -116,30 +127,47 @@ where
   Ok(identity_client)
 }
 
+pub async fn get_notarization_client<K, I>(
+  signer: StorageSigner<'_, K, I>,
+) -> anyhow::Result<NotarizationClient<StorageSigner<'_, K, I>>>
+where
+  K: JwkStorage,
+  I: KeyIdStorage,
+{
+  let package_id = std::env::var("IOTA_NOTARIZATION_PKG_ID")
+    .map_err(|e| {
+      anyhow::anyhow!("env variable IOTA_NOTARIZATION_PKG_ID must be set in order to run this example").context(e)
+    })
+    .and_then(|pkg_str| pkg_str.parse().context("invalid package id"))?;
+  let read_only_client = NotarizationClientReadOnly::new_with_pkg_id(get_iota_client().await?, package_id).await?;
+  let client = NotarizationClient::new(read_only_client, signer).await?;
+  Ok(client)
+}
+
 pub fn get_memstorage() -> Result<MemStorage, anyhow::Error> {
   Ok(MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new()))
 }
 
-pub fn get_stronghold_storage(
-  path: Option<PathBuf>,
-) -> Result<Storage<StrongholdStorage, StrongholdStorage>, anyhow::Error> {
-  // Stronghold snapshot path.
-  let path = path.unwrap_or_else(random_stronghold_path);
+// pub fn get_stronghold_storage(
+//   path: Option<PathBuf>,
+// ) -> Result<Storage<StrongholdStorage, StrongholdStorage>, anyhow::Error> {
+//   // Stronghold snapshot path.
+//   let path = path.unwrap_or_else(random_stronghold_path);
 
-  // Stronghold password.
-  let password = Password::from("secure_password".to_owned());
+//   // Stronghold password.
+//   let password = Password::from("secure_password".to_owned());
 
-  let stronghold = StrongholdSecretManager::builder()
-    .password(password.clone())
-    .build(path.clone())?;
+//   let stronghold = StrongholdSecretManager::builder()
+//     .password(password.clone())
+//     .build(path.clone())?;
 
-  // Create a `StrongholdStorage`.
-  // `StrongholdStorage` creates internally a `SecretManager` that can be
-  // referenced to avoid creating multiple instances around the same stronghold snapshot.
-  let stronghold_storage = StrongholdStorage::new(stronghold);
+//   // Create a `StrongholdStorage`.
+//   // `StrongholdStorage` creates internally a `SecretManager` that can be
+//   // referenced to avoid creating multiple instances around the same stronghold snapshot.
+//   let stronghold_storage = StrongholdStorage::new(stronghold);
 
-  Ok(Storage::new(stronghold_storage.clone(), stronghold_storage.clone()))
-}
+//   Ok(Storage::new(stronghold_storage.clone(), stronghold_storage.clone()))
+// }
 
 pub fn pretty_print_json(label: &str, value: &str) {
   let data: Value = serde_json::from_str(value).unwrap();

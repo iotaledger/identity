@@ -1,9 +1,9 @@
 // Copyright 2020-2025 IOTA Stiftung, Fondazione Links
 // SPDX-License-Identifier: Apache-2.0
 
-use examples::create_did_document;
 use examples::get_funded_client;
 use examples::get_memstorage;
+use examples::MemStorage;
 use identity_eddsa_verifier::EdDSAJwsVerifier;
 use identity_iota::core::Duration;
 use identity_iota::core::FromJson;
@@ -30,13 +30,49 @@ use identity_iota::credential::SubjectHolderRelationship;
 use identity_iota::did::CoreDID;
 use identity_iota::did::DID;
 use identity_iota::document::verifiable::JwsVerificationOptions;
+use identity_iota::iota::rebased::client::IdentityClient;
 use identity_iota::iota::IotaDocument;
+use identity_iota::iota_interaction::IotaKeySignature;
 use identity_iota::resolver::Resolver;
 use identity_iota::storage::JwkDocumentExtHybrid;
 use identity_iota::storage::JwsSignatureOptions;
+use identity_iota::verification::jwk::CompositeAlgId;
+use identity_iota::verification::MethodScope;
 use identity_pqc_verifier::PQCJwsVerifier;
+use product_common::core_client::CoreClientReadOnly as _;
+use secret_storage::Signer;
 use serde_json::json;
 use std::collections::HashMap;
+
+async fn create_did_document<S>(
+  client: &IdentityClient<S>,
+  storage: &MemStorage,
+  alg_id: CompositeAlgId,
+) -> anyhow::Result<(IotaDocument, String)>
+where
+  S: Signer<IotaKeySignature> + Sync,
+{
+  let network_name = client.network_name();
+
+  // Create a new DID document with a placeholder DID.
+  let mut document = IotaDocument::new(&network_name);
+
+  // New Verification Method containing a PQC key
+  let fragment = document
+    .generate_method_hybrid(storage, alg_id, None, MethodScope::VerificationMethod)
+    .await?;
+
+  let identity = client
+    .create_identity(document)
+    .finish()
+    .build_and_execute(client)
+    .await?
+    .output;
+  let did_document = identity.into();
+  println!("Published DID document: {did_document:#}");
+
+  Ok((did_document, fragment))
+}
 
 /// Demonstrates how to create a DID Document and publish it in a new Alias Output.
 ///
@@ -50,11 +86,13 @@ async fn main() -> anyhow::Result<()> {
   let issuer_storage = get_memstorage()?;
   let issuer_client = get_funded_client(&issuer_storage).await?;
 
-  let (issuer_document, issuer_fragment) = create_did_document(&issuer_client, &issuer_storage).await?;
+  let (issuer_document, issuer_fragment) =
+    create_did_document(&issuer_client, &issuer_storage, CompositeAlgId::IdMldsa44Ed25519).await?;
 
   let holder_storage = get_memstorage()?;
   let holder_client = get_funded_client(&holder_storage).await?;
-  let (holder_document, holder_fragment) = create_did_document(&holder_client, &holder_storage).await?;
+  let (holder_document, holder_fragment) =
+    create_did_document(&holder_client, &holder_storage, CompositeAlgId::IdMldsa44Ed25519).await?;
 
   // Create a credential subject indicating the degree earned by Alice.
   let subject: Subject = Subject::from_json_value(json!({

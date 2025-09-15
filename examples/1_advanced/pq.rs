@@ -3,9 +3,9 @@
 
 use std::collections::HashMap;
 
-use examples::create_did_document;
 use examples::get_funded_client;
 use examples::get_memstorage;
+use examples::MemStorage;
 use identity_iota::core::Duration;
 use identity_iota::core::FromJson;
 use identity_iota::core::Object;
@@ -31,12 +31,47 @@ use identity_iota::credential::SubjectHolderRelationship;
 use identity_iota::did::CoreDID;
 use identity_iota::did::DID;
 use identity_iota::document::verifiable::JwsVerificationOptions;
+use identity_iota::iota::rebased::client::IdentityClient;
 use identity_iota::iota::IotaDocument;
+use identity_iota::iota_interaction::IotaKeySignature;
 use identity_iota::resolver::Resolver;
 use identity_iota::storage::JwsDocumentExtPQC;
 use identity_iota::storage::JwsSignatureOptions;
+use identity_iota::verification::jws::JwsAlgorithm;
+use identity_iota::verification::MethodScope;
 use identity_pqc_verifier::PQCJwsVerifier;
+use identity_storage::JwkMemStore;
+use identity_storage::KeyType;
+use product_common::core_client::CoreClientReadOnly as _;
+use secret_storage::Signer;
 use serde_json::json;
+
+async fn create_did_document<S>(
+  client: &IdentityClient<S>,
+  storage: &MemStorage,
+  key_type: KeyType,
+  alg: JwsAlgorithm,
+) -> anyhow::Result<(IotaDocument, String)>
+where
+  S: Signer<IotaKeySignature> + Sync,
+{
+  // Create a new DID document with a placeholder DID.
+  let mut document: IotaDocument = IotaDocument::new(client.network_name());
+
+  // New Verification Method containing a PQC key
+  let fragment = document
+    .generate_method_pqc(storage, key_type, alg, None, MethodScope::VerificationMethod)
+    .await?;
+
+  // Create an Identity wrapping the DID document.
+  let identity = client
+    .create_identity(document)
+    .finish()
+    .build_and_execute(client)
+    .await?
+    .output;
+  Ok((identity.into(), fragment))
+}
 
 /// Demonstrates how to create a Post-Quantum Verifiable Credential.
 #[tokio::main]
@@ -49,11 +84,23 @@ async fn main() -> anyhow::Result<()> {
   let issuer_storage = get_memstorage()?;
   let issuer_client = get_funded_client(&issuer_storage).await?;
 
-  let (issuer_document, issuer_fragment) = create_did_document(&issuer_client, &issuer_storage).await?;
+  let (issuer_document, issuer_fragment) = create_did_document(
+    &issuer_client,
+    &issuer_storage,
+    JwkMemStore::PQ_KEY_TYPE,
+    JwsAlgorithm::ML_DSA_87,
+  )
+  .await?;
 
   let holder_storage = get_memstorage()?;
   let holder_client = get_funded_client(&holder_storage).await?;
-  let (holder_document, holder_fragment) = create_did_document(&holder_client, &holder_storage).await?;
+  let (holder_document, holder_fragment) = create_did_document(
+    &holder_client,
+    &holder_storage,
+    JwkMemStore::PQ_KEY_TYPE,
+    JwsAlgorithm::ML_DSA_87,
+  )
+  .await?;
 
   // ======================================================================================
   // Step 2: Issuer creates and signs a Verifiable Credential with a Post-Quantum algorithm.

@@ -57,7 +57,7 @@ jobs:
       - name: Install wasm-bindgen-cli
         uses: jetli/wasm-bindgen-action@24ba6f9fff570246106ac3f80f35185600c3f6c9
         with:
-          version: '0.2.101'
+          version: '0.2.102'
 
       - name: Setup sccache
         uses: './.github/actions/rust/sccache/setup-sccache'

@@ -3,24 +3,36 @@
 
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::hash::Hash;
 use std::str::FromStr;
 
 use identity_jose::jwk::Jwk;
 use identity_jose::jwu::decode_b64_json;
+use identity_jose::jwu::encode_b64_json;
 
 use crate::CoreDID;
 use crate::Error;
 use crate::DID;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize)]
-#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(into = "CoreDID", try_from = "CoreDID")]
 /// A type representing a `did:jwk` DID.
-pub struct DIDJwk(CoreDID);
+pub struct DIDJwk {
+  did: CoreDID,
+  jwk: Jwk,
+}
 
 impl DIDJwk {
   /// [`DIDJwk`]'s method.
   pub const METHOD: &'static str = "jwk";
+
+  /// Creates a new [DIDJwk] from the given [Jwk].
+  pub fn new(jwk: Jwk) -> Self {
+    let did_str = format!("did:jwk:{}", encode_b64_json(&jwk).expect("valid JSON"));
+    let did = did_str.parse().expect("valid CoreDID");
+
+    Self { did, jwk }
+  }
 
   /// Tries to parse a [`DIDJwk`] from a string.
   pub fn parse(s: &str) -> Result<Self, Error> {
@@ -29,19 +41,48 @@ impl DIDJwk {
 
   /// Returns the JWK encoded inside this did:jwk.
   pub fn jwk(&self) -> Jwk {
-    decode_b64_json(self.method_id()).expect("did:jwk encodes a valid JWK")
+    self.jwk.clone()
+  }
+
+  /// Returns a reference to the [Jwk] encoded inside this did:jwk.
+  pub fn as_jwk(&self) -> &Jwk {
+    &self.jwk
+  }
+}
+
+impl Ord for DIDJwk {
+  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    self.did.cmp(&other.did)
+  }
+}
+
+impl PartialOrd for DIDJwk {
+  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl Hash for DIDJwk {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    self.did.hash(state)
   }
 }
 
 impl AsRef<CoreDID> for DIDJwk {
   fn as_ref(&self) -> &CoreDID {
-    &self.0
+    &self.did
+  }
+}
+
+impl AsRef<Jwk> for DIDJwk {
+  fn as_ref(&self) -> &Jwk {
+    &self.jwk
   }
 }
 
 impl From<DIDJwk> for CoreDID {
   fn from(value: DIDJwk) -> Self {
-    value.0
+    value.did
   }
 }
 
@@ -54,7 +95,7 @@ impl<'a> TryFrom<&'a str> for DIDJwk {
 
 impl Display for DIDJwk {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", self.0)
+    write!(f, "{}", self.did)
   }
 }
 
@@ -71,14 +112,20 @@ impl From<DIDJwk> for String {
   }
 }
 
+impl From<DIDJwk> for Jwk {
+  fn from(value: DIDJwk) -> Self {
+    value.jwk
+  }
+}
+
 impl TryFrom<CoreDID> for DIDJwk {
   type Error = Error;
   fn try_from(value: CoreDID) -> Result<Self, Self::Error> {
     let Self::METHOD = value.method() else {
       return Err(Error::InvalidMethodName);
     };
-    decode_b64_json::<Jwk>(value.method_id())
-      .map(|_| Self(value))
+    decode_b64_json(value.method_id())
+      .map(|jwk| Self { did: value, jwk })
       .map_err(|_| Error::InvalidMethodId)
   }
 }
@@ -106,6 +153,18 @@ mod tests {
     .unwrap();
 
     assert_eq!(did.jwk(), target_jwk);
+  }
+
+  #[test]
+  fn test_new() {
+    let jwk = Jwk::from_json_value(serde_json::json!({
+      "kty":"OKP","crv":"X25519","use":"enc","x":"3p7bfXt9wbTTW2HC7OQ1Nz-DQ8hbeGdNrfx-FG-IK08"
+    }))
+    .unwrap();
+    let target_did_jwk = DIDJwk::parse(&format!("did:jwk:{}", encode_b64_json(&jwk).unwrap())).unwrap();
+
+    let did_jwk = DIDJwk::new(jwk);
+    assert_eq!(target_did_jwk, did_jwk);
   }
 
   #[test]

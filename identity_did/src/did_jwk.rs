@@ -27,7 +27,8 @@ impl DIDJwk {
   pub const METHOD: &'static str = "jwk";
 
   /// Creates a new [DIDJwk] from the given [Jwk].
-  pub fn new(jwk: Jwk) -> Self {
+  pub fn new(jwk: impl Into<Jwk>) -> Self {
+    let jwk = jwk.into();
     let did_str = format!("did:jwk:{}", encode_b64_json(&jwk).expect("valid JSON"));
     let did = did_str.parse().expect("valid CoreDID");
 

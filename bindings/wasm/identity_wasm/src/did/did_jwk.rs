@@ -31,7 +31,7 @@ impl WasmDIDJwk {
   /// Creates a new {@link DIDJwk} from the given {@link Jwk}.
   #[wasm_bindgen(js_name = fromJwk)]
   pub fn from_jwk(jwk: WasmJwk) -> Self {
-    DIDJwk::new(jwk.0)
+    Self(DIDJwk::new(jwk.0))
   }
 
   /// Parses a {@link DIDJwk} from the given `input`.

@@ -27,6 +27,13 @@ impl WasmDIDJwk {
     let did = get_core_did_clone(&did).0;
     DIDJwk::try_from(did).wasm_result().map(Self)
   }
+
+  /// Creates a new {@link DIDJwk} from the given {@link Jwk}.
+  #[wasm_bindgen(js_name = fromJwk)]
+  pub fn from_jwk(jwk: WasmJwk) -> Self {
+    DIDJwk::new(jwk.0)
+  }
+
   /// Parses a {@link DIDJwk} from the given `input`.
   ///
   /// ### Errors

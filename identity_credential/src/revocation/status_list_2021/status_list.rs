@@ -46,7 +46,7 @@ impl StatusList2021 {
       return Err(StatusListError::InvalidListSize);
     }
 
-    let size = num_entries / 8 + (num_entries % 8 != 0) as usize;
+    let size = num_entries / 8 + (!num_entries.is_multiple_of(8) as usize);
     let store = vec![0; size];
 
     Ok(StatusList2021(store.into_boxed_slice()))

@@ -90,6 +90,9 @@ jpt-bbs-plus = ["identity_storage/jpt-bbs-plus", "identity_credential/jpt-bbs-pl
 # Enables integration with IOTA Keytool.
 keytool = ["identity_iota_core/keytool", "identity_storage/keytool"]
 
+# Enables the integration with IOTA Resource Locators (IRLs).
+irl = ["identity_core/irl"]
+
 [package.metadata.docs.rs]
 # To build locally:
 # RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features --no-deps --workspace --open

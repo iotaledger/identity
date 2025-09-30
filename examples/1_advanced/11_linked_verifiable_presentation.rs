@@ -14,7 +14,6 @@ use examples::TEST_GAS_BUDGET;
 use identity_eddsa_verifier::EdDSAJwsVerifier;
 use identity_iota::core::FromJson;
 use identity_iota::core::Object;
-use identity_iota::core::OrderedSet;
 use identity_iota::core::Url;
 use identity_iota::credential::CompoundJwtPresentationValidationError;
 use identity_iota::credential::CredentialBuilder;
@@ -38,7 +37,6 @@ use identity_iota::storage::JwkDocumentExt;
 use identity_iota::storage::JwsSignatureOptions;
 use iota_caip::iota::resolver::Resolver as IotaResourceResolver;
 use iota_caip::iota::IotaNetwork;
-use iota_caip::iota::IotaResourceLocator;
 use product_common::core_client::CoreClient as _;
 
 #[tokio::main]
@@ -88,14 +86,11 @@ async fn main() -> anyhow::Result<()> {
     notarized_vp.id.object_id()
   ))?;
 
-  let mut verifiable_presentation_urls: OrderedSet<Url> = OrderedSet::new();
-  verifiable_presentation_urls.append(vp_url.clone());
-
   // Create a Linked Verifiable Presentation Service to enable the discovery of the linked VPs through the DID Document.
   // This is optional since it is not a hard requirement by the specs.
   let service_url: DIDUrl = did.clone().join("#linked-vp")?;
   let linked_verifiable_presentation_service =
-    LinkedVerifiablePresentationService::new(service_url, verifiable_presentation_urls, Object::new())?;
+    LinkedVerifiablePresentationService::new(service_url, [vp_url], Object::new())?;
   did_document.insert_service(linked_verifiable_presentation_service.into())?;
 
   let updated_did_document: IotaDocument = identity_client
@@ -133,14 +128,13 @@ async fn main() -> anyhow::Result<()> {
     .first()
     .expect("one linked VP endpoint is present");
 
-  let vp_irl = IotaResourceLocator::parse(vp_url.as_str()).map_err(|e| e.into_owned())?;
-
-  println!("Fetching VP at `{vp_irl}`");
+  println!("Fetching VP at `{vp_url}`");
   // Fetch the verifiable presentation from the URL. We know it's an IOTA Resource Locator
   // therefore we are gonna use the IOTA Resource Locator Resolver.
   let custom_network = IotaNetwork::custom(identity_client.network().as_ref()).expect("valid IOTA network");
-  let iota_resource_resolver = IotaResourceResolver::new_with_custom_networks(vec![(custom_network, get_iota_endpoint())]);
-  let presentation_jwt = serde_json::from_value(iota_resource_resolver.resolve(&vp_irl).await?)?;
+  let iota_resource_resolver =
+    IotaResourceResolver::new_with_custom_networks(vec![(custom_network, get_iota_endpoint())]);
+  let presentation_jwt = serde_json::from_value(iota_resource_resolver.resolve(vp_url).await?)?;
 
   // Resolve the holder's document.
   let holder_did: CoreDID = JwtPresentationValidatorUtils::extract_holder(&presentation_jwt)?;

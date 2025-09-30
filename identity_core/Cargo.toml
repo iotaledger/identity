@@ -22,6 +22,7 @@ strum.workspace = true
 thiserror.workspace = true
 time = { version = "0.3.23", default-features = false, features = ["std", "serde", "parsing", "formatting"] }
 url = { version = "2.4", default-features = false, features = ["serde"] }
+iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", optional = true, default-features = false, features = ["iota", "resolver"] }
 
 [target.'cfg(all(target_arch = "wasm32", not(target_os = "wasi")))'.dependencies]
 js-sys = { version = "0.3.55", default-features = false, optional = true }
@@ -44,6 +45,8 @@ workspace = true
 default = ["dep:js-sys"]
 # Enables a macro to provide a custom time (Timestamp::now_utc) implementation, see src/custom_time.rs
 custom_time = []
+# Enables the integration with IOTA Resource Locators (IRLs).
+irl = ["dep:iota-caip"]
 
 [[test]]
 name = "custom_time"

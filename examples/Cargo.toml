@@ -54,6 +54,7 @@ features = [
   "keytool",
   "gas-station",
   "default-http-client",
+  "irl",
 ]
 
 [lib]

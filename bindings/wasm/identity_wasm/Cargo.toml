@@ -41,6 +41,7 @@ tokio = { version = "1.46.1", default-features = false, features = ["sync"] }
 tsify = "0.4.5"
 wasm-bindgen = { version = "0.2.100", features = ["serde-serialize"] }
 wasm-bindgen-futures = { version = "0.4", default-features = false }
+iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", feature = ["serde"] }
 
 [dependencies.identity_iota]
 path = "../../../identity_iota"
@@ -56,6 +57,7 @@ features = [
   "jpt-bbs-plus",
   "gas-station",
   "default-http-client",
+  "irl",
 ]
 
 [target.'cfg(all(target_arch = "wasm32", not(target_os = "wasi")))'.dependencies]

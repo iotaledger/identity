@@ -148,26 +148,26 @@ pub fn get_memstorage() -> Result<MemStorage, anyhow::Error> {
   Ok(MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new()))
 }
 
-// pub fn get_stronghold_storage(
-//   path: Option<PathBuf>,
-// ) -> Result<Storage<StrongholdStorage, StrongholdStorage>, anyhow::Error> {
-//   // Stronghold snapshot path.
-//   let path = path.unwrap_or_else(random_stronghold_path);
+pub fn get_stronghold_storage(
+  path: Option<PathBuf>,
+) -> Result<Storage<StrongholdStorage, StrongholdStorage>, anyhow::Error> {
+  // Stronghold snapshot path.
+  let path = path.unwrap_or_else(random_stronghold_path);
 
-//   // Stronghold password.
-//   let password = Password::from("secure_password".to_owned());
+  // Stronghold password.
+  let password = Password::from("secure_password".to_owned());
 
-//   let stronghold = StrongholdSecretManager::builder()
-//     .password(password.clone())
-//     .build(path.clone())?;
+  let stronghold = StrongholdSecretManager::builder()
+    .password(password.clone())
+    .build(path.clone())?;
 
-//   // Create a `StrongholdStorage`.
-//   // `StrongholdStorage` creates internally a `SecretManager` that can be
-//   // referenced to avoid creating multiple instances around the same stronghold snapshot.
-//   let stronghold_storage = StrongholdStorage::new(stronghold);
+  // Create a `StrongholdStorage`.
+  // `StrongholdStorage` creates internally a `SecretManager` that can be
+  // referenced to avoid creating multiple instances around the same stronghold snapshot.
+  let stronghold_storage = StrongholdStorage::new(stronghold);
 
-//   Ok(Storage::new(stronghold_storage.clone(), stronghold_storage.clone()))
-// }
+  Ok(Storage::new(stronghold_storage.clone(), stronghold_storage.clone()))
+}
 
 pub fn pretty_print_json(label: &str, value: &str) {
   let data: Value = serde_json::from_str(value).unwrap();

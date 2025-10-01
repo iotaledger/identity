@@ -297,7 +297,7 @@ impl IdentityClientReadOnly {
   /// # Errors
   /// This method might return a [QueryControlledDidsError] when the underlying RPC call fails.
   /// [QueryControlledDidsError]'s source can be downcasted to [SDK's Error](iota_interaction::error::Error)
-  /// in order to check whether calling this method again might return a successfull result.
+  /// in order to check whether calling this method again might return a successful result.
   /// # Example
   /// ```
   /// # use identity_iota_core::rebased::client::IdentityClientReadOnly;

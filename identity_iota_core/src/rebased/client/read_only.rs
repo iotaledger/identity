@@ -238,7 +238,7 @@ impl IdentityClientReadOnly {
   /// # Ok(())
   /// # }
   /// ```
-  pub fn streamed_dids_controlled_by(
+  pub(crate) fn streamed_dids_controlled_by(
     &self,
     address: IotaAddress,
   ) -> impl Stream<Item = Result<IotaDID, QueryControlledDidsError>> + use<'_> {

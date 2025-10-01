@@ -135,11 +135,6 @@ impl<S> IdentityClient<S> {
   pub async fn controlled_dids(&self) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
     self.dids_controlled_by(self.address()).await
   }
-
-  /// Returns a stream yielding the unique DIDs the address wrapped by this client can access as a controller.
-  pub fn controlled_dids_streamed(&self) -> impl Stream<Item = Result<IotaDID, QueryControlledDidsError>> + use<'_, S> {
-    self.streamed_dids_controlled_by(self.address())
-  }
 }
 
 impl<S> IdentityClient<S>

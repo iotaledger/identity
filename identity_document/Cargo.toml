@@ -15,7 +15,7 @@ did_url_parser = { version = "0.2.0", features = ["std", "serde"] }
 identity_core = { version = "=1.6.0-beta", path = "../identity_core", default-features = false }
 identity_did = { version = "=1.6.0-beta", path = "../identity_did" }
 identity_verification = { version = "=1.6.0-beta", path = "../identity_verification", default-features = false }
-indexmap = { version = "2.0", default-features = false, features = ["std", "serde"] }
+indexmap = { version = "2.11.0", default-features = false, features = ["std", "serde"] }
 serde.workspace = true
 strum.workspace = true
 thiserror.workspace = true

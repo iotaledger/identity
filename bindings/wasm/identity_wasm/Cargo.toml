@@ -25,12 +25,12 @@ identity_ecdsa_verifier = { path = "../../../identity_ecdsa_verifier", default-f
 identity_eddsa_verifier = { path = "../../../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
 # Remove iota-sdk dependency while working on issue #1445
 iota-sdk = { version = "1.1.5", default-features = false, features = ["serde", "std"] }
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "iota_interaction", default-features = false }
-iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "iota_interaction_ts" }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-8-0-rc-upstream-merge", package = "iota_interaction", default-features = false }
+iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-8-0-rc-upstream-merge", package = "iota_interaction_ts" }
 js-sys = { version = "0.3.61" }
 json-proof-token = "0.3.4"
 proc_typescript = { version = "0.1.0", path = "./proc_typescript" }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "product_common", features = ["core-client", "transaction", "bindings", "gas-station", "default-http-client"] }
+product_common = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-8-0-rc-upstream-merge", package = "product_common", features = ["core-client", "transaction", "bindings", "gas-station", "default-http-client"] }
 secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", default-features = false, tag = "v0.3.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"

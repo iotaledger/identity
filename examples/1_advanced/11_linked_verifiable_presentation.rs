@@ -80,11 +80,10 @@ async fn main() -> anyhow::Result<()> {
   // =====================================================
 
   // The IOTA Resource Locator that references our notarized JWT-VP.
-  let vp_url = Url::parse(format!(
-    "iota:{}/{}/state/data",
-    notarization_client.network().as_ref(),
-    notarized_vp.id.object_id()
-  ))?;
+  let vp_url: Url = notarized_vp
+    .iota_resource_locator_builder(notarization_client.network())
+    .data()
+    .into();
 
   // Create a Linked Verifiable Presentation Service to enable the discovery of the linked VPs through the DID Document.
   // This is optional since it is not a hard requirement by the specs.
@@ -152,6 +151,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
   assert!(validation_result.is_ok());
+  println!("Linked VP validation succeeded");
 
   Ok(())
 }

@@ -92,7 +92,7 @@ struct ILinkedVerifiablePresentationServiceHelper {
   #[typescript(optional = false, type = "DIDUrl")]
   id: DIDUrl,
   /// A unique URI that may be used to identify the {@link Credential}.
-  #[typescript(optional = false, type = "string | string[]")]
+  #[typescript(name = "linkedVp", optional = false, type = "string | string[]")]
   linked_vp: OneOrSet<Url>,
   /// Miscellaneous properties.
   #[serde(flatten)]

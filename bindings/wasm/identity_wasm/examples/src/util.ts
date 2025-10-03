@@ -100,8 +100,11 @@ export async function getNotarizationClient(signer: TransactionSigner): Promise<
     }
 
     const iotaClient = new IotaClient({ url: NETWORK_URL });
-    const notarizationClientReadOnly = await NotarizationClientReadOnly.createWithPkgId(iotaClient, IOTA_NOTARIZATION_PKG_ID);
-    
+    const notarizationClientReadOnly = await NotarizationClientReadOnly.createWithPkgId(
+        iotaClient,
+        IOTA_NOTARIZATION_PKG_ID,
+    );
+
     return await NotarizationClient.create(notarizationClientReadOnly, signer);
 }
 
@@ -129,7 +132,11 @@ export class SendZeroCoinTx implements Transaction<string> {
         return effects.created![0].reference.objectId;
     }
 
-    async applyWithEvents(effects: TransactionEffects, _events: IotaEvent[], client: CoreClientReadOnly): Promise<string> {
+    async applyWithEvents(
+        effects: TransactionEffects,
+        _events: IotaEvent[],
+        client: CoreClientReadOnly,
+    ): Promise<string> {
         return await this.apply(effects, client);
     }
 }

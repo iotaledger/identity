@@ -23,6 +23,7 @@ console_error_panic_hook = { version = "0.1" }
 fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "69d496c71fb37e3d22fe85e5bbfd4256d61422b9", package = "fastcrypto" }
 identity_ecdsa_verifier = { path = "../../../identity_ecdsa_verifier", default-features = false, features = ["es256", "es256k"] }
 identity_eddsa_verifier = { path = "../../../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
+iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", features = ["serde"] }
 # Remove iota-sdk dependency while working on issue #1445
 iota-sdk = { version = "1.1.5", default-features = false, features = ["serde", "std"] }
 iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "iota_interaction", default-features = false }
@@ -41,7 +42,6 @@ tokio = { version = "1.46.1", default-features = false, features = ["sync"] }
 tsify = "0.4.5"
 wasm-bindgen = { version = "=0.2.102", features = ["serde-serialize"] }
 wasm-bindgen-futures = { version = "0.4", default-features = false }
-iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", feature = ["serde"] }
 
 [dependencies.identity_iota]
 path = "../../../identity_iota"

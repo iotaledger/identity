@@ -1,7 +1,8 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use iota_caip::iota::{resolver::Resolver, IotaNetwork};
+use iota_caip::iota::resolver::Resolver;
+use iota_caip::iota::IotaNetwork;
 use js_sys::Object;
 use wasm_bindgen::prelude::*;
 
@@ -14,9 +15,7 @@ impl WasmIrlResolver {
   // Creates a new {@link IrlResolver} instance.
   #[wasm_bindgen(constructor)]
   pub fn new(params: Option<IIrlResolverParams>) -> Result<Self, JsError> {
-    let params: IrlResolverParams = serde_wasm_bindgen::from_value(params.unwrap_or_default().into())
-      .ok()
-      .unwrap_or_default();
+    let params: IrlResolverParams = serde_wasm_bindgen::from_value(params.unwrap_or_default().into())?;
     let custom_networks = params
       .custom_networks
       .into_iter()
@@ -32,7 +31,11 @@ impl WasmIrlResolver {
 
   /// Resolves an IOTA Resource Locator (IRL) to its corresponding resource.
   pub async fn resolve(&self, irl: &str) -> Result<JsValue, JsError> {
-    let res = self.0.resolve(irl).await?;
+    let res = self
+      .0
+      .resolve(irl)
+      .await
+      .map_err(|e| JsError::new(&format!("{:#}", anyhow::Error::from(e))))?;
     Ok(serde_wasm_bindgen::to_value(&res).expect("a JSON Value can be turned into a JsValue"))
   }
 }
@@ -45,6 +48,7 @@ struct IrlResolverParams {
 }
 
 #[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct CustomNetworkParams {
   chain_id: String,
   endpoint: String,

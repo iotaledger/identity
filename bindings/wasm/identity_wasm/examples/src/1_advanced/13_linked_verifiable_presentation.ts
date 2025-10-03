@@ -19,14 +19,23 @@ import {
     Storage,
 } from "@iota/identity-wasm/node";
 import { IotaClient } from "@iota/iota-sdk/client";
-import { createDocumentForNetwork, getFundedClient, getMemstorage, IOTA_IDENTITY_PKG_ID, NETWORK_URL, getNotarizationClient } from "../util";
+import { OnChainNotarization } from "@iota/notarization/node";
+import {
+    createDocumentForNetwork,
+    getFundedClient,
+    getMemstorage,
+    getNotarizationClient,
+    IOTA_IDENTITY_PKG_ID,
+    NETWORK_URL,
+    TEST_GAS_BUDGET,
+} from "../util";
 
 /**
  * This example shows how to create a Verifiable Presentation and validate it.
  * A Verifiable Presentation is the format in which a (collection of) Verifiable Credential(s) gets shared.
  * It is signed by the subject, to prove control over the Verifiable Credential with a nonce or timestamp.
  */
-async function linked_vp() {
+export async function linkedVp() {
     // ===========================================================================
     // Create identities and clients.
     // ===========================================================================
@@ -38,15 +47,19 @@ async function linked_vp() {
     // Create issuer account, create identity, and publish DID document for it
     const storage = getMemstorage();
     const identityClient = await getFundedClient(storage);
-    const [didDocument, fragment] = await createDocumentForNetwork(storage, network);
+    const [unpublishedDidDocument, fragment] = await createDocumentForNetwork(storage, network);
     const notarizationClient = await getNotarizationClient(identityClient.signer());
+    const publishedDidDocument = await identityClient
+        .publishDidDocument(unpublishedDidDocument, identityClient.senderAddress())
+        .buildAndExecute(identityClient)
+        .then(res => res.output);
 
     // ===========================================================================
     // Create a Verifiable Presentation and host it on-chain.
     // ===========================================================================
 
-    const jwtVp = await makeVpJwt(didDocument, storage, fragment);
-    const notarizedVp = await notarizationClient
+    const jwtVp = await makeVpJwt(publishedDidDocument, storage, fragment);
+    const notarizedVp: OnChainNotarization = await notarizationClient
         .createLocked()
         .withStringState(jwtVp.toString(), "My Linked VP")
         .finish()
@@ -57,17 +70,18 @@ async function linked_vp() {
     // Create Linked Verifiable Presentation service.
     // ===========================================================================
 
-    const serviceUrl = didDocument.id().join("#linked-vp");
-    const linked_vp_service = new LinkedVerifiablePresentationService({
+    const serviceUrl = publishedDidDocument.id().join("#linked-vp");
+    const linkedVpService = new LinkedVerifiablePresentationService({
         id: serviceUrl,
-        linked_vp: `iota:${network}/${notarizedVp.id()}/state/data`,
+        linkedVp: notarizedVp.iotaResourceLocatorBuilder(notarizationClient.network()).data(),
     });
-    didDocument.insertService(linked_vp_service.toService());
+    publishedDidDocument.insertService(linkedVpService.toService());
+
+    await identityClient.publishDidDocumentUpdate(publishedDidDocument, TEST_GAS_BUDGET);
 
     // ===========================================================================
     // Verification.
     // ===========================================================================
-
 
     const resolver = new Resolver<IotaDocument>({
         client: await IdentityClientReadOnly.createWithPkgId(iotaClient, IOTA_IDENTITY_PKG_ID),
@@ -79,7 +93,9 @@ async function linked_vp() {
     );
 
     // Get the Linked Verifiable Presentation Services from the DID Document.
-    const linkedVpServices = resolvedHolder.service().filter(service => service.type().includes("LinkedVerifiablePresentation"));
+    const linkedVpServices = resolvedHolder.service().filter(service =>
+        service.type().includes("LinkedVerifiablePresentation")
+    );
     console.assert(linkedVpServices.length == 1, "expected exactly one Linked Verifiable Presentation service");
 
     // Get the VPs included the service.
@@ -88,7 +104,6 @@ async function linked_vp() {
 
     const irlResolver = new IrlResolver({ customNetworks: [{ chainId: network, endpoint: NETWORK_URL }] });
     const resolvedJwtVp = await irlResolver.resolve(vpUrl).then(value => new Jwt(value as string));
-
 
     // Validate presentation. Note that this doesn't validate the included credentials.
     const _decodedPresentation = new JwtPresentationValidator(new EdDSAJwsVerifier()).validate(
@@ -110,10 +125,15 @@ async function makeVpJwt(didDocument: IotaDocument, storage: Storage, fragment: 
             name: "Alice",
             degreeName: "Bachelor of Science and Arts",
             degreeType: "BachelorDegree",
-            GPA: "4.0"
-        }
+            GPA: "4.0",
+        },
     });
-    const jwtCredential = await didDocument.createCredentialJwt(storage, fragment, credential, new JwsSignatureOptions());
+    const jwtCredential = await didDocument.createCredentialJwt(
+        storage,
+        fragment,
+        credential,
+        new JwsSignatureOptions(),
+    );
 
     const presentation = new Presentation({
         holder: didDocument.id(),

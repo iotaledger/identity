@@ -102,3 +102,15 @@ impl AsRef<str> for Url {
     self.as_str()
   }
 }
+
+#[cfg(feature = "irl")]
+mod irl_integraton {
+  use super::Url;
+
+  use iota_caip::iota::IotaResourceLocator as Irl;
+  impl From<Irl> for Url {
+    fn from(irl: Irl) -> Self {
+      Url::parse(irl.as_str()).expect("an IOTA Resource Locator is always a valid URL")
+    }
+  }
+}

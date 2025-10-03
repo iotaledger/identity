@@ -13,6 +13,7 @@ import { didOwnsDid } from "./1_advanced/0_did_owns_did";
 import { sdJwtVc } from "./1_advanced/10_sd_jwt_vc";
 import { advancedTransaction } from "./1_advanced/11_advanced_transactions";
 import { iotaKeytoolIntegration } from "./1_advanced/12_iota_keytool_integration";
+import { linkedVp } from "./1_advanced/13_linked_verifiable_presentation";
 import { customResolution } from "./1_advanced/4_custom_resolution";
 import { domainLinkage } from "./1_advanced/5_domain_linkage";
 import { sdJwt } from "./1_advanced/6_sd_jwt";
@@ -70,6 +71,8 @@ export async function main(example?: string) {
             return await advancedTransaction();
         case "12_iota_keytool_integration":
             return await iotaKeytoolIntegration();
+        case "13_linked_verifiable_presentation":
+            return await linkedVp();
         default:
             throw "Unknown example name: '" + argument + "'";
     }

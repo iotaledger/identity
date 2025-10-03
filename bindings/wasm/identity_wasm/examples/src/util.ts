@@ -12,13 +12,17 @@ import {
     Storage,
     StorageSigner,
     Transaction,
+    TransactionSigner,
 } from "@iota/identity-wasm/node";
 import { CoreClientReadOnly } from "@iota/iota-interaction-ts/node/core_client";
 import { IotaClient, TransactionEffects } from "@iota/iota-sdk/client";
 import { getFaucetHost, requestIotaFromFaucetV0 } from "@iota/iota-sdk/faucet";
+import { IotaEvent } from "@iota/iota-sdk/src/client/types/generated";
 import { Transaction as SdkTransaction } from "@iota/iota-sdk/transactions";
+import { NotarizationClient, NotarizationClientReadOnly } from "@iota/notarization/node";
 
 export const IOTA_IDENTITY_PKG_ID = globalThis?.process?.env?.IOTA_IDENTITY_PKG_ID || "";
+export const IOTA_NOTARIZATION_PKG_ID = globalThis?.process?.env?.IOTA_NOTARIZATION_PKG_ID || "";
 export const NETWORK_NAME_FAUCET = globalThis?.process?.env?.NETWORK_NAME_FAUCET || "localnet";
 export const NETWORK_URL = globalThis?.process?.env?.NETWORK_URL || "http://127.0.0.1:9000";
 
@@ -90,6 +94,20 @@ export async function getFundedClient(storage: Storage): Promise<IdentityClient>
     return identityClient;
 }
 
+export async function getNotarizationClient(signer: TransactionSigner): Promise<NotarizationClient> {
+    if (!IOTA_NOTARIZATION_PKG_ID) {
+        throw new Error(`IOTA_NOTARIZATION_PKG_ID env variable must be provided to run the notarization examples`);
+    }
+
+    const iotaClient = new IotaClient({ url: NETWORK_URL });
+    const notarizationClientReadOnly = await NotarizationClientReadOnly.createWithPkgId(
+        iotaClient,
+        IOTA_NOTARIZATION_PKG_ID,
+    );
+
+    return await NotarizationClient.create(notarizationClientReadOnly, signer);
+}
+
 export class SendZeroCoinTx implements Transaction<string> {
     recipient: string;
 
@@ -97,7 +115,7 @@ export class SendZeroCoinTx implements Transaction<string> {
         this.recipient = recipient;
     }
 
-    async buildProgrammableTransaction(client: CoreClientReadOnly): Promise<Uint8Array> {
+    async buildProgrammableTransaction(_client: CoreClientReadOnly): Promise<Uint8Array> {
         const ptb = new SdkTransaction();
 
         const recipientAddress = ptb.pure.address(this.recipient);
@@ -110,7 +128,15 @@ export class SendZeroCoinTx implements Transaction<string> {
         return tx_bytes.slice(1);
     }
 
-    async apply(effects: TransactionEffects, client: CoreClientReadOnly): Promise<string> {
+    async apply(effects: TransactionEffects, _client: CoreClientReadOnly): Promise<string> {
         return effects.created![0].reference.objectId;
+    }
+
+    async applyWithEvents(
+        effects: TransactionEffects,
+        _events: IotaEvent[],
+        client: CoreClientReadOnly,
+    ): Promise<string> {
+        return await this.apply(effects, client);
     }
 }

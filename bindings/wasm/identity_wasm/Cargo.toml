@@ -1,6 +1,6 @@
 [package]
 name = "identity_wasm"
-version = "1.6.0-beta.7"
+version = "1.6.0-beta.10"
 authors = ["IOTA Stiftung"]
 edition = "2021"
 homepage = "https://www.iota.org"
@@ -23,14 +23,15 @@ console_error_panic_hook = { version = "0.1" }
 fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "69d496c71fb37e3d22fe85e5bbfd4256d61422b9", package = "fastcrypto" }
 identity_ecdsa_verifier = { path = "../../../identity_ecdsa_verifier", default-features = false, features = ["es256", "es256k"] }
 identity_eddsa_verifier = { path = "../../../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
+iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", features = ["serde"] }
 # Remove iota-sdk dependency while working on issue #1445
 iota-sdk = { version = "1.1.5", default-features = false, features = ["serde", "std"] }
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.2", package = "iota_interaction", default-features = false }
-iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.2", package = "iota_interaction_ts" }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "iota_interaction", default-features = false }
+iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "iota_interaction_ts" }
 js-sys = { version = "0.3.61" }
 json-proof-token = "0.4"
 proc_typescript = { version = "0.1.0", path = "./proc_typescript" }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.2", package = "product_common", features = ["core-client", "transaction", "bindings", "gas-station", "default-http-client"] }
+product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "product_common", features = ["core-client", "transaction", "bindings", "gas-station", "default-http-client"] }
 secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", default-features = false, tag = "v0.3.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"
@@ -58,6 +59,7 @@ features = [
   "hybrid",
   "gas-station",
   "default-http-client",
+  "irl",
 ]
 
 [target.'cfg(all(target_arch = "wasm32", not(target_os = "wasi")))'.dependencies]

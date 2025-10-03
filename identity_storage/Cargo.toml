@@ -26,6 +26,7 @@ identity_verification = { version = "=1.6.0-beta", path = "../identity_verificat
 iota-crypto = { version = "0.23.2", default-features = false, features = ["ed25519", "random"], optional = true }
 json-proof-token = { workspace = true, optional = true }
 k256 = { version = "0.13.3", default-features = false, features = ["std", "ecdsa", "ecdsa-core", "jwk"], optional = true }
+oqs = { workspace = true, optional = true }
 p256 = { version = "0.13.2", default-features = false, features = ["std", "ecdsa", "ecdsa-core", "jwk"], optional = true }
 rand = { version = "0.8.5", default-features = false, features = ["std", "std_rng"], optional = true }
 seahash = { version = "4.1.0", default-features = false }
@@ -37,17 +38,17 @@ tokio = { version = "1.46.1", default-features = false, features = ["macros", "s
 zkryptium = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.0", package = "iota_interaction", optional = true }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "iota_interaction", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.0", package = "iota_interaction", default-features = false, optional = true }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "iota_interaction", default-features = false, optional = true }
 
 [dev-dependencies]
 identity_credential = { version = "=1.6.0-beta", path = "../identity_credential", features = ["revocation-bitmap"] }
 identity_ecdsa_verifier = { version = "=1.6.0-beta", path = "../identity_ecdsa_verifier", default-features = false, features = ["es256"] }
 identity_eddsa_verifier = { version = "=1.6.0-beta", path = "../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
 once_cell = { version = "1.18", default-features = false }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.0", package = "product_common", default-features = false }
+product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "product_common", default-features = false }
 tokio = { version = "1.46.1", default-features = false, features = ["macros", "sync", "rt"] }
 
 [features]
@@ -83,6 +84,12 @@ keytool = [
   "p256",
   "dep:fastcrypto",
 ]
+
+# Enables PQC (JwkStoragePQ implementation needed)
+pqc = []
+pqc-liboqs = ["pqc", "memstore", "dep:oqs"]
+hybrid = ["pqc", "dep:iota-crypto"]
+hybrid-liboqs = ["hybrid", "pqc-liboqs"]
 
 [lints]
 workspace = true

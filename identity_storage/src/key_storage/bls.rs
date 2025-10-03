@@ -31,8 +31,8 @@ where
 /// Generates a new BBS+ keypair using either `BLS12381-SHA256` or `BLS12381-SHAKE256`.
 pub fn generate_bbs_keypair(alg: ProofAlgorithm) -> KeyStorageResult<(BBSplusSecretKey, BBSplusPublicKey)> {
   match alg {
-    ProofAlgorithm::BLS12381_SHA256 => random_bbs_keypair::<Bls12381Sha256>(),
-    ProofAlgorithm::BLS12381_SHAKE256 => random_bbs_keypair::<Bls12381Shake256>(),
+    ProofAlgorithm::BBS => random_bbs_keypair::<Bls12381Sha256>(),
+    ProofAlgorithm::BBS_SHAKE256 => random_bbs_keypair::<Bls12381Shake256>(),
     _ => return Err(KeyStorageErrorKind::UnsupportedProofAlgorithm.into()),
   }
   .map_err(|err| KeyStorageError::new(KeyStorageErrorKind::Unspecified).with_source(err))
@@ -130,8 +130,8 @@ pub fn sign_bbs(
   header: &[u8],
 ) -> KeyStorageResult<Vec<u8>> {
   match alg {
-    ProofAlgorithm::BLS12381_SHA256 => _sign_bbs::<Bls12381Sha256>(data, sk, pk, header),
-    ProofAlgorithm::BLS12381_SHAKE256 => _sign_bbs::<Bls12381Shake256>(data, sk, pk, header),
+    ProofAlgorithm::BBS => _sign_bbs::<Bls12381Sha256>(data, sk, pk, header),
+    ProofAlgorithm::BBS_SHAKE256 => _sign_bbs::<Bls12381Shake256>(data, sk, pk, header),
     _ => return Err(KeyStorageErrorKind::UnsupportedProofAlgorithm.into()),
   }
   .map_err(|e| {
@@ -188,10 +188,8 @@ pub fn update_bbs_signature(
     KeyStorageError::new(KeyStorageErrorKind::Unspecified).with_custom_message("invalid signature size".to_owned())
   })?;
   match alg {
-    ProofAlgorithm::BLS12381_SHA256 => _update_bbs_signature::<Bls12381Sha256>(exact_size_signature, sk, update_ctx),
-    ProofAlgorithm::BLS12381_SHAKE256 => {
-      _update_bbs_signature::<Bls12381Shake256>(exact_size_signature, sk, update_ctx)
-    }
+    ProofAlgorithm::BBS => _update_bbs_signature::<Bls12381Sha256>(exact_size_signature, sk, update_ctx),
+    ProofAlgorithm::BBS_SHAKE256 => _update_bbs_signature::<Bls12381Shake256>(exact_size_signature, sk, update_ctx),
     _ => return Err(KeyStorageErrorKind::UnsupportedProofAlgorithm.into()),
   }
   .map(Vec::from)

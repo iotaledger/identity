@@ -22,6 +22,7 @@ members = [
   "identity_jose",
   "identity_ecdsa_verifier",
   "identity_eddsa_verifier",
+  "identity_pqc_verifier",
   "examples",
 ]
 
@@ -29,14 +30,15 @@ exclude = ["bindings/wasm/identity_wasm", "bindings/grpc"]
 
 [workspace.dependencies]
 bls12_381_plus = { version = "0.8.17" }
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.0", package = "iota_interaction" }
-iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.0", package = "iota_interaction_ts" }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.0", package = "product_common" }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "iota_interaction" }
+iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "iota_interaction_ts" }
+product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "product_common" }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = { version = "1.0", default-features = false }
+oqs = { version = "0.10", default-features = false, features = ["sigs", "std", "vendored"] }
 strum = { version = "0.25", default-features = false, features = ["std", "derive"] }
 thiserror = { version = "1.0", default-features = false }
-json-proof-token = { version = "0.3.5" }
+json-proof-token = { version = "0.4" }
 zkryptium = { version = "0.2.2", default-features = false, features = ["bbsplus"] }
 
 [workspace.lints.clippy]

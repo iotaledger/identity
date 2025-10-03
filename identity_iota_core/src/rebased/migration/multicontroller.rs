@@ -182,7 +182,7 @@ impl<T> TryFrom<IotaMulticontroller<T>> for Multicontroller<T> {
     let controllers = controllers
       .contents
       .into_iter()
-      .map(|Entry { key: id, value: vp }| (u64::try_from(vp).map(|vp| (id, vp))))
+      .map(|Entry { key: id, value: vp }| u64::try_from(vp).map(|vp| (id, vp)))
       .collect::<Result<_, _>>()?;
 
     Ok(Multicontroller {

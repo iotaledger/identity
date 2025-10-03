@@ -14,6 +14,7 @@ description = "The core traits and types for the identity-rs library."
 # pin dependency of `time` and limit range, as `0.4.1` has impl for `usize: PartialOrd<_>`
 # that conflicts with `iota-sdk`s `core` impl, leading to errors in `iota-sdk` crate
 deranged = { version = ">=0.4.0, <0.4.1", default-features = false }
+iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", optional = true, default-features = false, features = ["iota", "resolver"] }
 multibase = { version = "0.9", default-features = false, features = ["std"] }
 product_common.workspace = true
 serde = { workspace = true, features = ["std"] }
@@ -44,6 +45,8 @@ workspace = true
 default = ["dep:js-sys"]
 # Enables a macro to provide a custom time (Timestamp::now_utc) implementation, see src/custom_time.rs
 custom_time = []
+# Enables the integration with IOTA Resource Locators (IRLs).
+irl = ["dep:iota-caip"]
 
 [[test]]
 name = "custom_time"

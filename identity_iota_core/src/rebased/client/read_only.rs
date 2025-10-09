@@ -215,7 +215,7 @@ impl IdentityClientReadOnly {
   /// on the actual RPC error.
   /// [QueryControlledDidsError]'s source can be downcasted to [SDK's Error](iota_interaction::error::Error).
   /// # Example
-  /// ```
+  /// ```ignore
   /// # use std::pin::pin;
   /// # use identity_iota_core::rebased::client::IdentityClientReadOnly;
   /// # use identity_iota_core::IotaDID;

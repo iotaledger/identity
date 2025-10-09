@@ -1,6 +1,6 @@
 [package]
 name = "identity_core"
-version = "1.6.0-beta"
+version = "1.7.0-alpha.1"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true

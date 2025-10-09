@@ -1,6 +1,6 @@
 [package]
 name = "examples"
-version = "1.6.0-beta"
+version = "1.7.0-alpha.1"
 authors = ["IOTA Stiftung"]
 edition = "2021"
 publish = false

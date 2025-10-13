@@ -175,6 +175,15 @@ jobs:
         run: echo "IOTA_IDENTITY_PKG_ID=$(./publish_identity_package.sh)" >> "$GITHUB_ENV"
         working-directory: identity_iota_core/scripts/
 
+      - name: publish IotaNotarization package
+        if: matrix.os != 'windows-latest'
+        # publish the package and set the IOTA_NOTARIZATION_PKG_ID env variable
+        run: |
+          git clone https://github.com/iotaledger/notarization.git
+          cd notarization/notarization-move/scripts
+          echo "IOTA_NOTARIZATION_PKG_ID=$(./publish_package.sh)" >> "$GITHUB_ENV"
+        working-directory: /
+
       - name: Run tests excluding `custom_time` feature
         if: matrix.os != 'windows-latest'
         run: cargo test --workspace --release -- --test-threads=1

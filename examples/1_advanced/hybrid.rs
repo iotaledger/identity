@@ -52,10 +52,8 @@ async fn create_did_document<S>(
 where
   S: Signer<IotaKeySignature> + Sync,
 {
-  let network_name = client.network_name();
-
   // Create a new DID document with a placeholder DID.
-  let mut document = IotaDocument::new(&network_name);
+  let mut document = IotaDocument::new(client.network_name());
 
   // New Verification Method containing a PQC key
   let fragment = document

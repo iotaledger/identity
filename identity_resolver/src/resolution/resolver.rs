@@ -399,6 +399,7 @@ where
 
 #[cfg(test)]
 mod tests {
+  use identity_did::CoreDID;
   use identity_iota_core::DidResolutionHandler;
   use identity_iota_core::IotaDID;
   use identity_iota_core::IotaDocument;
@@ -448,8 +449,9 @@ mod tests {
     resolver.attach_did_jwk_handler();
 
     let did_jwk = "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJlbmMiLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".parse::<DIDJwk>().unwrap();
+    let expected_did: &CoreDID = did_jwk.as_ref();
 
     let doc = resolver.resolve(&did_jwk).await.unwrap();
-    assert_eq!(doc.id(), did_jwk.as_ref());
+    assert_eq!(doc.id(), expected_did);
   }
 }

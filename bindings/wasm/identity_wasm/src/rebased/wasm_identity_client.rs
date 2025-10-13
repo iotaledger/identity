@@ -138,6 +138,23 @@ impl WasmIdentityClient {
     Ok(WasmIotaDocument(Rc::new(IotaDocumentLock::new(document))))
   }
 
+  /// Returns the list of DIDs the given address can access as a controller.
+  /// # Errors
+  /// @throws {QueryControlledDidsError} when the underlying RPC calls fail;
+  /// @throws {Error} when the passed `address` string is not a valid IOTA address.
+  #[wasm_bindgen(js_name = didsControlledBy)]
+  pub async fn dids_controlled_by(&self, address: &str) -> std::result::Result<Vec<WasmIotaDID>, js_sys::Error> {
+    self.read_only().dids_controlled_by(address).await
+  }
+
+  /// Returns the list of DIDs the address wrapped by this client can access as a controller.
+  /// # Errors
+  /// @throws {QueryControlledDidsError} when the underlying RPC calls fail;
+  #[wasm_bindgen(js_name = controlledDids)]
+  pub async fn controlled_dids(&self) -> std::result::Result<Vec<WasmIotaDID>, js_sys::Error> {
+    self.dids_controlled_by(&self.address().to_string()).await
+  }
+
   #[wasm_bindgen(
     js_name = publishDidDocument,
     unchecked_return_type = "TransactionBuilder<PublishDidDocument>"

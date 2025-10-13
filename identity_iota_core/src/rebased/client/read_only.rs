@@ -1,6 +1,8 @@
 // Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
+use std::collections::HashSet;
+use std::collections::VecDeque;
 use std::future::Future;
 use std::ops::Deref;
 use std::pin::Pin;
@@ -8,11 +10,20 @@ use std::str::FromStr;
 
 use async_trait::async_trait;
 use futures::stream::FuturesUnordered;
+use futures::Stream;
 use futures::StreamExt as _;
+use futures::TryStreamExt as _;
 use identity_core::common::Url;
 use identity_did::DID;
+use iota_interaction::move_types::language_storage::StructTag;
+use iota_interaction::rpc_types::IotaObjectDataFilter;
+use iota_interaction::rpc_types::IotaObjectDataOptions;
+use iota_interaction::rpc_types::IotaObjectResponseQuery;
+use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::TypeTag;
 use iota_interaction::IotaClientTrait;
+use iota_interaction::MoveType;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
 
@@ -21,6 +32,9 @@ use crate::rebased::iota;
 use crate::rebased::migration::get_alias;
 use crate::rebased::migration::get_identity;
 use crate::rebased::migration::lookup;
+use crate::rebased::migration::ControllerCap;
+use crate::rebased::migration::ControllerToken;
+use crate::rebased::migration::DelegationToken;
 use crate::rebased::migration::Identity;
 use crate::rebased::Error;
 use crate::IotaDID;
@@ -140,7 +154,7 @@ impl IdentityClientReadOnly {
 
   /// Sets the migration registry ID for the current network.
   /// # Notes
-  /// This is only needed when automatic retrival of MigrationRegistry's ID fails.
+  /// This is only needed when automatic retrieval of MigrationRegistry's ID fails.
   pub fn set_migration_registry_id(&mut self, id: ObjectID) {
     crate::rebased::migration::set_migration_registry_id(&self.chain_id, id);
   }
@@ -191,6 +205,146 @@ impl IdentityClientReadOnly {
       .await
       .ok_or_else(|| Error::DIDResolutionError(format!("could not find DID document for {object_id}")))
   }
+
+  /// Returns a stream yielding the unique DIDs the given address can access as a controller.
+  /// # Notes
+  /// This is a streaming version of [dids_controlled_by](Self::dids_controlled_by).
+  /// # Errors
+  /// This stream might return a [QueryControlledDidsError] when the underlying RPC call fails.
+  /// When an error occurs, the stream might successfully yield a value if polled again, depending
+  /// on the actual RPC error.
+  /// [QueryControlledDidsError]'s source can be downcasted to [SDK's Error](iota_interaction::error::Error).
+  /// # Example
+  /// ```ignore
+  /// # use std::pin::pin;
+  /// # use identity_iota_core::rebased::client::IdentityClientReadOnly;
+  /// # use identity_iota_core::IotaDID;
+  /// # use iota_sdk::IotaClientBuilder;
+  /// # use futures::{Stream, StreamExt};
+  /// #
+  /// # #[tokio::main]
+  /// # async fn main() -> anyhow::Result<()> {
+  /// # let iota_client = IotaClientBuilder::default().build_testnet().await?;
+  /// # let identity_client = IdentityClientReadOnly::new(iota_client).await?;
+  /// #
+  /// let address = "0x666638f5118b8f894c4e60052f9bc47d6fcfb04fdb990c9afbb988848b79c475".parse()?;
+  /// let mut controlled_dids = pin!(identity_client.streamed_dids_controlled_by(address));
+  /// assert_eq!(
+  ///   controlled_dids.next().await.unwrap()?,
+  ///   IotaDID::parse(
+  ///     "did:iota:testnet:0x052cfb920024f7a640dc17f7f44c6042ea0038d26972c2cff5c7ba31c82fbb08"
+  ///   )?,
+  /// );
+  /// # Ok(())
+  /// # }
+  /// ```
+  pub(crate) fn streamed_dids_controlled_by(
+    &self,
+    address: IotaAddress,
+  ) -> impl Stream<Item = Result<IotaDID, QueryControlledDidsError>> + use<'_> {
+    // Create a filter that matches objects of type ControllerCap or DelegationToken with any package ID in history.
+    let all_struct_tags = history_type_tags::<ControllerCap>(&self.package_history)
+      .chain(history_type_tags::<DelegationToken>(&self.package_history))
+      .map(IotaObjectDataFilter::StructType)
+      .collect();
+    let query = IotaObjectResponseQuery::new(
+      Some(IotaObjectDataFilter::MatchAny(all_struct_tags)),
+      Some(IotaObjectDataOptions::default().with_bcs()),
+    );
+
+    // Create a stream that returns unique DIDs.
+    async_stream::try_stream! {
+      let mut page = self
+      .client_adapter()
+      .read_api()
+      .get_owned_objects(address, Some(query.clone()), None, None)
+      .await
+      .map_err(|e| QueryControlledDidsError { address, source: e.into() })?;
+      let mut identities = HashSet::new();
+
+      loop {
+        // Return data from the front of the current page until it is exhausted.
+        let mut data = VecDeque::from(std::mem::take(&mut page.data));
+        if let Some(obj_data) = data.pop_front() {
+          let bcs_content = obj_data.move_object_bcs().expect("bcs was requested").as_slice();
+          let token = bcs::from_bytes::<ControllerCap>(bcs_content)
+            .map(ControllerToken::Controller)
+            .or_else(|_| bcs::from_bytes::<DelegationToken>(bcs_content).map(ControllerToken::Delegate))
+            .expect("object is either a valid ControllerCap or DelegationToken");
+          if !identities.insert(token.controller_of()) {
+            continue;
+          }
+          yield IotaDID::new(&token.controller_of().into_bytes(), &self.network);
+        } else if page.has_next_page && page.next_cursor.is_some() {
+          // The page's content was exhausted, but a new page can be fetched.
+          page = self
+            .client_adapter()
+            .read_api()
+            .get_owned_objects(address, Some(query.clone()), page.next_cursor, None)
+            .await
+            .map_err(|e| QueryControlledDidsError { address, source: e.into() })?;
+        } else {
+          // End of content: current page is exhausted and no more pages are available.
+          break;
+        }
+      }
+    }
+  }
+
+  /// Returns the list of **all** unique DIDs the given address has access to as a controller.
+  /// # Notes
+  /// For a streaming version of this API see [dids_controlled_by_streamed](Self::dids_controlled_by_streamed).
+  /// # Errors
+  /// This method might return a [QueryControlledDidsError] when the underlying RPC call fails.
+  /// [QueryControlledDidsError]'s source can be downcasted to [SDK's Error](iota_interaction::error::Error)
+  /// in order to check whether calling this method again might return a successful result.
+  /// # Example
+  /// ```
+  /// # use identity_iota_core::rebased::client::IdentityClientReadOnly;
+  /// # use identity_iota_core::IotaDID;
+  /// # use iota_sdk::IotaClientBuilder;
+  /// #
+  /// # #[tokio::main]
+  /// # async fn main() -> anyhow::Result<()> {
+  /// # let iota_client = IotaClientBuilder::default().build_testnet().await?;
+  /// # let identity_client = IdentityClientReadOnly::new(iota_client).await?;
+  /// #
+  /// let address = "0x666638f5118b8f894c4e60052f9bc47d6fcfb04fdb990c9afbb988848b79c475".parse()?;
+  /// let controlled_dids = identity_client.dids_controlled_by(address).await?;
+  /// assert_eq!(
+  ///   controlled_dids,
+  ///   vec![IotaDID::parse(
+  ///     "did:iota:testnet:0x052cfb920024f7a640dc17f7f44c6042ea0038d26972c2cff5c7ba31c82fbb08"
+  ///   )?]
+  /// );
+  /// # Ok(())
+  /// # }
+  /// ```
+  pub async fn dids_controlled_by(&self, address: IotaAddress) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
+    self.streamed_dids_controlled_by(address).try_collect().await
+  }
+}
+
+/// Error that might occur when querying an address for its controlled DIDs.
+#[derive(Debug, thiserror::Error)]
+#[error("failed to query the DIDs controlled by address `{address}`")]
+#[non_exhaustive]
+pub struct QueryControlledDidsError {
+  /// The queried address.
+  pub address: IotaAddress,
+  source: Box<dyn std::error::Error + Send + Sync>,
+}
+
+/// Returns the list of all type ID for a given move type where the package ID is taken from history.
+/// # Panics
+/// If type parameter T's move_type returns a TypeTag that is not TypeTag::Struct.
+fn history_type_tags<T: MoveType>(history: &[ObjectID]) -> impl Iterator<Item = StructTag> + use<'_, T> {
+  history.iter().copied().map(|pkg| {
+    let TypeTag::Struct(tag) = T::move_type(pkg) else {
+      panic!("T must be a Move struct")
+    };
+    *tag
+  })
 }
 
 async fn network_id(iota_client: &IotaClientAdapter) -> Result<NetworkName, Error> {
@@ -240,7 +394,7 @@ async fn resolve_migrated(client: &IdentityClientReadOnly, object_id: ObjectID) 
 async fn resolve_unmigrated(client: &IdentityClientReadOnly, object_id: ObjectID) -> Result<Option<Identity>, Error> {
   let unmigrated_alias = get_alias(client, object_id)
     .await
-    .map_err(|err| Error::DIDResolutionError(format!("could  no query for object id {object_id}; {err}")))?;
+    .map_err(|err| Error::DIDResolutionError(format!("could not query for object id {object_id}; {err}")))?;
   Ok(unmigrated_alias.map(Identity::Legacy))
 }
 

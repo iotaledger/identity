@@ -17,18 +17,20 @@ import {
     Presentation,
     Resolver,
     Storage,
+    TransactionSigner,
 } from "@iota/identity-wasm/node";
 import { IotaClient } from "@iota/iota-sdk/client";
-import { OnChainNotarization } from "@iota/notarization/node";
+import { NotarizationClient, NotarizationClientReadOnly, OnChainNotarization } from "@iota/notarization/node";
 import {
     createDocumentForNetwork,
     getFundedClient,
     getMemstorage,
-    getNotarizationClient,
     IOTA_IDENTITY_PKG_ID,
     NETWORK_URL,
     TEST_GAS_BUDGET,
 } from "../util";
+
+const IOTA_NOTARIZATION_PKG_ID = globalThis?.process?.env?.IOTA_NOTARIZATION_PKG_ID || "";
 
 /**
  * This example shows how to create a Verifiable Presentation and validate it.
@@ -148,4 +150,18 @@ async function makeVpJwt(didDocument: IotaDocument, storage: Storage, fragment: 
     );
 
     return jwtVp;
+}
+
+export async function getNotarizationClient(signer: TransactionSigner): Promise<NotarizationClient> {
+    if (!IOTA_NOTARIZATION_PKG_ID) {
+        throw new Error(`IOTA_NOTARIZATION_PKG_ID env variable must be provided to run the notarization examples`);
+    }
+
+    const iotaClient = new IotaClient({ url: NETWORK_URL });
+    const notarizationClientReadOnly = await NotarizationClientReadOnly.createWithPkgId(
+        iotaClient,
+        IOTA_NOTARIZATION_PKG_ID,
+    );
+
+    return await NotarizationClient.create(notarizationClientReadOnly, signer);
 }

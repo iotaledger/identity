@@ -1,6 +1,6 @@
 [package]
 name = "identity_credential"
-version = "1.6.0-beta"
+version = "1.7.0-beta.1"
 authors = ["IOTA Stiftung"]
 edition = "2021"
 homepage.workspace = true
@@ -16,10 +16,10 @@ async-trait = { version = "0.1.64", default-features = false }
 bls12_381_plus = { workspace = true, optional = true }
 flate2 = { version = "1.0.28", default-features = false, features = ["rust_backend"], optional = true }
 futures = { version = "0.3", default-features = false, features = ["alloc"], optional = true }
-identity_core = { version = "=1.6.0-beta", path = "../identity_core", default-features = false }
-identity_did = { version = "=1.6.0-beta", path = "../identity_did", default-features = false }
-identity_document = { version = "=1.6.0-beta", path = "../identity_document", default-features = false }
-identity_verification = { version = "=1.6.0-beta", path = "../identity_verification", default-features = false }
+identity_core = { version = "=1.7.0-beta.1", path = "../identity_core", default-features = false }
+identity_did = { version = "=1.7.0-beta.1", path = "../identity_did", default-features = false }
+identity_document = { version = "=1.7.0-beta.1", path = "../identity_document", default-features = false }
+identity_verification = { version = "=1.7.0-beta.1", path = "../identity_verification", default-features = false }
 indexmap = { version = "2.0", default-features = false, features = ["std", "serde"] }
 itertools = { version = "0.11", default-features = false, features = ["use_std"], optional = true }
 json-proof-token = { workspace = true, optional = true }

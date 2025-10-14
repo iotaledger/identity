@@ -1,6 +1,6 @@
 [package]
 name = "identity_resolver"
-version = "1.6.0-beta"
+version = "1.7.0-beta.1"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -14,16 +14,16 @@ description = "DID Resolution utilities for the IOTA Identity library."
 # This is currently necessary for the ResolutionHandler trait. This can be made an optional dependency if alternative ways of attaching handlers are introduced.
 async-trait = { version = "0.1", default-features = false }
 futures = { version = "0.3" }
-identity_core = { version = "=1.6.0-beta", path = "../identity_core", default-features = false }
-identity_credential = { version = "=1.6.0-beta", path = "../identity_credential", default-features = false, features = ["validator"] }
-identity_did = { version = "=1.6.0-beta", path = "../identity_did", default-features = false }
-identity_document = { version = "=1.6.0-beta", path = "../identity_document", default-features = false }
+identity_core = { version = "=1.7.0-beta.1", path = "../identity_core", default-features = false }
+identity_credential = { version = "=1.7.0-beta.1", path = "../identity_credential", default-features = false, features = ["validator"] }
+identity_did = { version = "=1.7.0-beta.1", path = "../identity_did", default-features = false }
+identity_document = { version = "=1.7.0-beta.1", path = "../identity_document", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["std", "derive"] }
 strum.workspace = true
 thiserror = { version = "1.0", default-features = false }
 
 [dependencies.identity_iota_core]
-version = "=1.6.0-beta"
+version = "=1.7.0-beta.1"
 path = "../identity_iota_core"
 default-features = false
 features = ["iota-client"]

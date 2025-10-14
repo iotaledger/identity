@@ -1,4 +1,4 @@
-// Copyright 2020-2024 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use identity_storage::key_storage::bls::expand_bls_jwk;
@@ -23,7 +23,7 @@ use crate::StrongholdStorage;
 async fn stronghold_bbs_keypair_gen_works() -> anyhow::Result<()> {
   let stronghold_storage = StrongholdStorage::new(create_stronghold_secret_manager());
   let JwkGenOutput { key_id, jwk, .. } = stronghold_storage
-    .generate_bbs(StrongholdKeyType::Bls12381G2.into(), ProofAlgorithm::BLS12381_SHA256)
+    .generate_bbs(StrongholdKeyType::Bls12381G2.into(), ProofAlgorithm::BBS)
     .await?;
 
   assert!(jwk.is_public());
@@ -36,7 +36,7 @@ async fn stronghold_bbs_keypair_gen_works() -> anyhow::Result<()> {
 async fn stronghold_bbs_keypair_gen_fails_with_wrong_key_type() -> anyhow::Result<()> {
   let stronghold_storage = StrongholdStorage::new(create_stronghold_secret_manager());
   let error = stronghold_storage
-    .generate_bbs(StrongholdKeyType::Ed25519.into(), ProofAlgorithm::BLS12381_SHA256)
+    .generate_bbs(StrongholdKeyType::Ed25519.into(), ProofAlgorithm::BBS)
     .await
     .unwrap_err();
   assert!(matches!(error.kind(), KeyStorageErrorKind::UnsupportedKeyType));
@@ -61,7 +61,7 @@ async fn stronghold_bbs_keypair_gen_fails_with_wrong_alg() -> anyhow::Result<()>
 async fn stronghold_sign_bbs_works() -> anyhow::Result<()> {
   let stronghold_storage = StrongholdStorage::new(create_stronghold_secret_manager());
   let JwkGenOutput { key_id, jwk, .. } = stronghold_storage
-    .generate_bbs(StrongholdKeyType::Bls12381G2.into(), ProofAlgorithm::BLS12381_SHA256)
+    .generate_bbs(StrongholdKeyType::Bls12381G2.into(), ProofAlgorithm::BBS)
     .await?;
   let pk = expand_bls_jwk(&jwk)?.1;
   let sk = {
@@ -78,13 +78,7 @@ async fn stronghold_sign_bbs_works() -> anyhow::Result<()> {
 
   let mut data = vec![0; 1024];
   rand::thread_rng().fill_bytes(&mut data);
-  let expected_signature = sign_bbs(
-    ProofAlgorithm::BLS12381_SHA256,
-    std::slice::from_ref(&data),
-    &sk,
-    &pk,
-    &[],
-  )?;
+  let expected_signature = sign_bbs(ProofAlgorithm::BBS, std::slice::from_ref(&data), &sk, &pk, &[])?;
 
   let signature = stronghold_storage.sign_bbs(&key_id, &[data], &[], &jwk).await?;
   assert_eq!(signature, expected_signature);

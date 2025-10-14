@@ -44,10 +44,10 @@ impl LinkedVerifiablePresentationService {
   /// [Linked Verifiable Presentation Service Endpoint](https://identity.foundation/linked-vp/#linked-verifiable-presentation-service-endpoint).
   pub fn new(
     did_url: DIDUrl,
-    verifiable_presentation_urls: impl Into<OrderedSet<Url>>,
+    verifiable_presentation_urls: impl IntoIterator<Item = Url>,
     properties: Object,
   ) -> Result<Self> {
-    let verifiable_presentation_urls: OrderedSet<Url> = verifiable_presentation_urls.into();
+    let verifiable_presentation_urls: OrderedSet<Url> = verifiable_presentation_urls.into_iter().collect();
     let builder: ServiceBuilder = Service::builder(properties)
       .id(did_url)
       .type_(Self::linked_verifiable_presentation_service_type());

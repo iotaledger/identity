@@ -16,6 +16,7 @@ import {
 import { CoreClientReadOnly } from "@iota/iota-interaction-ts/node/core_client";
 import { IotaClient, TransactionEffects } from "@iota/iota-sdk/client";
 import { getFaucetHost, requestIotaFromFaucetV0 } from "@iota/iota-sdk/faucet";
+import { IotaEvent } from "@iota/iota-sdk/src/client/types/generated";
 import { Transaction as SdkTransaction } from "@iota/iota-sdk/transactions";
 
 export const IOTA_IDENTITY_PKG_ID = globalThis?.process?.env?.IOTA_IDENTITY_PKG_ID || "";
@@ -97,7 +98,7 @@ export class SendZeroCoinTx implements Transaction<string> {
         this.recipient = recipient;
     }
 
-    async buildProgrammableTransaction(client: CoreClientReadOnly): Promise<Uint8Array> {
+    async buildProgrammableTransaction(_client: CoreClientReadOnly): Promise<Uint8Array> {
         const ptb = new SdkTransaction();
 
         const recipientAddress = ptb.pure.address(this.recipient);
@@ -110,7 +111,15 @@ export class SendZeroCoinTx implements Transaction<string> {
         return tx_bytes.slice(1);
     }
 
-    async apply(effects: TransactionEffects, client: CoreClientReadOnly): Promise<string> {
+    async apply(effects: TransactionEffects, _client: CoreClientReadOnly): Promise<string> {
         return effects.created![0].reference.objectId;
+    }
+
+    async applyWithEvents(
+        effects: TransactionEffects,
+        _events: IotaEvent[],
+        client: CoreClientReadOnly,
+    ): Promise<string> {
+        return await this.apply(effects, client);
     }
 }

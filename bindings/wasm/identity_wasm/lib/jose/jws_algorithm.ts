@@ -32,4 +32,14 @@ export const enum JwsAlgorithm {
     NONE = "none",
     /** EdDSA signature algorithms */
     EdDSA = "EdDSA",
+    /** ML-DSA-44 */
+    MLDSA44 = "ML-DSA-44",
+    /** ML-DSA-65 */
+    MLDSA65 = "ML-DSA-65",
+    /** ML-DSA-87 */
+    MLDSA87 = "ML-DSA-87",
+    /** ML-DSA-44 in hybrid signature*/
+    IdMldsa44Ed25519 = "id-MLDSA44-Ed25519",
+    /** ML-DSA-65 in hybrid signature*/
+    IdMldsa65Ed25519 = "id-MLDSA65-Ed25519",
 }

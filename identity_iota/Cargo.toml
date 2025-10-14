@@ -87,8 +87,18 @@ sd-jwt-vc = ["identity_credential/sd-jwt-vc"]
 # Enables zero knowledge selective disclosurable VCs
 jpt-bbs-plus = ["identity_storage/jpt-bbs-plus", "identity_credential/jpt-bbs-plus"]
 
+# Enables PQC
+pqc = ["identity_storage/pqc"]
+pqc-liboqs = ["identity_storage/pqc-liboqs"]
+
+# Enables PQ/T Hybrid
+hybrid = ["identity_storage/hybrid", "identity_credential/hybrid"]
+hybrid-liboqs = ["identity_storage/hybrid-liboqs", "identity_credential/hybrid"]
 # Enables integration with IOTA Keytool.
 keytool = ["identity_iota_core/keytool", "identity_storage/keytool"]
+
+# Enables the integration with IOTA Resource Locators (IRLs).
+irl = ["identity_core/irl"]
 
 [package.metadata.docs.rs]
 # To build locally:

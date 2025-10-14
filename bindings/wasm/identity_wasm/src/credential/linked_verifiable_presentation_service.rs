@@ -34,7 +34,7 @@ impl WasmLinkedVerifiablePresentationService {
       .into_serde::<ILinkedVerifiablePresentationServiceHelper>()
       .wasm_result()?;
     Ok(Self(
-      LinkedVerifiablePresentationService::new(id, linked_vp, properties).wasm_result()?,
+      LinkedVerifiablePresentationService::new(id, linked_vp.into_vec(), properties).wasm_result()?,
     ))
   }
 
@@ -92,7 +92,7 @@ struct ILinkedVerifiablePresentationServiceHelper {
   #[typescript(optional = false, type = "DIDUrl")]
   id: DIDUrl,
   /// A unique URI that may be used to identify the {@link Credential}.
-  #[typescript(optional = false, type = "string | string[]")]
+  #[typescript(name = "linkedVp", optional = false, type = "string | string[]")]
   linked_vp: OneOrSet<Url>,
   /// Miscellaneous properties.
   #[serde(flatten)]

@@ -1,11 +1,13 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use core::fmt::Display;
 use core::fmt::Formatter;
 use std::borrow::Cow;
 
+use identity_did::DIDCompositeJwk;
 use identity_did::DIDJwk;
+use identity_jose::jwk::CompositeJwk;
 use identity_jose::jwk::Jwk;
 use serde::de;
 use serde::Deserialize;
@@ -227,6 +229,50 @@ impl VerificationMethod {
   }
 }
 
+impl VerificationMethod {
+  // ===========================================================================
+  // Constructors
+  // ===========================================================================
+
+  /// Creates a new [`VerificationMethod`] from the given `did` and [`CompositeJwk`]. If `fragment` is not given
+  /// the `kid` value of the given `key` will be used, if present, otherwise an error is returned.
+  pub fn new_from_compositejwk<D: DID>(did: D, key: CompositeJwk, fragment: Option<&str>) -> Result<Self> {
+    // Lazily compute the composite fragment.
+    let composite_fragment = || {
+      let maybe_tpk_kid = key.traditional_public_key().kid();
+      let maybe_pqpk_kid = key.pq_public_key().kid();
+      if let (Some(tpk_kid), Some(pqpk_kid)) = (maybe_tpk_kid, maybe_pqpk_kid) {
+        Some(Cow::Owned(format!("{tpk_kid}~{pqpk_kid}")))
+      } else {
+        maybe_tpk_kid.or(maybe_pqpk_kid).map(Cow::Borrowed)
+      }
+    };
+
+    let fragment = {
+      let given_fragment = fragment
+        .map(Cow::Borrowed)
+        .or_else(composite_fragment)
+        .ok_or(Error::InvalidMethod("an explicit fragment or kid is required"))?;
+
+      // Make sure the fragment starts with "#"
+      if given_fragment.starts_with('#') {
+        given_fragment
+      } else {
+        Cow::Owned(format!("#{given_fragment}"))
+      }
+    };
+
+    let id: DIDUrl = did.to_url().join(fragment).map_err(Error::DIDUrlConstructionError)?;
+
+    MethodBuilder::default()
+      .id(id)
+      .type_(MethodType::custom("CompositeJsonWebKey"))
+      .controller(did.into())
+      .data(MethodData::CompositeJwk(key))
+      .build()
+  }
+}
+
 impl Display for VerificationMethod {
   fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
     self.fmt_json(f)
@@ -253,6 +299,14 @@ impl TryFrom<DIDJwk> for VerificationMethod {
   fn try_from(did: DIDJwk) -> Result<Self, Self::Error> {
     let jwk = did.jwk();
     Self::new_from_jwk(did, jwk, Some("0"))
+  }
+}
+
+impl TryFrom<DIDCompositeJwk> for VerificationMethod {
+  type Error = Error;
+  fn try_from(did: DIDCompositeJwk) -> Result<Self, Self::Error> {
+    let jwk = did.composite_jwk();
+    Self::new_from_compositejwk(did, jwk, Some("0"))
   }
 }
 
@@ -285,6 +339,7 @@ impl From<_VerificationMethod> for VerificationMethod {
       MethodData::PublicKeyBase58(_) => "publicKeyBase58",
       MethodData::PublicKeyJwk(_) => "publicKeyJwk",
       MethodData::PublicKeyMultibase(_) => "publicKeyMultibase",
+      MethodData::CompositeJwk(_) => "compositeJwk",
       MethodData::Custom(CustomMethodData { name, .. }) => name.as_str(),
     };
     properties.remove(key);

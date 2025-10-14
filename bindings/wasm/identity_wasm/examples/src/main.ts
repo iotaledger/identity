@@ -1,4 +1,4 @@
-// Copyright 2020-2025 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 import { createIdentity } from "./0_basic/0_create_did";
@@ -13,12 +13,15 @@ import { didOwnsDid } from "./1_advanced/0_did_owns_did";
 import { sdJwtVc } from "./1_advanced/10_sd_jwt_vc";
 import { advancedTransaction } from "./1_advanced/11_advanced_transactions";
 import { iotaKeytoolIntegration } from "./1_advanced/12_iota_keytool_integration";
+import { linkedVp } from "./1_advanced/13_linked_verifiable_presentation";
 import { customResolution } from "./1_advanced/4_custom_resolution";
 import { domainLinkage } from "./1_advanced/5_domain_linkage";
 import { sdJwt } from "./1_advanced/6_sd_jwt";
 import { statusList2021 } from "./1_advanced/7_status_list_2021";
 import { zkp } from "./1_advanced/8_zkp";
 import { zkp_revocation } from "./1_advanced/9_zkp_revocation";
+import { hybrid } from "./1_advanced/hybrid";
+import { pq } from "./1_advanced/pq";
 
 export async function main(example?: string) {
     // Extract example name.
@@ -60,10 +63,16 @@ export async function main(example?: string) {
             return await zkp_revocation();
         case "10_sd_jwt_vc":
             return await sdJwtVc();
+        case "pq":
+            return await pq();
+        case "hybrid":
+            return await hybrid();
         case "11_advanced_transactions":
             return await advancedTransaction();
         case "12_iota_keytool_integration":
             return await iotaKeytoolIntegration();
+        case "13_linked_verifiable_presentation":
+            return await linkedVp();
         default:
             throw "Unknown example name: '" + argument + "'";
     }

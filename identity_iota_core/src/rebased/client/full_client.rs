@@ -4,6 +4,7 @@
 use std::ops::Deref;
 
 use crate::iota_interaction_adapter::IotaClientAdapter;
+use crate::rebased::client::QueryControlledDidsError;
 use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
 use crate::rebased::migration::CreateIdentity;
@@ -121,6 +122,17 @@ impl<S> IdentityClient<S> {
     T: MoveType + DeserializeOwned + Send + Sync + PartialEq,
   {
     AuthenticatedAssetBuilder::new(content)
+  }
+
+  /// Returns the [IotaAddress] wrapped by this client.
+  #[inline(always)]
+  pub fn address(&self) -> IotaAddress {
+    IotaAddress::from(&self.public_key)
+  }
+
+  /// Returns the list of **all** unique DIDs the address wrapped by this client can access as a controller.
+  pub async fn controlled_dids(&self) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
+    self.dids_controlled_by(self.address()).await
   }
 }
 

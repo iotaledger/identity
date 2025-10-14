@@ -1,4 +1,4 @@
-// Copyright 2020-2024 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use jsonprooftoken::jpa::algs::PresentationProofAlgorithm;
@@ -9,9 +9,11 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen(js_name = PresentationProofAlgorithm)]
 #[allow(non_camel_case_types)]
 pub enum WasmPresentationProofAlgorithm {
-  BLS12381_SHA256_PROOF,
-  BLS12381_SHAKE256_PROOF,
+  BBS,
+  BBS_SHAKE256,
   SU_ES256,
+  SU_ES384,
+  SU_ES512,
   MAC_H256,
   MAC_H384,
   MAC_H512,
@@ -23,9 +25,11 @@ pub enum WasmPresentationProofAlgorithm {
 impl From<WasmPresentationProofAlgorithm> for PresentationProofAlgorithm {
   fn from(value: WasmPresentationProofAlgorithm) -> Self {
     match value {
-      WasmPresentationProofAlgorithm::BLS12381_SHA256_PROOF => PresentationProofAlgorithm::BLS12381_SHA256_PROOF,
-      WasmPresentationProofAlgorithm::BLS12381_SHAKE256_PROOF => PresentationProofAlgorithm::BLS12381_SHAKE256_PROOF,
+      WasmPresentationProofAlgorithm::BBS => PresentationProofAlgorithm::BBS,
+      WasmPresentationProofAlgorithm::BBS_SHAKE256 => PresentationProofAlgorithm::BBS_SHAKE256,
       WasmPresentationProofAlgorithm::SU_ES256 => PresentationProofAlgorithm::SU_ES256,
+      WasmPresentationProofAlgorithm::SU_ES384 => PresentationProofAlgorithm::SU_ES384,
+      WasmPresentationProofAlgorithm::SU_ES512 => PresentationProofAlgorithm::SU_ES512,
       WasmPresentationProofAlgorithm::MAC_H256 => PresentationProofAlgorithm::MAC_H256,
       WasmPresentationProofAlgorithm::MAC_H384 => PresentationProofAlgorithm::MAC_H384,
       WasmPresentationProofAlgorithm::MAC_H512 => PresentationProofAlgorithm::MAC_H512,
@@ -39,9 +43,11 @@ impl From<WasmPresentationProofAlgorithm> for PresentationProofAlgorithm {
 impl From<PresentationProofAlgorithm> for WasmPresentationProofAlgorithm {
   fn from(value: PresentationProofAlgorithm) -> Self {
     match value {
-      PresentationProofAlgorithm::BLS12381_SHA256_PROOF => WasmPresentationProofAlgorithm::BLS12381_SHA256_PROOF,
-      PresentationProofAlgorithm::BLS12381_SHAKE256_PROOF => WasmPresentationProofAlgorithm::BLS12381_SHAKE256_PROOF,
+      PresentationProofAlgorithm::BBS => WasmPresentationProofAlgorithm::BBS,
+      PresentationProofAlgorithm::BBS_SHAKE256 => WasmPresentationProofAlgorithm::BBS_SHAKE256,
       PresentationProofAlgorithm::SU_ES256 => WasmPresentationProofAlgorithm::SU_ES256,
+      PresentationProofAlgorithm::SU_ES384 => WasmPresentationProofAlgorithm::SU_ES384,
+      PresentationProofAlgorithm::SU_ES512 => WasmPresentationProofAlgorithm::SU_ES512,
       PresentationProofAlgorithm::MAC_H256 => WasmPresentationProofAlgorithm::MAC_H256,
       PresentationProofAlgorithm::MAC_H384 => WasmPresentationProofAlgorithm::MAC_H384,
       PresentationProofAlgorithm::MAC_H512 => WasmPresentationProofAlgorithm::MAC_H512,

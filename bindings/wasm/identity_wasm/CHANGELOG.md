@@ -1,5 +1,16 @@
 # Changelog
 
+## [wasm-v1.7.0-beta.1](https://github.com/iotaledger/identity/tree/wasm-v1.7.0-beta.1) (2025-10-14)
+
+[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.7.0-beta.1...wasm-v1.6.0-beta.10)
+
+### Added
+
+- Post Quantum and hybrid traditional / Post Quantum signatures for VCs and VPs [\#1625](https://github.com/iotaledger/identity/pull/1625)
+- Enhanced support for Linked Verifiable Presentations [\#1729](https://github.com/iotaledger/identity/pull/1729)
+- `DIDJwk.new` [\#1725](https://github.com/iotaledger/identity/pull/1725)
+- `IdentityClientReadOnly.didsControlledBy` and `IdentityClient.controlledDids` [\#1708](https://github.com/iotaledger/identity/pull/1708)
+
 ## [wasm-v1.5.1](https://github.com/iotaledger/identity/tree/wasm-v1.5.1) (2025-04-16)
 
 [Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.5.0...wasm-v1.5.1)

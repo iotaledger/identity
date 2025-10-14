@@ -9,6 +9,7 @@
 - Post Quantum and hybrid traditional / Post Quantum signatures for VCs and VPs [\#1625](https://github.com/iotaledger/identity/pull/1625)
 - Enhanced support for Linked Verifiable Presentations [\#1729](https://github.com/iotaledger/identity/pull/1729)
 - `DIDJwk::new` and `DIDJwk::as_jwk` [\#1725](https://github.com/iotaledger/identity/pull/1725)
+- `IdentityClientReadOnly::dids_controlled_by` and `IdentityClient::controlled_dids` [\#1708](https://github.com/iotaledger/identity/pull/1708)
 
 ## [v1.6.0-alpha.1](https://github.com/iotaledger/identity/tree/v1.6.0-alpha.1) (2024-14-04)
 

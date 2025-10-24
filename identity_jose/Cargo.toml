@@ -25,10 +25,10 @@ thiserror.workspace = true
 zeroize = { version = "1.6", default-features = false, features = ["std", "zeroize_derive"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-9-1-rc-upstream-merge", package = "iota_interaction" }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.4", package = "iota_interaction" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-9-1-rc-upstream-merge", package = "iota_interaction", default-features = false }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.4", package = "iota_interaction", default-features = false }
 
 [dev-dependencies]
 iota-crypto = { version = "0.23", features = ["ed25519", "random", "hmac"] }

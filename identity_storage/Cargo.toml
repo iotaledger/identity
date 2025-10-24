@@ -38,17 +38,17 @@ tokio = { version = "1.46.1", default-features = false, features = ["macros", "s
 zkryptium = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "iota_interaction", optional = true }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.4", package = "iota_interaction", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "iota_interaction", default-features = false, optional = true }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.4", package = "iota_interaction", default-features = false, optional = true }
 
 [dev-dependencies]
 identity_credential = { version = "=1.7.0-beta.1", path = "../identity_credential", features = ["revocation-bitmap"] }
 identity_ecdsa_verifier = { version = "=1.7.0-beta.1", path = "../identity_ecdsa_verifier", default-features = false, features = ["es256"] }
 identity_eddsa_verifier = { version = "=1.7.0-beta.1", path = "../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
 once_cell = { version = "1.18", default-features = false }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.3", package = "product_common", default-features = false }
+product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.4", package = "product_common", default-features = false }
 tokio = { version = "1.46.1", default-features = false, features = ["macros", "sync", "rt"] }
 
 [features]

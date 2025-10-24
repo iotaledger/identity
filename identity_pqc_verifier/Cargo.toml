@@ -1,6 +1,6 @@
 [package]
 name = "identity_pqc_verifier"
-version = "1.7.0-beta.1"
+version = "1.7.0-beta.2"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -12,5 +12,5 @@ repository.workspace = true
 description = "JWS PQC signature verification for IOTA Identity"
 
 [dependencies]
-identity_jose = { version = "=1.7.0-beta.1", path = "../identity_jose", default-features = true }
+identity_jose = { version = "=1.7.0-beta.2", path = "../identity_jose", default-features = true }
 oqs.workspace = true

@@ -76,7 +76,7 @@ impl<V: JwsVerifier> SdJwtCredentialValidator<V> {
     fail_fast: FailFast,
   ) -> Result<DecodedJwtCredential<T>, CompoundCredentialValidationError>
   where
-    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
+    T: Clone + serde::Serialize + serde::de::DeserializeOwned,
     DOC: AsRef<CoreDocument>,
   {
     let issuers = std::slice::from_ref(issuer.as_ref());
@@ -86,7 +86,9 @@ impl<V: JwsVerifier> SdJwtCredentialValidator<V> {
         validation_errors: [err].into(),
       })?;
 
-    JwtCredentialValidator::<V>::validate_decoded_credential(credential, issuers, options, fail_fast)
+    JwtCredentialValidator::<V>::validate_decoded_credential(&credential.credential, issuers, options, fail_fast)?;
+
+    Ok(credential)
   }
 
   /// Decode and verify the JWS signature of a [`Credential`] issued as an SD-JWT using the DID Document of a trusted

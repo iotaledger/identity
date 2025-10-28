@@ -16,7 +16,7 @@ use crate::key_storage::KeyType;
 
 use async_trait::async_trait;
 use identity_core::common::Object;
-use identity_credential::credential::Credential;
+use identity_credential::credential::CredentialT;
 use identity_credential::credential::Jws;
 use identity_credential::credential::Jwt;
 use identity_credential::presentation::JwtPresentationOptions;
@@ -96,7 +96,8 @@ pub trait JwkDocumentExt: private::Sealed {
     I: KeyIdStorage;
 
   /// Produces a JWT where the payload is produced from the given `credential`
-  /// in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
+  /// in accordance with either [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token)
+  /// or [VC Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/).
   ///
   /// Unless the `kid` is explicitly set in the options, the `kid` in the protected header is the `id`
   /// of the method identified by `fragment` and the JWS signature will be produced by the corresponding
@@ -105,7 +106,7 @@ pub trait JwkDocumentExt: private::Sealed {
   /// The `custom_claims` can be used to set additional claims on the resulting JWT.
   async fn create_credential_jwt<K, I, T>(
     &self,
-    credential: &Credential<T>,
+    credential: &(impl CredentialT<Properties = T> + Sync),
     storage: &Storage<K, I>,
     fragment: &str,
     options: &JwsSignatureOptions,
@@ -439,7 +440,7 @@ impl JwkDocumentExt for CoreDocument {
 
   async fn create_credential_jwt<K, I, T>(
     &self,
-    credential: &Credential<T>,
+    credential: &(impl CredentialT<Properties = T> + Sync),
     storage: &Storage<K, I>,
     fragment: &str,
     options: &JwsSignatureOptions,
@@ -591,7 +592,7 @@ mod iota_document {
 
     async fn create_credential_jwt<K, I, T>(
       &self,
-      credential: &Credential<T>,
+      credential: &(impl CredentialT<Properties = T> + Sync),
       storage: &Storage<K, I>,
       fragment: &str,
       options: &JwsSignatureOptions,

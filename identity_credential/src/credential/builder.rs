@@ -7,6 +7,7 @@ use identity_core::common::Timestamp;
 use identity_core::common::Url;
 use identity_core::common::Value;
 
+use crate::credential::credential_v2::Credential as CredentialV2;
 use crate::credential::Credential;
 use crate::credential::Evidence;
 use crate::credential::Issuer;
@@ -20,7 +21,7 @@ use crate::error::Result;
 use super::Proof;
 
 /// A `CredentialBuilder` is used to create a customized `Credential`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct CredentialBuilder<T = Object> {
   pub(crate) context: Vec<Context>,
   pub(crate) id: Option<Url>,
@@ -43,9 +44,9 @@ impl<T> CredentialBuilder<T> {
   /// Creates a new `CredentialBuilder`.
   pub fn new(properties: T) -> Self {
     Self {
-      context: vec![Credential::<T>::base_context().clone()],
+      context: Vec::new(),
       id: None,
-      types: vec![Credential::<T>::base_type().into()],
+      types: Vec::new(),
       subject: Vec::new(),
       issuer: None,
       issuance_date: None,
@@ -119,6 +120,20 @@ impl<T> CredentialBuilder<T> {
     self
   }
 
+  /// Sets the value of the `Credential` `validFrom`.
+  #[must_use]
+  pub fn valid_from(mut self, value: Timestamp) -> Self {
+    self.issuance_date = Some(value);
+    self
+  }
+
+  /// Sets the value of the `Credential` `validUntil`.
+  #[must_use]
+  pub fn valid_until(mut self, value: Timestamp) -> Self {
+    self.expiration_date = Some(value);
+    self
+  }
+
   /// Adds a value to the `credentialStatus` set.
   #[must_use]
   pub fn status(mut self, value: impl Into<Status>) -> Self {
@@ -172,6 +187,11 @@ impl<T> CredentialBuilder<T> {
   pub fn build(self) -> Result<Credential<T>> {
     Credential::from_builder(self)
   }
+
+  /// Returns a new [CredentialV2] based on the builder's configuration.
+  pub fn build_v2(self) -> Result<CredentialV2<T>> {
+    CredentialV2::from_builder(self)
+  }
 }
 
 impl CredentialBuilder {
@@ -198,15 +218,6 @@ impl CredentialBuilder {
       .properties
       .extend(iter.into_iter().map(|(k, v)| (k.into(), v.into())));
     self
-  }
-}
-
-impl<T> Default for CredentialBuilder<T>
-where
-  T: Default,
-{
-  fn default() -> Self {
-    Self::new(T::default())
   }
 }
 

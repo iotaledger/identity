@@ -7,6 +7,8 @@
 
 mod builder;
 mod credential;
+/// VC Data Model 2.0 implementation.
+pub mod credential_v2;
 mod evidence;
 mod issuer;
 #[cfg(feature = "jpt-bbs-plus")]
@@ -26,6 +28,11 @@ mod revocation_bitmap_status;
 mod schema;
 mod status;
 mod subject;
+
+use identity_core::common::Context;
+use identity_core::common::Object;
+use identity_core::common::OneOrMany;
+use identity_core::common::Timestamp;
 
 pub use self::builder::CredentialBuilder;
 pub use self::credential::Credential;
@@ -55,3 +62,36 @@ pub use self::subject::Subject;
 pub(crate) use self::jwt_serialization::CredentialJwtClaims;
 #[cfg(feature = "presentation")]
 pub(crate) use self::jwt_serialization::IssuanceDateClaims;
+
+trait CredentialSealed {}
+
+/// A VerifiableCredential type. This trait is implemented for [Credential]
+/// and for [CredentialV2](credential_v2::Credential).
+#[allow(private_bounds)]
+pub trait CredentialT: CredentialSealed {
+  /// The type of the custom claims.
+  type Properties;
+
+  /// The Credential's context.
+  fn context(&self) -> &OneOrMany<Context>;
+  /// The Credential's types.
+  fn type_(&self) -> &OneOrMany<String>;
+  /// The Credential's subjects.
+  fn subject(&self) -> &OneOrMany<Subject>;
+  /// The Credential's issuer.
+  fn issuer(&self) -> &Issuer;
+  /// The Credential's issuance date.
+  fn valid_from(&self) -> Timestamp;
+  /// The Credential's expiration date, if any.
+  fn valid_until(&self) -> Option<Timestamp>;
+  /// The Credential's validity status, if any.
+  fn status(&self) -> Option<&Status>;
+  /// The Credential's custom properties.
+  fn properties(&self) -> &Self::Properties;
+  /// Whether the Credential's `nonTransferable` property is set.
+  fn non_transferable(&self) -> bool;
+  /// The Credential's base context.
+  fn base_context(&self) -> &'static Context;
+  /// Serializes this credential as a JWT payload encoded string.
+  fn serialize_jwt(&self, custom_claims: Option<Object>) -> Result<String, crate::Error>;
+}

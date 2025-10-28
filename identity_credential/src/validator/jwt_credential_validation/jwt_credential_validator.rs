@@ -435,22 +435,12 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
     // Verify the JWS signature and obtain the decoded token containing the protected header and raw claims
     let DecodedJws { protected, claims, .. } = Self::verify_signature_raw(decoded, public_key, signature_verifier)?;
 
-    let credential_claims: CredentialJwtClaims<'_, T> =
-      CredentialJwtClaims::from_json_slice(&claims).map_err(|err| {
-        JwtValidationError::CredentialStructure(crate::Error::JwtClaimsSetDeserializationError(err.into()))
-      })?;
-
-    let custom_claims = credential_claims.custom.clone();
-
-    // Construct the credential token containing the credential and the protected header.
-    let credential = credential_claims
-      .try_into_credential_v2()
-      .map_err(JwtValidationError::CredentialStructure)?;
+    let credential = serde_json::from_slice(&claims)
+      .map_err(|e| JwtValidationError::CredentialStructure(crate::Error::JwtClaimsSetDeserializationError(e.into())))?;
 
     Ok(DecodedJwtCredentialV2 {
       credential,
       header: Box::new(protected),
-      custom_claims,
     })
   }
 }

@@ -15,7 +15,6 @@ use identity_core::common::Timestamp;
 use identity_core::common::Url;
 use serde::de::DeserializeOwned;
 
-use crate::credential::credential_v2::Credential as CredentialV2;
 use crate::credential::Credential;
 use crate::credential::Evidence;
 use crate::credential::Issuer;
@@ -107,57 +106,6 @@ where
       exp: expiration_date.map(|value| Timestamp::to_unix(&value)),
       iss: Cow::Borrowed(issuer),
       issuance_date: IssuanceDateClaims::new(*issuance_date),
-      jti: id.as_ref().map(Cow::Borrowed),
-      sub: subject.id.as_ref().map(Cow::Borrowed),
-      vc: InnerCredential {
-        context: Cow::Borrowed(context),
-        id: None,
-        types: Cow::Borrowed(types),
-        credential_subject: InnerCredentialSubject::new(subject),
-        issuance_date: None,
-        expiration_date: None,
-        valid_from: None,
-        valid_until: None,
-        issuer: None,
-        credential_schema: Cow::Borrowed(credential_schema),
-        credential_status: credential_status.as_ref().map(Cow::Borrowed),
-        refresh_service: Cow::Borrowed(refresh_service),
-        terms_of_use: Cow::Borrowed(terms_of_use),
-        evidence: Cow::Borrowed(evidence),
-        non_transferable: *non_transferable,
-        properties: Cow::Borrowed(properties),
-        proof: proof.as_ref().map(Cow::Borrowed),
-      },
-      custom,
-    })
-  }
-
-  pub(crate) fn new_v2(credential: &'credential CredentialV2<T>, custom: Option<Object>) -> Result<Self> {
-    let CredentialV2 {
-      context,
-      id,
-      types,
-      credential_subject: OneOrMany::One(subject),
-      issuer,
-      valid_from,
-      valid_until,
-      credential_status,
-      credential_schema,
-      refresh_service,
-      terms_of_use,
-      evidence,
-      non_transferable,
-      properties,
-      proof,
-    } = credential
-    else {
-      return Err(Error::MoreThanOneSubjectInJwt);
-    };
-
-    Ok(Self {
-      exp: valid_until.map(|value| Timestamp::to_unix(&value)),
-      iss: Cow::Borrowed(issuer),
-      issuance_date: IssuanceDateClaims::new(*valid_from),
       jti: id.as_ref().map(Cow::Borrowed),
       sub: subject.id.as_ref().map(Cow::Borrowed),
       vc: InnerCredential {
@@ -298,70 +246,6 @@ where
       issuer: iss.into_owned(),
       issuance_date: issuance_date.to_issuance_date()?,
       expiration_date: exp
-        .map(Timestamp::from_unix)
-        .transpose()
-        .map_err(|_| Error::TimestampConversionError)?,
-      credential_status: credential_status.map(Cow::into_owned),
-      credential_schema: credential_schema.into_owned(),
-      refresh_service: refresh_service.into_owned(),
-      terms_of_use: terms_of_use.into_owned(),
-      evidence: evidence.into_owned(),
-      non_transferable,
-      properties: properties.into_owned(),
-      proof: proof.map(Cow::into_owned),
-    })
-  }
-
-  /// Converts the JWT representation into a [`CredentialV2`].
-  ///
-  /// # Errors
-  /// Errors if either timestamp conversion or [`Self::check_consistency`] fails.
-  pub(crate) fn try_into_credential_v2(self) -> Result<CredentialV2<T>> {
-    self.check_consistency()?;
-
-    let Self {
-      exp,
-      iss,
-      issuance_date,
-      jti,
-      sub,
-      vc,
-      ..
-    } = self;
-
-    let InnerCredential {
-      context,
-      types,
-      credential_subject,
-      credential_status,
-      credential_schema,
-      refresh_service,
-      terms_of_use,
-      evidence,
-      non_transferable,
-      properties,
-      proof,
-      ..
-    } = vc;
-
-    // Make sure inner credential contains the right context
-    if context.first() != Some(&crate::credential::credential_v2::BASE_CONTEXT) {
-      return Err(Error::MissingBaseContext);
-    }
-
-    Ok(CredentialV2 {
-      context: context.into_owned(),
-      id: jti.map(Cow::into_owned),
-      types: types.into_owned(),
-      credential_subject: {
-        OneOrMany::One(Subject {
-          id: sub.map(Cow::into_owned),
-          properties: credential_subject.properties.into_owned(),
-        })
-      },
-      issuer: iss.into_owned(),
-      valid_from: issuance_date.to_issuance_date()?,
-      valid_until: exp
         .map(Timestamp::from_unix)
         .transpose()
         .map_err(|_| Error::TimestampConversionError)?,

@@ -18,7 +18,6 @@ use serde::Deserializer;
 use serde::Serialize;
 
 use crate::credential::CredentialBuilder;
-use crate::credential::CredentialJwtClaims;
 use crate::credential::CredentialSealed;
 use crate::credential::CredentialT;
 use crate::credential::Evidence;
@@ -240,9 +239,8 @@ where
   /// in accordance with [VC Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/).
   ///
   /// The resulting string can be used as the payload of a JWS when issuing the credential.  
-  pub fn serialize_jwt(&self, custom_claims: Option<Object>) -> Result<String> {
-    let jwt_representation: CredentialJwtClaims<'_, T> = CredentialJwtClaims::new_v2(self, custom_claims)?;
-    jwt_representation
+  pub fn serialize_jwt(&self, _custom_claims: Option<Object>) -> Result<String> {
+    self
       .to_json()
       .map_err(|err| Error::JwtClaimsSetSerializationError(err.into()))
   }

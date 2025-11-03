@@ -248,6 +248,8 @@ where
 
 #[cfg(test)]
 mod tests {
+  use identity_verification::jws::Decoder;
+
   use super::*;
 
   #[test]
@@ -281,5 +283,15 @@ mod tests {
   fn invalid_from_json_str() {
     let json_credential = include_str!("../../tests/fixtures/credential-1.json");
     let _error = serde_json::from_str::<Credential>(json_credential).unwrap_err();
+  }
+
+  #[test]
+  fn parsed_from_jwt_payload() {
+    let jwt = "eyJraWQiOiJFeEhrQk1XOWZtYmt2VjI2Nm1ScHVQMnNVWV9OX0VXSU4xbGFwVXpPOHJvIiwiYWxnIjoiRVMyNTYifQ.eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvbnMvY3JlZGVudGlhbHMvdjIiLCJodHRwczovL3d3dy53My5vcmcvbnMvY3JlZGVudGlhbHMvZXhhbXBsZXMvdjIiXSwiaWQiOiJodHRwOi8vdW5pdmVyc2l0eS5leGFtcGxlL2NyZWRlbnRpYWxzLzM3MzIiLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiRXhhbXBsZURlZ3JlZUNyZWRlbnRpYWwiXSwiaXNzdWVyIjoiaHR0cHM6Ly91bml2ZXJzaXR5LmV4YW1wbGUvaXNzdWVycy81NjUwNDkiLCJ2YWxpZEZyb20iOiIyMDEwLTAxLTAxVDAwOjAwOjAwWiIsImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImlkIjoiZGlkOmV4YW1wbGU6ZWJmZWIxZjcxMmViYzZmMWMyNzZlMTJlYzIxIiwiZGVncmVlIjp7InR5cGUiOiJFeGFtcGxlQmFjaGVsb3JEZWdyZWUiLCJuYW1lIjoiQmFjaGVsb3Igb2YgU2NpZW5jZSBhbmQgQXJ0cyJ9fX0.YEsG9at9Hnt_j-UykCrnl494fcYMTjzpgvlK0KzzjvfmZmSg-sNVJqMZWizYhWv_eRUvAoZohvSJWeagwj_Ajw";
+    let decoded_jwt = Decoder::new()
+      .decode_compact_serialization(jwt.as_bytes(), None)
+      .expect("valid JWT");
+
+    let _credential: Credential<Object> = serde_json::from_slice(decoded_jwt.claims()).expect("valid JWT payload");
   }
 }

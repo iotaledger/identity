@@ -43,7 +43,7 @@ impl WasmSdObjectEncoder {
   ///   "claim2": ["val_1", "val_2"]
   /// }
   /// ```
-  ///
+  /// 
   /// Path "/id" conceals `"id": "did:value"`
   /// Path "/claim1/abc" conceals `"abc": true`
   /// Path "/claim2/0" conceals `val_1`

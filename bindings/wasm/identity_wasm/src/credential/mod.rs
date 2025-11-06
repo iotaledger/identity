@@ -56,14 +56,18 @@ extern "C" {
   #[derive(Clone)]
   #[wasm_bindgen(typescript_type = "Credential | CredentialV2")]
   pub type CredentialAny;
+
+  #[wasm_bindgen(method, js_name = toJSON)]
+  pub fn to_json(this: &CredentialAny) -> JsValue;
 }
 
 impl CredentialAny {
   pub(crate) fn try_to_dyn_credential(&self) -> Result<Box<dyn CredentialT<Properties = Object> + Sync>, JsValue> {
-    serde_wasm_bindgen::from_value::<Credential>(self.clone().into())
+    let json_repr = self.to_json();
+    serde_wasm_bindgen::from_value::<Credential>(json_repr.clone())
       .map(|c| Box::new(c) as Box<dyn CredentialT<Properties = Object> + Sync>)
       .or_else(|_| {
-        serde_wasm_bindgen::from_value::<CredentialV2>(self.clone().into())
+        serde_wasm_bindgen::from_value::<CredentialV2>(json_repr)
           .map(|c| Box::new(c) as Box<dyn CredentialT<Properties = Object> + Sync>)
       })
       .map_err(|e| e.into())

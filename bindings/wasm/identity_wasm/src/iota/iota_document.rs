@@ -9,7 +9,6 @@ use identity_iota::core::OneOrMany;
 use identity_iota::core::OrderedSet;
 use identity_iota::core::Timestamp;
 use identity_iota::core::Url;
-use identity_iota::credential::Credential;
 use identity_iota::credential::JwtPresentationOptions;
 use identity_iota::credential::Presentation;
 
@@ -41,6 +40,7 @@ use crate::common::RecordStringAny;
 use crate::common::UDIDUrlQuery;
 use crate::common::UOneOrManyNumber;
 use crate::common::WasmTimestamp;
+use crate::credential::CredentialAny;
 use crate::credential::PromiseJpt;
 use crate::credential::UnknownCredential;
 use crate::credential::WasmCredential;
@@ -727,14 +727,14 @@ impl WasmIotaDocument {
     &self,
     storage: &WasmStorage,
     fragment: String,
-    credential: &WasmCredential,
+    credential: &CredentialAny,
     options: &WasmJwsSignatureOptions,
     custom_claims: Option<RecordStringAny>,
   ) -> Result<PromiseJwt> {
     let storage_clone: Rc<WasmStorageInner> = storage.0.clone();
     let options_clone: JwsSignatureOptions = options.0.clone();
     let document_lock_clone: Rc<IotaDocumentLock> = self.0.clone();
-    let credential_clone: Credential = credential.0.clone();
+    let credential_clone = credential.try_to_dyn_credential()?;
     let custom: Option<Object> = custom_claims
       .map(|claims| claims.into_serde().wasm_result())
       .transpose()?;
@@ -742,7 +742,7 @@ impl WasmIotaDocument {
       document_lock_clone
         .read()
         .await
-        .create_credential_jwt(&credential_clone, &storage_clone, &fragment, &options_clone, custom)
+        .create_credential_jwt(&*credential_clone, &storage_clone, &fragment, &options_clone, custom)
         .await
         .wasm_result()
         .map(WasmJwt::new)

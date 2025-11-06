@@ -31,7 +31,7 @@ impl JwtCredentialValidatorUtils {
   ///
   /// # Warning
   /// This does not validate against the credential's schema nor the structure of the subject claims.
-  pub fn check_structure<T>(credential: &impl CredentialT<Properties = T>) -> ValidationUnitResult {
+  pub fn check_structure<T>(credential: &dyn CredentialT<Properties = T>) -> ValidationUnitResult {
     // Ensure the base context is present and in the correct location
     match credential.context().get(0) {
       Some(context) if context == credential.base_context() => {}
@@ -68,7 +68,7 @@ impl JwtCredentialValidatorUtils {
 
   /// Validate that the [`Credential`] expires on or after the specified [`Timestamp`].
   pub fn check_expires_on_or_after<T>(
-    credential: &impl CredentialT<Properties = T>,
+    credential: &dyn CredentialT<Properties = T>,
     timestamp: Timestamp,
   ) -> ValidationUnitResult {
     match credential.valid_until() {
@@ -79,7 +79,7 @@ impl JwtCredentialValidatorUtils {
 
   /// Validate that the [`Credential`] is issued on or before the specified [`Timestamp`].
   pub fn check_issued_on_or_before<T>(
-    credential: &impl CredentialT<Properties = T>,
+    credential: &dyn CredentialT<Properties = T>,
     timestamp: Timestamp,
   ) -> ValidationUnitResult {
     if credential.valid_from() <= timestamp {
@@ -92,7 +92,7 @@ impl JwtCredentialValidatorUtils {
   /// Validate that the relationship between the `holder` and the credential subjects is in accordance with
   /// `relationship`.
   pub fn check_subject_holder_relationship<T>(
-    credential: &impl CredentialT<Properties = T>,
+    credential: &dyn CredentialT<Properties = T>,
     holder: &Url,
     relationship: SubjectHolderRelationship,
   ) -> ValidationUnitResult {
@@ -122,7 +122,7 @@ impl JwtCredentialValidatorUtils {
   /// Only supports `StatusList2021`.
   #[cfg(feature = "status-list-2021")]
   pub fn check_status_with_status_list_2021<T>(
-    credential: &impl CredentialT<Properties = T>,
+    credential: &dyn CredentialT<Properties = T>,
     status_list_credential: &StatusList2021Credential,
     status_check: crate::validator::StatusCheck,
   ) -> ValidationUnitResult {
@@ -162,7 +162,7 @@ impl JwtCredentialValidatorUtils {
   /// Only supports `RevocationBitmap2022`.
   #[cfg(feature = "revocation-bitmap")]
   pub fn check_status<DOC: AsRef<identity_document::document::CoreDocument>, T>(
-    credential: &impl CredentialT<Properties = T>,
+    credential: &dyn CredentialT<Properties = T>,
     trusted_issuers: &[DOC],
     status_check: crate::validator::StatusCheck,
   ) -> ValidationUnitResult {
@@ -229,7 +229,7 @@ impl JwtCredentialValidatorUtils {
   ///
   /// Fails if the issuer field is not a valid DID.
   pub fn extract_issuer<D, T>(
-    credential: &impl CredentialT<Properties = T>,
+    credential: &dyn CredentialT<Properties = T>,
   ) -> std::result::Result<D, JwtValidationError>
   where
     D: DID,

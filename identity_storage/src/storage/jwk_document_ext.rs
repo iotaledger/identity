@@ -106,7 +106,7 @@ pub trait JwkDocumentExt: private::Sealed {
   /// The `custom_claims` can be used to set additional claims on the resulting JWT.
   async fn create_credential_jwt<K, I, T>(
     &self,
-    credential: &(impl CredentialT<Properties = T> + Sync),
+    credential: &(dyn CredentialT<Properties = T> + Sync),
     storage: &Storage<K, I>,
     fragment: &str,
     options: &JwsSignatureOptions,
@@ -440,7 +440,7 @@ impl JwkDocumentExt for CoreDocument {
 
   async fn create_credential_jwt<K, I, T>(
     &self,
-    credential: &(impl CredentialT<Properties = T> + Sync),
+    credential: &(dyn CredentialT<Properties = T> + Sync),
     storage: &Storage<K, I>,
     fragment: &str,
     options: &JwsSignatureOptions,
@@ -592,7 +592,7 @@ mod iota_document {
 
     async fn create_credential_jwt<K, I, T>(
       &self,
-      credential: &(impl CredentialT<Properties = T> + Sync),
+      credential: &(dyn CredentialT<Properties = T> + Sync),
       storage: &Storage<K, I>,
       fragment: &str,
       options: &JwsSignatureOptions,

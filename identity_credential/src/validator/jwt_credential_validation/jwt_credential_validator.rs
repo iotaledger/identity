@@ -176,11 +176,40 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
     Self::verify_signature_with_verifier(&self.0, credential, trusted_issuers, options)
   }
 
+  /// Decode and verify the JWS signature of a [Credential](crate::credential::credential_v2::Credential) issued as a JWT using the DID Document of a trusted
+  /// issuer.
+  ///
+  /// A [`DecodedJwtCredentialV2`] is returned upon success.
+  ///
+  /// # Warning
+  /// The caller must ensure that the DID Documents of the trusted issuers are up-to-date.
+  ///
+  /// ## Proofs
+  ///  Only the JWS signature is verified. If the [Credential](crate::credential::credential_v2::Credential) contains a `proof` property this will not be verified
+  /// by this method.
+  ///
+  /// # Errors
+  /// This method immediately returns an error if
+  /// the credential issuer' url cannot be parsed to a DID belonging to one of the trusted issuers. Otherwise an attempt
+  /// to verify the credential's signature will be made and an error is returned upon failure.
+  pub fn verify_signature_v2<DOC, T>(
+    &self,
+    credential: &Jwt,
+    trusted_issuers: &[DOC],
+    options: &JwsVerificationOptions,
+  ) -> Result<DecodedJwtCredentialV2<T>, JwtValidationError>
+  where
+    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
+    DOC: AsRef<CoreDocument>,
+  {
+    Self::verify_signature_with_verifier_v2(&self.0, credential, trusted_issuers, options)
+  }
+
   // This method takes a slice of issuer's instead of a single issuer in order to better accommodate presentation
   // validation. It also validates the relationship between a holder and the credential subjects when
   // `relationship_criterion` is Some.
   pub(crate) fn validate_decoded_credential<DOC, T>(
-    credential: &impl CredentialT<Properties = T>,
+    credential: &dyn CredentialT<Properties = T>,
     issuers: &[DOC],
     options: &JwtCredentialValidationOptions,
     fail_fast: FailFast,

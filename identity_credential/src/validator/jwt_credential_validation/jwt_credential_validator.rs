@@ -176,8 +176,8 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
     Self::verify_signature_with_verifier(&self.0, credential, trusted_issuers, options)
   }
 
-  /// Decode and verify the JWS signature of a [Credential](crate::credential::credential_v2::Credential) issued as a JWT using the DID Document of a trusted
-  /// issuer.
+  /// Decode and verify the JWS signature of a [Credential](crate::credential::credential_v2::Credential) issued as a
+  /// JWT using the DID Document of a trusted issuer.
   ///
   /// A [`DecodedJwtCredentialV2`] is returned upon success.
   ///
@@ -185,8 +185,8 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
   /// The caller must ensure that the DID Documents of the trusted issuers are up-to-date.
   ///
   /// ## Proofs
-  ///  Only the JWS signature is verified. If the [Credential](crate::credential::credential_v2::Credential) contains a `proof` property this will not be verified
-  /// by this method.
+  ///  Only the JWS signature is verified. If the [Credential](crate::credential::credential_v2::Credential) contains a
+  /// `proof` property this will not be verified by this method.
   ///
   /// # Errors
   /// This method immediately returns an error if

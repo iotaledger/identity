@@ -3,8 +3,10 @@
 
 /// The serialization format used for the JWS.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default)]
 pub enum JwsFormat {
   /// JWS Compact Serialization (<https://www.rfc-editor.org/rfc/rfc7515#section-3.1>).
+  #[default]
   Compact,
   /// General JWS JSON Serialization (<https://www.rfc-editor.org/rfc/rfc7515#section-7.2.1>).
   General,
@@ -14,8 +16,3 @@ pub enum JwsFormat {
   Flatten,
 }
 
-impl Default for JwsFormat {
-  fn default() -> Self {
-    Self::Compact
-  }
-}

@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// The serialization format used for the JWS.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum JwsFormat {
   /// JWS Compact Serialization (<https://www.rfc-editor.org/rfc/rfc7515#section-3.1>).
   #[default]
@@ -15,4 +14,3 @@ pub enum JwsFormat {
   /// Should be used for single signature or MAC use cases.
   Flatten,
 }
-

@@ -25,7 +25,6 @@ pub enum StatusCheck {
   SkipAll = 2,
 }
 
-
 /// Declares how credential subjects must relate to the presentation holder during validation.
 ///
 /// See also the [Subject-Holder Relationship](https://www.w3.org/TR/vc-data-model/#subject-holder-relationships) section of the specification.
@@ -44,7 +43,6 @@ pub enum SubjectHolderRelationship {
   /// Declares that the subject is not required to have any kind of relationship to the holder.
   Any = 2,
 }
-
 
 /// Declares when validation should return if an error occurs.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]

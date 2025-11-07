@@ -15,8 +15,7 @@ use crate::verification_method::MethodRelationship;
 ///
 /// Can either refer to a generic method embedded in the verification method field,
 /// or to a verification relationship.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Default)]
 pub enum MethodScope {
   /// The scope of generic verification methods.
   #[default]
@@ -59,7 +58,6 @@ impl MethodScope {
     Self::VerificationRelationship(MethodRelationship::KeyAgreement)
   }
 }
-
 
 impl FromStr for MethodScope {
   type Err = Error;

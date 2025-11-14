@@ -202,7 +202,7 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
     T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
     DOC: AsRef<CoreDocument>,
   {
-    Self::verify_signature_with_verifier_v2(&self.0, credential, trusted_issuers, options)
+    Self::verify_signature_with_verifier_v2::<DOC, V, T>(&self.0, credential, trusted_issuers, options)
   }
 
   // This method takes a slice of issuer's instead of a single issuer in order to better accommodate presentation

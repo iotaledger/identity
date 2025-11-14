@@ -7,8 +7,8 @@ use identity_core::common::Timestamp;
 use identity_core::common::Url;
 use identity_core::common::Value;
 
-use crate::credential::credential_v2::Credential as CredentialV2;
 use crate::credential::Credential;
+use crate::credential::CredentialV2;
 use crate::credential::Evidence;
 use crate::credential::Issuer;
 use crate::credential::Policy;

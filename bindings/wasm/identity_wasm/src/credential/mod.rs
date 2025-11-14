@@ -4,9 +4,9 @@
 #![allow(clippy::module_inception)]
 
 use identity_iota::core::Object;
-use identity_iota::credential::credential_v2::Credential as CredentialV2;
 use identity_iota::credential::Credential;
 use identity_iota::credential::CredentialT;
+use identity_iota::credential::CredentialV2;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 

@@ -25,8 +25,8 @@ use identity_iota::storage::JwsSignatureOptions;
 use identity_iota::core::json;
 use identity_iota::core::FromJson;
 use identity_iota::core::Url;
-use identity_iota::credential::credential_v2::Credential;
 use identity_iota::credential::CredentialBuilder;
+use identity_iota::credential::CredentialV2;
 use identity_iota::credential::FailFast;
 use identity_iota::credential::Subject;
 use identity_iota::did::DID;
@@ -55,7 +55,7 @@ async fn main() -> anyhow::Result<()> {
   }))?;
 
   // Build credential using subject above and issuer.
-  let credential: Credential = CredentialBuilder::default()
+  let credential: CredentialV2 = CredentialBuilder::default()
     .id(Url::parse("https://example.edu/credentials/3732")?)
     .issuer(Url::parse(issuer_document.id().as_str())?)
     .type_("UniversityDegreeCredential")

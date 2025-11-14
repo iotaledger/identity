@@ -7,8 +7,7 @@
 
 mod builder;
 mod credential;
-/// VC Data Model 2.0 implementation.
-pub mod credential_v2;
+mod credential_v2;
 mod evidence;
 mod issuer;
 #[cfg(feature = "jpt-bbs-plus")]
@@ -57,6 +56,7 @@ pub use self::revocation_bitmap_status::RevocationBitmapStatus;
 pub use self::schema::Schema;
 pub use self::status::Status;
 pub use self::subject::Subject;
+pub use credential_v2::Credential as CredentialV2;
 
 #[cfg(feature = "validator")]
 pub(crate) use self::jwt_serialization::CredentialJwtClaims;

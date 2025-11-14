@@ -66,7 +66,7 @@ pub struct Credential<T = Object> {
   /// A timestamp of when the `Credential` becomes valid.
   #[serde(rename = "validFrom")]
   pub valid_from: Timestamp,
-  /// A timestamp of when the `Credential` should no longer be considered valid.
+  /// The latest point in time at which the `Credential` should be considered valid.
   #[serde(rename = "validUntil", skip_serializing_if = "Option::is_none")]
   pub valid_until: Option<Timestamp>,
   /// Information used to determine the current status of the `Credential`.

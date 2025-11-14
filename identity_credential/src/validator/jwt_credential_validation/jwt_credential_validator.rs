@@ -97,8 +97,8 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
   ///
   /// The following properties are validated according to `options`:
   /// - the issuer's signature on the JWS,
-  /// - the expiration date,
-  /// - the issuance date,
+  /// - the date and time the credential becomes valid,
+  /// - the date and time the credential ceases to be valid,
   /// - the semantic structure.
   ///
   /// # Warning

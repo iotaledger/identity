@@ -66,7 +66,7 @@ impl JwtCredentialValidatorUtils {
     Ok(())
   }
 
-  /// Validate that the [`Credential`] expires on or after the specified [`Timestamp`].
+  /// Validate that the [`Credential`] expires after the specified [`Timestamp`].
   pub fn check_expires_on_or_after<T>(
     credential: &dyn CredentialT<Properties = T>,
     timestamp: Timestamp,

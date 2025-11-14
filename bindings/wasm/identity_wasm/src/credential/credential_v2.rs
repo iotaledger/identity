@@ -284,7 +284,7 @@ pub(crate) struct ICredentialHelperV2 {
   /// A timestamp of when the {@link Credential} becomes valid. Defaults to the current datetime.
   #[typescript(name = "validFrom", type = "Timestamp")]
   valid_from: Option<Timestamp>,
-  /// A timestamp of when the {@link Credential} should no longer be considered valid.
+  /// The latest point in time at which the {@link Credential} should be considered valid.
   #[typescript(name = "validUntil", type = "Timestamp")]
   valid_until: Option<Timestamp>,
   /// Information used to determine the current status of the {@link Credential}.

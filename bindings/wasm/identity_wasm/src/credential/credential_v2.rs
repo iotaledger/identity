@@ -134,7 +134,7 @@ impl WasmCredentialV2 {
     WasmTimestamp::from(self.0.valid_from)
   }
 
-  /// Returns a copy of the timestamp of when the {@link Credential} should no longer be considered valid.
+  /// Returns a copy of the latest point in time at which the {@link Credential} should be considered valid.
   #[wasm_bindgen(js_name = "validUntil")]
   pub fn valid_until(&self) -> Option<WasmTimestamp> {
     self.0.valid_until.map(WasmTimestamp::from)

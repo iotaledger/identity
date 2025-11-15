@@ -172,7 +172,7 @@ pub(crate) fn execute_sub_identity_access_impl(
     )],
   );
 
-  // Return the the borrowed controller token.
+  // Return the borrowed controller token.
   if sub_identity_token.is_controller_cap() {
     ptb.programmable_move_call(
       package,

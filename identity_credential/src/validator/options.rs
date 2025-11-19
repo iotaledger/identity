@@ -8,7 +8,6 @@ use serde::Serialize;
 /// [`credentialStatus`](https://www.w3.org/TR/vc-data-model/#status).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde_repr::Serialize_repr, serde_repr::Deserialize_repr, Default)]
 #[repr(u8)]
-#[derive(Default)]
 pub enum StatusCheck {
   /// Validate the status if supported, reject any unsupported
   /// [`credentialStatus`](https://www.w3.org/TR/vc-data-model/#status) types.
@@ -31,7 +30,6 @@ pub enum StatusCheck {
 // Need to use serde_repr to make this work with duck typed interfaces in the Wasm bindings.
 #[derive(Debug, Clone, Copy, serde_repr::Serialize_repr, serde_repr::Deserialize_repr, Default)]
 #[repr(u8)]
-#[derive(Default)]
 pub enum SubjectHolderRelationship {
   /// The holder must always match the subject on all credentials, regardless of their [`nonTransferable`](https://www.w3.org/TR/vc-data-model/#nontransferable-property) property.
   /// This is the variant returned by [Self::default](Self::default()) and the default used in

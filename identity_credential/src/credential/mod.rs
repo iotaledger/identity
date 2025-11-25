@@ -8,6 +8,7 @@
 mod builder;
 mod credential;
 mod credential_v2;
+mod enveloped_credential;
 mod evidence;
 mod issuer;
 #[cfg(feature = "jpt-bbs-plus")]
@@ -57,6 +58,7 @@ pub use self::schema::Schema;
 pub use self::status::Status;
 pub use self::subject::Subject;
 pub use credential_v2::Credential as CredentialV2;
+pub use enveloped_credential::*;
 
 #[cfg(feature = "validator")]
 pub(crate) use self::jwt_serialization::CredentialJwtClaims;

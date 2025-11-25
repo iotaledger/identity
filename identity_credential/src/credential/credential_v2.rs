@@ -34,7 +34,7 @@ use crate::error::Result;
 pub(crate) static BASE_CONTEXT: Lazy<Context> =
   Lazy::new(|| Context::Url(Url::parse("https://www.w3.org/ns/credentials/v2").unwrap()));
 
-fn deserialize_vc2_0_context<'de, D>(deserializer: D) -> Result<OneOrMany<Context>, D::Error>
+pub(crate) fn deserialize_vc2_0_context<'de, D>(deserializer: D) -> Result<OneOrMany<Context>, D::Error>
 where
   D: Deserializer<'de>,
 {

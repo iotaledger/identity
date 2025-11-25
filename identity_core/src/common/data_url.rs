@@ -1,11 +1,14 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{fmt::Display, str::FromStr};
+use std::fmt::Display;
+use std::str::FromStr;
+
+use serde::Serialize;
 
 use crate::common::Url;
 
-const DEFAULT_MIME_TYPE: &'static str = "text/plain";
+const DEFAULT_MIME_TYPE: &str = "text/plain";
 
 /// An URL using the "data" scheme, according to [RFC2397](https://datatracker.ietf.org/doc/html/rfc2397).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -101,6 +104,27 @@ impl FromStr for DataUrl {
 impl From<DataUrl> for Url {
   fn from(data_url: DataUrl) -> Self {
     Url::parse(data_url.as_str()).expect("DataUrl is always a valid Url")
+  }
+}
+
+impl Serialize for DataUrl {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    serializer.serialize_str(&self.serialized)
+  }
+}
+
+impl<'de> serde::Deserialize<'de> for DataUrl {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    use serde::de::Error;
+
+    let str = <&str>::deserialize(deserializer)?;
+    DataUrl::parse(str).map_err(|_| Error::custom("invalid data URL"))
   }
 }
 

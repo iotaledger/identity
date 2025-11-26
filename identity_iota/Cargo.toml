@@ -1,6 +1,6 @@
 [package]
 name = "identity_iota"
-version = "1.7.0-beta.3"
+version = "1.7.0-beta.4"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -11,14 +11,14 @@ repository.workspace = true
 description = "Framework for Self-Sovereign Identity with IOTA DID."
 
 [dependencies]
-identity_core = { version = "=1.7.0-beta.3", path = "../identity_core", default-features = false }
-identity_credential = { version = "=1.7.0-beta.3", path = "../identity_credential", features = ["validator"], default-features = false }
-identity_did = { version = "=1.7.0-beta.3", path = "../identity_did", default-features = false }
-identity_document = { version = "=1.7.0-beta.3", path = "../identity_document", default-features = false }
-identity_iota_core = { version = "=1.7.0-beta.3", path = "../identity_iota_core", default-features = false }
-identity_resolver = { version = "=1.7.0-beta.3", path = "../identity_resolver", default-features = false, optional = true }
-identity_storage = { version = "=1.7.0-beta.3", path = "../identity_storage", default-features = false, features = ["iota-document"] }
-identity_verification = { version = "=1.7.0-beta.3", path = "../identity_verification", default-features = false }
+identity_core = { version = "=1.7.0-beta.4", path = "../identity_core", default-features = false }
+identity_credential = { version = "=1.7.0-beta.4", path = "../identity_credential", features = ["validator"], default-features = false }
+identity_did = { version = "=1.7.0-beta.4", path = "../identity_did", default-features = false }
+identity_document = { version = "=1.7.0-beta.4", path = "../identity_document", default-features = false }
+identity_iota_core = { version = "=1.7.0-beta.4", path = "../identity_iota_core", default-features = false }
+identity_resolver = { version = "=1.7.0-beta.4", path = "../identity_resolver", default-features = false, optional = true }
+identity_storage = { version = "=1.7.0-beta.4", path = "../identity_storage", default-features = false, features = ["iota-document"] }
+identity_verification = { version = "=1.7.0-beta.4", path = "../identity_verification", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 iota_interaction.workspace = true
@@ -29,7 +29,7 @@ iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag
 [dev-dependencies]
 # required for doc test
 anyhow = "1.0.64"
-identity_iota = { version = "=1.7.0-beta.3", path = "./", features = ["memstore"] }
+identity_iota = { version = "=1.7.0-beta.4", path = "./", features = ["memstore"] }
 iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.11.0" }
 rand = "0.8.5"
 secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag = "v0.3.0" }

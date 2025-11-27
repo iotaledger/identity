@@ -16,6 +16,7 @@ description = "The core traits and types for the identity-rs library."
 deranged = { version = ">=0.4.0, <0.4.1", default-features = false }
 iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", optional = true, default-features = false, features = ["iota", "resolver"] }
 multibase = { version = "0.9", default-features = false, features = ["std"] }
+nom = "8.0.0"
 product_common.workspace = true
 serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }

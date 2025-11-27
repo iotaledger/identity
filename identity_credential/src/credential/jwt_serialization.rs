@@ -115,6 +115,8 @@ where
         credential_subject: InnerCredentialSubject::new(subject),
         issuance_date: None,
         expiration_date: None,
+        valid_from: None,
+        valid_until: None,
         issuer: None,
         credential_schema: Cow::Borrowed(credential_schema),
         credential_status: credential_status.as_ref().map(Cow::Borrowed),
@@ -213,12 +215,11 @@ where
       jti,
       sub,
       vc,
-      custom: _,
+      ..
     } = self;
 
     let InnerCredential {
       context,
-      id: _,
       types,
       credential_subject,
       credential_status,
@@ -229,9 +230,7 @@ where
       non_transferable,
       properties,
       proof,
-      issuance_date: _,
-      issuer: _,
-      expiration_date: _,
+      ..
     } = vc;
 
     Ok(Credential {
@@ -348,6 +347,12 @@ where
   /// A timestamp of when the `Credential` should no longer be considered valid.
   #[serde(rename = "expirationDate", skip_serializing_if = "Option::is_none")]
   expiration_date: Option<Timestamp>,
+  /// A timestamp of when the `Credential` becomes valid.
+  #[serde(rename = "validFrom", skip_serializing_if = "Option::is_none")]
+  valid_from: Option<Timestamp>,
+  /// A timestamp of when the `Credential` should no longer be considered valid.
+  #[serde(rename = "validUntil", skip_serializing_if = "Option::is_none")]
+  valid_until: Option<Timestamp>,
   /// Information used to determine the current status of the `Credential`.
   #[serde(default, rename = "credentialStatus", skip_serializing_if = "Option::is_none")]
   credential_status: Option<Cow<'credential, Status>>,

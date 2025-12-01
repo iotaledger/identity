@@ -24,7 +24,6 @@ indexmap = { version = "2.0", default-features = false, features = ["std", "serd
 itertools = { version = "0.11", default-features = false, features = ["use_std"], optional = true }
 json-proof-token = { workspace = true, optional = true }
 jsonschema = { version = "0.19", optional = true, default-features = false }
-monostate = "1.0.2"
 once_cell = { version = "1.18", default-features = false, features = ["std"] }
 reqwest = { version = "0.12", default-features = false, features = ["default-tls", "json", "stream"], optional = true }
 roaring = { version = "0.10.2", default-features = false, features = ["serde"], optional = true }

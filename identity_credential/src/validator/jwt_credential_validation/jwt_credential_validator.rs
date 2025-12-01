@@ -24,6 +24,7 @@ use crate::credential::Credential;
 use crate::credential::CredentialJwtClaims;
 use crate::credential::CredentialT;
 use crate::credential::Jwt;
+use crate::credential::JwtVcV2;
 use crate::validator::DecodedJwtCredentialV2;
 use crate::validator::FailFast;
 
@@ -92,7 +93,7 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
     Ok(credential_token)
   }
 
-  /// Decodes and validates a [CredentialV2](crate::credential::credential_v2::Credential) issued as a JWT.
+  /// Decodes and validates a [CredentialV2](crate::credential::CredentialV2) issued as a JWT.
   /// A [`DecodedJwtCredentialV2`] is returned upon success.
   ///
   /// The following properties are validated according to `options`:
@@ -118,7 +119,7 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
   /// An error is returned whenever a validated condition is not satisfied.
   pub fn validate_v2<DOC, T>(
     &self,
-    credential_jwt: &Jwt,
+    credential_jwt: &JwtVcV2,
     issuer: &DOC,
     options: &JwtCredentialValidationOptions,
     fail_fast: FailFast,
@@ -194,7 +195,7 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
   /// to verify the credential's signature will be made and an error is returned upon failure.
   pub fn verify_signature_v2<DOC, T>(
     &self,
-    credential: &Jwt,
+    credential: &JwtVcV2,
     trusted_issuers: &[DOC],
     options: &JwsVerificationOptions,
   ) -> Result<DecodedJwtCredentialV2<T>, JwtValidationError>
@@ -365,7 +366,7 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
 
   fn verify_signature_with_verifier_v2<DOC, S, T>(
     signature_verifier: &S,
-    credential: &Jwt,
+    credential: &JwtVcV2,
     trusted_issuers: &[DOC],
     options: &JwsVerificationOptions,
   ) -> Result<DecodedJwtCredentialV2<T>, JwtValidationError>

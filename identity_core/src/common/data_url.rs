@@ -72,7 +72,7 @@ impl DataUrl {
   /// returns the default MIME type "text/plain;charset=US-ASCII", instead of the empty
   /// string.
   /// # Example
-  pub fn mediatype(&self) -> &str {
+  pub fn media_type(&self) -> &str {
     let start = "data:".len();
     let end = self.start_of_data as usize
       - 1 // ','

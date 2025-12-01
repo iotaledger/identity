@@ -233,7 +233,7 @@ where
 
 impl<T> Credential<T>
 where
-  T: ToOwned<Owned = T> + Serialize + DeserializeOwned,
+  T: Serialize,
 {
   /// Serializes the [`Credential`] as a JWT claims set
   /// in accordance with [VC Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/).

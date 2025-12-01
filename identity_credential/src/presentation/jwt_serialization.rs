@@ -206,6 +206,16 @@ where
   }
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(bound = "C: serde::de::DeserializeOwned, T: serde::de::DeserializeOwned")]
+pub(crate) struct JwtPresentationV2Claims<C, T> {
+  pub(crate) iat: Option<i64>,
+  pub(crate) exp: Option<i64>,
+  pub(crate) aud: Option<Url>,
+  #[serde(flatten)]
+  pub(crate) vp: Presentation<C, T>,
+}
+
 #[cfg(test)]
 mod test {
   use super::PresentationJwtClaims;

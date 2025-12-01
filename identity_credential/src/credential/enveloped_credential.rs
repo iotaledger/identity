@@ -29,7 +29,10 @@ where
   if str == ENVELOPED_VC_TYPE {
     Ok(ENVELOPED_VC_TYPE.to_owned().into_boxed_str())
   } else {
-    Err(Error::invalid_value(Unexpected::Str(str), &ENVELOPED_VC_TYPE))
+    Err(Error::invalid_value(
+      Unexpected::Str(str),
+      &format!("\"{}\"", ENVELOPED_VC_TYPE).as_str(),
+    ))
   }
 }
 
@@ -78,10 +81,9 @@ impl EnvelopedVc {
   /// and that no duplicated contexts are present.
   /// # Example
   /// ```
-  /// # use identity_core::common::DataUrl;
-  /// # use identity_credential::credential::EnvelopedVc;
+  /// # use identity_credential::credential::{EnvelopedVc, VcDataUrl};
   /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-  /// let mut enveloped_vc = EnvelopedVc::new(DataUrl::parse("data:application/vc,QzVjV...RMjU")?);
+  /// let mut enveloped_vc = EnvelopedVc::new(VcDataUrl::parse("data:application/vc,QzVjV...RMjU")?);
   /// enveloped_vc.set_context(vec![]);
   /// assert_eq!(
   ///   enveloped_vc.context(),
@@ -124,11 +126,11 @@ impl VcDataUrl {
   pub fn parse(input: &str) -> Result<Self, VcDataUrlParsingError> {
     let data_url = DataUrl::parse(input)?;
 
-    if data_url.mediatype().starts_with("application/vc") {
+    if data_url.media_type().starts_with("application/vc") {
       Ok(Self(data_url))
     } else {
       Err(VcDataUrlParsingError::InvalidMediaType(InvalidMediaType {
-        got: data_url.mediatype().to_string(),
+        got: data_url.media_type().to_string(),
       }))
     }
   }
@@ -146,11 +148,11 @@ impl TryFrom<DataUrl> for VcDataUrl {
   type Error = InvalidMediaType;
 
   fn try_from(value: DataUrl) -> Result<Self, Self::Error> {
-    if value.mediatype().starts_with("application/vc") {
+    if value.media_type().starts_with("application/vc") {
       Ok(Self(value))
     } else {
       Err(InvalidMediaType {
-        got: value.mediatype().to_string(),
+        got: value.media_type().to_string(),
       })
     }
   }
@@ -204,5 +206,27 @@ mod tests {
     assert_eq!(deserialized.type_(), ENVELOPED_VC_TYPE);
     assert_eq!(deserialized.id, vc_data_url);
     assert_eq!(deserialized.context(), &[CredentialV2::<()>::base_context().clone()]);
+  }
+
+  #[test]
+  fn deserialization_of_spec_example() {
+    let json = r#"
+{
+  "@context": "https://www.w3.org/ns/credentials/v2",
+  "id": "data:application/vc+sd-jwt,QzVjV...RMjU",
+  "type": "EnvelopedVerifiableCredential"
+}
+    "#;
+
+    let _enveloped_vc: EnvelopedVc = serde_json::from_str(json).unwrap();
+  }
+
+  #[test]
+  fn deserialization_of_invalid_type_fails() {
+    let err = deserialize_enveloped_vc_type(&mut serde_json::Deserializer::from_str("\"InvalidType\"")).unwrap_err();
+    assert_eq!(
+      err.to_string(),
+      "invalid value: string \"InvalidType\", expected \"EnvelopedVerifiableCredential\""
+    );
   }
 }

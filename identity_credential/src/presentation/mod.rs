@@ -23,4 +23,6 @@ pub use self::presentation_builder::PresentationBuilder;
 pub use jwp_presentation_options::JwpPresentationOptions;
 
 #[cfg(feature = "validator")]
+pub(crate) use self::jwt_serialization::JwtPresentationV2Claims;
+#[cfg(feature = "validator")]
 pub(crate) use self::jwt_serialization::PresentationJwtClaims;

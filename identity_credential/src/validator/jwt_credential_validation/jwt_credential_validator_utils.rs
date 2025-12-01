@@ -14,7 +14,7 @@ use super::SignerContext;
 use crate::credential::Credential;
 use crate::credential::CredentialJwtClaims;
 use crate::credential::CredentialT;
-use crate::credential::Jwt;
+use crate::credential::CredentialV2;
 #[cfg(feature = "status-list-2021")]
 use crate::revocation::status_list_2021::StatusList2021Credential;
 use crate::validator::SubjectHolderRelationship;
@@ -246,21 +246,30 @@ impl JwtCredentialValidatorUtils {
   /// # Errors
   ///
   /// If the JWT decoding fails or the issuer field is not a valid DID.
-  pub fn extract_issuer_from_jwt<D>(credential: &Jwt) -> std::result::Result<D, JwtValidationError>
+  pub fn extract_issuer_from_jwt<D>(credential: &impl AsRef<str>) -> std::result::Result<D, JwtValidationError>
   where
     D: DID,
     <D as FromStr>::Err: std::error::Error + Send + Sync + 'static,
   {
     let validation_item = Decoder::new()
-      .decode_compact_serialization(credential.as_str().as_bytes(), None)
+      .decode_compact_serialization(credential.as_ref().as_bytes(), None)
       .map_err(JwtValidationError::JwsDecodingError)?;
 
-    let claims: CredentialJwtClaims<'_, Object> = CredentialJwtClaims::from_json_slice(&validation_item.claims())
-      .map_err(|err| {
-        JwtValidationError::CredentialStructure(crate::Error::JwtClaimsSetDeserializationError(err.into()))
+    let try_v1 = |payload: &[u8]| {
+      CredentialJwtClaims::<'_, Object>::from_json_slice(payload).map(|claims| claims.iss.url().clone())
+    };
+    let try_v2 =
+      |payload: &[u8]| CredentialV2::<Object>::from_json_slice(payload).map(|cred| cred.issuer().url().clone());
+
+    let issuer_url = try_v1(validation_item.claims())
+      .or_else(|_| try_v2(validation_item.claims()))
+      .map_err(|_| {
+        JwtValidationError::CredentialStructure(crate::error::Error::JwtClaimsSetDeserializationError(
+          "cannot deserialize a Credential V1 or V2".into(),
+        ))
       })?;
 
-    D::from_str(claims.iss.url().as_str()).map_err(|err| JwtValidationError::SignerUrl {
+    D::from_str(issuer_url.as_str()).map_err(|err| JwtValidationError::SignerUrl {
       signer_ctx: SignerContext::Issuer,
       source: err.into(),
     })

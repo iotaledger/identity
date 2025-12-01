@@ -1,9 +1,7 @@
 // Copyright 2020-2023 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use identity_core::common::Object;
 use identity_core::common::Timestamp;
-use identity_core::common::Url;
 use identity_core::convert::FromJson;
 use identity_did::CoreDID;
 use identity_document::document::CoreDocument;
@@ -12,7 +10,7 @@ use identity_verification::jws::JwsVerifier;
 use std::str::FromStr;
 
 use crate::credential::Jwt;
-use crate::presentation::Presentation;
+use crate::presentation::JwtPresentationV2Claims;
 use crate::presentation::PresentationJwtClaims;
 use crate::validator::jwt_credential_validation::JwtValidationError;
 use crate::validator::jwt_credential_validation::SignerContext;
@@ -84,71 +82,41 @@ where
         CompoundJwtPresentationValidationError::one_presentation_error(JwtValidationError::PresentationJwsError(err))
       })?;
 
-    let claims: PresentationJwtClaims<'_, CRED, T> = PresentationJwtClaims::from_json_slice(&decoded_jws.claims)
+    // Try V2 first.
+    if let Ok(JwtPresentationV2Claims { vp, aud, iat, exp }) = serde_json::from_slice(&decoded_jws.claims) {
+      check_holder(vp.holder.as_str(), holder.as_ref())?;
+
+      return Ok(DecodedJwtPresentation {
+        presentation: vp,
+        header: Box::new(decoded_jws.protected),
+        expiration_date: convert_and_check_exp(exp, options.earliest_expiry_date)?,
+        issuance_date: convert_and_check_iat(iat, options.latest_issuance_date)?,
+        aud,
+        custom_claims: None,
+      });
+    }
+
+    // Fallback to V1.1
+    let mut claims: PresentationJwtClaims<'_, CRED, T> = PresentationJwtClaims::from_json_slice(&decoded_jws.claims)
       .map_err(|err| {
         CompoundJwtPresentationValidationError::one_presentation_error(JwtValidationError::PresentationStructure(
           crate::Error::JwtClaimsSetDeserializationError(err.into()),
         ))
       })?;
 
-    // Verify that holder document matches holder in presentation.
-    let holder_did: CoreDID = CoreDID::from_str(claims.iss.as_str()).map_err(|err| {
-      CompoundJwtPresentationValidationError::one_presentation_error(JwtValidationError::SignerUrl {
-        signer_ctx: SignerContext::Holder,
-        source: err.into(),
-      })
-    })?;
-
-    if &holder_did != <CoreDocument>::id(holder.as_ref()) {
+    check_holder(claims.iss.as_str(), holder.as_ref())?;
+    let expiration_date = convert_and_check_exp(claims.exp, options.earliest_expiry_date)?;
+    let issuance_date = claims.issuance_date.map(|id| id.to_issuance_date().ok()).flatten();
+    if issuance_date > options.latest_issuance_date {
       return Err(CompoundJwtPresentationValidationError::one_presentation_error(
-        JwtValidationError::DocumentMismatch(SignerContext::Holder),
+        JwtValidationError::IssuanceDate,
       ));
     }
 
-    // Check the expiration date.
-    let expiration_date: Option<Timestamp> = claims
-      .exp
-      .map(|exp| {
-        Timestamp::from_unix(exp).map_err(|err| {
-          CompoundJwtPresentationValidationError::one_presentation_error(JwtValidationError::PresentationStructure(
-            crate::Error::JwtClaimsSetDeserializationError(err.into()),
-          ))
-        })
-      })
-      .transpose()?;
+    let aud = claims.aud.take();
+    let custom_claims = claims.custom.take();
 
-    (expiration_date.is_none() || expiration_date >= Some(options.earliest_expiry_date.unwrap_or_default()))
-      .then_some(())
-      .ok_or(CompoundJwtPresentationValidationError::one_presentation_error(
-        JwtValidationError::ExpirationDate,
-      ))?;
-
-    // Check issuance date.
-    let issuance_date: Option<Timestamp> = match claims.issuance_date {
-      Some(iss) => {
-        if iss.iat.is_some() || iss.nbf.is_some() {
-          Some(iss.to_issuance_date().map_err(|err| {
-            CompoundJwtPresentationValidationError::one_presentation_error(JwtValidationError::PresentationStructure(
-              crate::Error::JwtClaimsSetDeserializationError(err.into()),
-            ))
-          })?)
-        } else {
-          None
-        }
-      }
-      None => None,
-    };
-
-    (issuance_date.is_none() || issuance_date <= Some(options.latest_issuance_date.unwrap_or_default()))
-      .then_some(())
-      .ok_or(CompoundJwtPresentationValidationError::one_presentation_error(
-        JwtValidationError::IssuanceDate,
-      ))?;
-
-    let aud: Option<Url> = claims.aud.clone();
-    let custom_claims: Option<Object> = claims.custom.clone();
-
-    let presentation: Presentation<CRED, T> = claims.try_into_presentation().map_err(|err| {
+    let presentation = claims.try_into_presentation().map_err(|err| {
       CompoundJwtPresentationValidationError::one_presentation_error(JwtValidationError::PresentationStructure(err))
     })?;
 
@@ -162,5 +130,66 @@ where
     };
 
     Ok(decoded_jwt_presentation)
+  }
+}
+
+fn check_holder(holder: &str, holder_doc: &CoreDocument) -> Result<(), CompoundJwtPresentationValidationError> {
+  let holder_did: CoreDID = CoreDID::from_str(holder).map_err(|err| {
+    CompoundJwtPresentationValidationError::one_presentation_error(JwtValidationError::SignerUrl {
+      signer_ctx: SignerContext::Holder,
+      source: err.into(),
+    })
+  })?;
+
+  if &holder_did != <CoreDocument>::id(holder_doc) {
+    Err(CompoundJwtPresentationValidationError::one_presentation_error(
+      JwtValidationError::DocumentMismatch(SignerContext::Holder),
+    ))
+  } else {
+    Ok(())
+  }
+}
+
+fn convert_and_check_exp(
+  exp: Option<i64>,
+  earliest_expiry_date: Option<Timestamp>,
+) -> Result<Option<Timestamp>, CompoundJwtPresentationValidationError> {
+  let Some(exp) = exp else {
+    return Ok(None);
+  };
+  let exp = Timestamp::from_unix(exp).map_err(|e| {
+    CompoundJwtPresentationValidationError::one_presentation_error(JwtValidationError::PresentationStructure(
+      crate::Error::JwtClaimsSetDeserializationError(e.into()),
+    ))
+  })?;
+
+  if exp >= earliest_expiry_date.unwrap_or_else(Timestamp::now_utc) {
+    Ok(Some(exp))
+  } else {
+    Err(CompoundJwtPresentationValidationError::one_presentation_error(
+      JwtValidationError::ExpirationDate,
+    ))
+  }
+}
+
+fn convert_and_check_iat(
+  iat: Option<i64>,
+  latest_issuance_date: Option<Timestamp>,
+) -> Result<Option<Timestamp>, CompoundJwtPresentationValidationError> {
+  let Some(iat) = iat else {
+    return Ok(None);
+  };
+  let iat = Timestamp::from_unix(iat).map_err(|e| {
+    CompoundJwtPresentationValidationError::one_presentation_error(JwtValidationError::PresentationStructure(
+      crate::Error::JwtClaimsSetDeserializationError(e.into()),
+    ))
+  })?;
+
+  if iat <= latest_issuance_date.unwrap_or_else(Timestamp::now_utc) {
+    Ok(Some(iat))
+  } else {
+    Err(CompoundJwtPresentationValidationError::one_presentation_error(
+      JwtValidationError::IssuanceDate,
+    ))
   }
 }

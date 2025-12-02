@@ -18,7 +18,7 @@ use crate::key_storage::KeyType;
 
 use async_trait::async_trait;
 use identity_core::common::Object;
-use identity_credential::credential::CredentialT;
+use identity_credential::credential::Credential;
 use identity_credential::credential::CredentialV2;
 use identity_credential::credential::Jws;
 use identity_credential::credential::Jwt;
@@ -110,7 +110,7 @@ pub trait JwkDocumentExt: private::Sealed {
   /// The `custom_claims` can be used to set additional claims on the resulting JWT.
   async fn create_credential_jwt<K, I, T>(
     &self,
-    credential: &(dyn CredentialT<Properties = T> + Sync),
+    credential: &Credential<T>,
     storage: &Storage<K, I>,
     fragment: &str,
     options: &JwsSignatureOptions,
@@ -464,7 +464,7 @@ impl JwkDocumentExt for CoreDocument {
 
   async fn create_credential_jwt<K, I, T>(
     &self,
-    credential: &(dyn CredentialT<Properties = T> + Sync),
+    credential: &Credential<T>,
     storage: &Storage<K, I>,
     fragment: &str,
     options: &JwsSignatureOptions,
@@ -604,7 +604,7 @@ where
 #[cfg(feature = "iota-document")]
 mod iota_document {
   use super::*;
-  use identity_credential::credential::Jwt;
+  use identity_credential::credential::{Credential, Jwt};
   use identity_iota_core::IotaDocument;
 
   generate_method_for_document_type!(
@@ -661,7 +661,7 @@ mod iota_document {
 
     async fn create_credential_jwt<K, I, T>(
       &self,
-      credential: &(dyn CredentialT<Properties = T> + Sync),
+      credential: &Credential<T>,
       storage: &Storage<K, I>,
       fragment: &str,
       options: &JwsSignatureOptions,

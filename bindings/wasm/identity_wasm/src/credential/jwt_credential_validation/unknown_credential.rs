@@ -3,6 +3,7 @@
 
 use identity_iota::core::Object;
 use identity_iota::credential::Credential;
+use identity_iota::credential::EnvelopedVc;
 use identity_iota::credential::Jwt;
 use wasm_bindgen::prelude::*;
 
@@ -18,6 +19,7 @@ pub struct WasmUnknownCredentialContainer(UnknownCredential);
 pub(crate) enum UnknownCredential {
   Jwt(Jwt),
   Credential(Credential),
+  EnvelopedVc(EnvelopedVc),
   Other(Object),
 }
 
@@ -41,6 +43,15 @@ impl WasmUnknownCredentialContainer {
   pub fn try_into_credential(&self) -> Option<WasmCredential> {
     match &self.0 {
       UnknownCredential::Credential(credential) => Some(WasmCredential::from(credential.clone())),
+      _ => None,
+    }
+  }
+
+  /// Returns an {@link EnvelopedVc} if the credential is of said type, `undefined` otherwise.
+  #[wasm_bindgen(js_name = tryIntoEnvelopedVc)]
+  pub fn try_into_enveloped_vc(&self) -> Option<crate::credential::WasmEnvelopedVc> {
+    match &self.0 {
+      UnknownCredential::EnvelopedVc(enveloped_vc) => Some(crate::credential::WasmEnvelopedVc(enveloped_vc.clone())),
       _ => None,
     }
   }

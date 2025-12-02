@@ -12,6 +12,8 @@ use super::options::WasmJwtCredentialValidationOptions;
 use crate::common::ImportedDocumentLock;
 use crate::common::ImportedDocumentReadGuard;
 use crate::common::WasmTimestamp;
+use crate::credential::jwt::AnyJwt;
+use crate::credential::jwt::WasmJwtVcV2;
 use crate::credential::options::WasmStatusCheck;
 use crate::credential::revocation::status_list_2021::WasmStatusList2021Credential;
 use crate::credential::CredentialAny;
@@ -116,7 +118,7 @@ impl WasmJwtCredentialValidator {
   #[wasm_bindgen(js_name = validateV2)]
   pub fn validate_v2(
     &self,
-    credential_jwt: &WasmJwt,
+    credential_jwt: &WasmJwtVcV2,
     issuer: &IToCoreDocument,
     options: &WasmJwtCredentialValidationOptions,
     fail_fast: WasmFailFast,
@@ -189,7 +191,7 @@ impl WasmJwtCredentialValidator {
   #[allow(non_snake_case)]
   pub fn verify_signature_v2(
     &self,
-    credential: &WasmJwt,
+    credential: &WasmJwtVcV2,
     trustedIssuers: &ArrayIToCoreDocument,
     options: &WasmJwsVerificationOptions,
   ) -> Result<WasmDecodedJwtCredentialV2> {
@@ -292,8 +294,8 @@ impl WasmJwtCredentialValidator {
   ///
   /// If the JWT decoding fails or the issuer field is not a valid DID.
   #[wasm_bindgen(js_name = extractIssuerFromJwt)]
-  pub fn extract_issuer_from_jwt(credential: &WasmJwt) -> Result<WasmCoreDID> {
-    JwtCredentialValidatorUtils::extract_issuer_from_jwt::<CoreDID>(&credential.0)
+  pub fn extract_issuer_from_jwt(credential: &AnyJwt) -> Result<WasmCoreDID> {
+    JwtCredentialValidatorUtils::extract_issuer_from_jwt::<CoreDID>(&credential.to_string())
       .map(WasmCoreDID::from)
       .wasm_result()
   }

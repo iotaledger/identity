@@ -19,53 +19,6 @@ import {
 import { IotaClient } from "@iota/iota-sdk/client";
 import { getFundedClient, getMemstorage, IOTA_IDENTITY_PKG_ID, NETWORK_URL } from "../util";
 
-/** Creates a DID Document and publishes it in a new Alias Output.
-
-Its functionality is equivalent to the "create DID" example
-and exists for convenient calling from the other examples. */
-export async function createDid(client: Client, secretManager: SecretManagerType, storage: Storage): Promise<{
-    address: Address;
-    document: IotaDocument;
-    fragment: string;
-}> {
-    const didClient = new IotaIdentityClient(client);
-    const networkHrp: string = await didClient.getNetworkHrp();
-
-    const secretManagerInstance = new SecretManager(secretManager);
-    const walletAddressBech32 = (await secretManagerInstance.generateEd25519Addresses({
-        accountIndex: 0,
-        range: {
-            start: 0,
-            end: 1,
-        },
-        bech32Hrp: networkHrp,
-    }))[0];
-
-    console.log("Wallet address Bech32:", walletAddressBech32);
-
-    await ensureAddressHasFunds(client, walletAddressBech32);
-
-    const address: Address = Utils.parseBech32Address(walletAddressBech32);
-
-    // Create a new DID document with a placeholder DID.
-    // The DID will be derived from the Alias Id of the Alias Output after publishing.
-    const document = new IotaDocument(networkHrp);
-
-    const fragment = await document.generateMethodJwp(
-        storage,
-        ProofAlgorithm.BBS,
-        undefined,
-        MethodScope.VerificationMethod(),
-    );
-    // Construct an Alias Output containing the DID document, with the wallet address
-    // set as both the state controller and governor.
-    const aliasOutput: AliasOutput = await didClient.newDidOutput(address, document);
-
-    // Publish the Alias Output and get the published DID document.
-    const published = await didClient.publishDidOutput(secretManager, aliasOutput);
-
-    return { address, document: published, fragment };
-}
 export async function zkp() {
     // ===========================================================================
     // Step 1: Create identity for the issuer.
@@ -81,7 +34,7 @@ export async function zkp() {
     const unpublishedIssuerDocument = new IotaDocument(network);
     const issuerFragment = await unpublishedIssuerDocument.generateMethodJwp(
         issuerStorage,
-        ProofAlgorithm.BLS12381_SHA256,
+        ProofAlgorithm.BBS,
         undefined,
         MethodScope.VerificationMethod(),
     );

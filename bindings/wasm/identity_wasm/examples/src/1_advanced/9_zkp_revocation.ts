@@ -34,7 +34,7 @@ export async function zkp_revocation() {
     const unpublishedIssuerDocument = new IotaDocument(network);
     const issuerFragment = await unpublishedIssuerDocument.generateMethodJwp(
         issuerStorage,
-        ProofAlgorithm.BLS12381_SHA256,
+        ProofAlgorithm.BBS,
         undefined,
         MethodScope.VerificationMethod(),
     );

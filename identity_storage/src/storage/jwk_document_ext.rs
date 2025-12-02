@@ -604,7 +604,8 @@ where
 #[cfg(feature = "iota-document")]
 mod iota_document {
   use super::*;
-  use identity_credential::credential::{Credential, Jwt};
+  use identity_credential::credential::Credential;
+  use identity_credential::credential::Jwt;
   use identity_iota_core::IotaDocument;
 
   generate_method_for_document_type!(

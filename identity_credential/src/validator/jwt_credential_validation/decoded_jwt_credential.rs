@@ -25,6 +25,7 @@ pub struct DecodedJwtCredential<T = Object> {
 ///
 /// Note that having an instance of this type only means the JWS it was constructed from was verified.
 /// It does not imply anything about a potentially present proof property on the credential itself.
+#[derive(Debug, Clone)]
 pub struct DecodedJwtCredentialV2<T = Object> {
   /// The decoded credential parsed to the [Verifiable Credentials Data model](https://www.w3.org/TR/vc-data-model/).
   pub credential: CredentialV2<T>,

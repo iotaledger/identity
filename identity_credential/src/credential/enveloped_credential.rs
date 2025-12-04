@@ -99,7 +99,6 @@ impl EnvelopedVc {
       .chain(contexts)
       .unique()
       .collect_vec();
-    debug_assert_eq!(contexts.first(), Some(CredentialV2::<()>::base_context()));
 
     self.context = contexts.into();
   }

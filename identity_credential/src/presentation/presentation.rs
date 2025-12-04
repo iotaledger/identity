@@ -23,6 +23,7 @@ use crate::credential::Proof;
 use crate::credential::RefreshService;
 use crate::error::Error;
 use crate::error::Result;
+use crate::presentation::JwtPresentationV2Claims;
 
 use super::jwt_serialization::PresentationJwtClaims;
 use super::JwtPresentationOptions;
@@ -170,7 +171,7 @@ where
         .map_err(|err| Error::JwtClaimsSetSerializationError(err.into()))
     } else if context == CredentialV2::<()>::base_context() {
       // VC Data Model v2.0
-      self
+      JwtPresentationV2Claims::from_options(self.clone(), options)
         .to_json()
         .map_err(|err| Error::JwtClaimsSetSerializationError(err.into()))
     } else {

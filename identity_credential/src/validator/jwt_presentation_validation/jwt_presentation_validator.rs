@@ -106,12 +106,13 @@ where
 
     check_holder(claims.iss.as_str(), holder.as_ref())?;
     let expiration_date = convert_and_check_exp(claims.exp, options.earliest_expiry_date)?;
-    let issuance_date = claims.issuance_date.and_then(|id| id.to_issuance_date().ok());
-    if issuance_date > options.latest_issuance_date {
-      return Err(CompoundJwtPresentationValidationError::one_presentation_error(
-        JwtValidationError::IssuanceDate,
-      ));
-    }
+    let issuance_date = {
+      let iat = claims
+        .issuance_date
+        .and_then(|id| id.to_issuance_date().ok())
+        .map(|ts| ts.to_unix());
+      convert_and_check_iat(iat, options.latest_issuance_date)?
+    };
 
     let aud = claims.aud.take();
     let custom_claims = claims.custom.take();
@@ -163,7 +164,7 @@ fn convert_and_check_exp(
     ))
   })?;
 
-  if exp >= earliest_expiry_date.unwrap_or_else(Timestamp::now_utc) {
+  if exp >= earliest_expiry_date.unwrap_or_default() {
     Ok(Some(exp))
   } else {
     Err(CompoundJwtPresentationValidationError::one_presentation_error(
@@ -185,7 +186,7 @@ fn convert_and_check_iat(
     ))
   })?;
 
-  if iat <= latest_issuance_date.unwrap_or_else(Timestamp::now_utc) {
+  if iat <= latest_issuance_date.unwrap_or_default() {
     Ok(Some(iat))
   } else {
     Err(CompoundJwtPresentationValidationError::one_presentation_error(

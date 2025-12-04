@@ -10,7 +10,7 @@ use crate::common::Url;
 
 const DEFAULT_MIME_TYPE: &str = "text/plain";
 
-/// An URL using the "data" scheme, according to [RFC2397](https://datatracker.ietf.org/doc/html/rfc2397).
+/// A URL using the "data" scheme, according to [RFC2397](https://datatracker.ietf.org/doc/html/rfc2397).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DataUrl {
   serialized: Box<str>,

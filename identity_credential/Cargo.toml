@@ -21,7 +21,7 @@ identity_did = { version = "=1.7.0-beta.3", path = "../identity_did", default-fe
 identity_document = { version = "=1.7.0-beta.3", path = "../identity_document", default-features = false }
 identity_verification = { version = "=1.7.0-beta.3", path = "../identity_verification", default-features = false }
 indexmap = { version = "2.0", default-features = false, features = ["std", "serde"] }
-itertools = { version = "0.11", default-features = false, features = ["use_std"], optional = true }
+itertools = { version = "0.11", default-features = false, features = ["use_std"] }
 json-proof-token = { workspace = true, optional = true }
 jsonschema = { version = "0.19", optional = true, default-features = false }
 once_cell = { version = "1.18", default-features = false, features = ["std"] }
@@ -66,7 +66,7 @@ credential = []
 presentation = ["credential"]
 revocation-bitmap = ["dep:flate2", "dep:roaring"]
 status-list-2021 = ["revocation-bitmap"]
-validator = ["dep:itertools", "dep:serde_repr", "credential", "presentation"]
+validator = ["dep:serde_repr", "credential", "presentation"]
 domain-linkage = ["validator"]
 domain-linkage-fetch = ["domain-linkage", "dep:reqwest", "dep:futures"]
 sd-jwt = ["credential", "validator", "dep:sd-jwt-payload"]

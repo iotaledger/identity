@@ -106,7 +106,7 @@ where
 
     check_holder(claims.iss.as_str(), holder.as_ref())?;
     let expiration_date = convert_and_check_exp(claims.exp, options.earliest_expiry_date)?;
-    let issuance_date = claims.issuance_date.map(|id| id.to_issuance_date().ok()).flatten();
+    let issuance_date = claims.issuance_date.and_then(|id| id.to_issuance_date().ok());
     if issuance_date > options.latest_issuance_date {
       return Err(CompoundJwtPresentationValidationError::one_presentation_error(
         JwtValidationError::IssuanceDate,

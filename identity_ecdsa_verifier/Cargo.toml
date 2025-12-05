@@ -1,6 +1,6 @@
 [package]
 name = "identity_ecdsa_verifier"
-version = "1.7.0-beta.4"
+version = "1.8.0-beta.1"
 authors = ["IOTA Stiftung", "Filancore GmbH"]
 edition.workspace = true
 homepage.workspace = true
@@ -14,7 +14,7 @@ description = "JWS ECDSA signature verification for IOTA Identity"
 workspace = true
 
 [dependencies]
-identity_verification = { version = "=1.7.0-beta.4", path = "../identity_verification", default-features = false }
+identity_verification = { version = "=1.8.0-beta.1", path = "../identity_verification", default-features = false }
 k256 = { version = "0.13.3", default-features = false, features = ["std", "ecdsa", "ecdsa-core"], optional = true }
 p256 = { version = "0.13.2", default-features = false, features = ["std", "ecdsa", "ecdsa-core"], optional = true }
 signature = { version = "2", default-features = false }

@@ -1,6 +1,6 @@
 [package]
 name = "identity_stronghold"
-version = "1.7.0-beta.4"
+version = "1.8.0-beta.1"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -13,8 +13,8 @@ description = "Secure JWK storage with Stronghold for IOTA Identity"
 [dependencies]
 async-trait = { version = "0.1.64", default-features = false }
 bls12_381_plus = { workspace = true, optional = true }
-identity_storage = { version = "=1.7.0-beta.4", path = "../identity_storage", default-features = false }
-identity_verification = { version = "=1.7.0-beta.4", path = "../identity_verification", default-features = false }
+identity_storage = { version = "=1.8.0-beta.1", path = "../identity_storage", default-features = false }
+identity_verification = { version = "=1.8.0-beta.1", path = "../identity_verification", default-features = false }
 iota-crypto = { version = "0.23.2", default-features = false, features = ["ed25519"] }
 iota-sdk = { version = "1.1.5", default-features = false, features = ["client", "stronghold"] }
 iota_stronghold = { version = "2.1.0", default-features = false }
@@ -27,8 +27,8 @@ zkryptium = { workspace = true, optional = true }
 [dev-dependencies]
 anyhow = "1.0.82"
 bls12_381_plus = { workspace = true }
-identity_did = { version = "=1.7.0-beta.4", path = "../identity_did", default-features = false }
-identity_storage = { version = "=1.7.0-beta.4", path = "../identity_storage", default-features = false, features = ["jpt-bbs-plus"] }
+identity_did = { version = "=1.8.0-beta.1", path = "../identity_did", default-features = false }
+identity_storage = { version = "=1.8.0-beta.1", path = "../identity_storage", default-features = false, features = ["jpt-bbs-plus"] }
 json-proof-token = { workspace = true }
 tokio = { version = "1.46.1", default-features = false, features = ["macros", "sync", "rt"] }
 zkryptium = { workspace = true }

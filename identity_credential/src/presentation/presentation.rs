@@ -14,14 +14,17 @@ use identity_core::common::OneOrMany;
 use identity_core::common::Url;
 use identity_core::convert::FmtJson;
 use identity_core::convert::ToJson;
+use serde::de::DeserializeOwned;
 
 use crate::credential::Credential;
+use crate::credential::CredentialV2;
 use crate::credential::Policy;
 use crate::credential::Proof;
 use crate::credential::RefreshService;
 use crate::error::Error;
 use crate::error::Result;
 
+use super::jwt_serialization::JwtPresentationV2Claims;
 use super::jwt_serialization::PresentationJwtClaims;
 use super::JwtPresentationOptions;
 use super::PresentationBuilder;
@@ -72,8 +75,19 @@ where
 
 impl<CRED, T> Presentation<CRED, T> {
   /// Returns the base JSON-LD context for `Presentation`s.
+  #[deprecated(since = "1.8.0", note = "use `credential_context` instead")]
   pub fn base_context() -> &'static Context {
     Credential::<Object>::base_context()
+  }
+
+  /// Returns the presentation's JSON-LD base context.
+  pub fn credential_context(&self) -> &Context {
+    self.context.first().expect("context has at least one element")
+  }
+
+  /// Returns `true` if the presentation uses the VC Data Model v2.0 context.
+  pub fn is_v2(&self) -> bool {
+    self.credential_context() == CredentialV2::<()>::base_context()
   }
 
   /// Returns the base type for `Presentation`s.
@@ -113,9 +127,11 @@ impl<CRED, T> Presentation<CRED, T> {
   /// This does not check the semantic structure of the contained credentials. This needs to be done as part of
   /// signature validation on the credentials as they are encoded as JWTs.
   pub fn check_structure(&self) -> Result<()> {
+    let is_valid_base_context =
+      |ctx: &Context| ctx == Credential::<()>::base_context() || ctx == CredentialV2::<()>::base_context();
     // Ensure the base context is present and in the correct location
-    match self.context.get(0) {
-      Some(context) if context == Self::base_context() => {}
+    match self.context.first() {
+      Some(context) if is_valid_base_context(context) => {}
       Some(_) | None => return Err(Error::MissingBaseContext),
     }
 
@@ -126,26 +142,41 @@ impl<CRED, T> Presentation<CRED, T> {
     Ok(())
   }
 
-  /// Serializes the [`Presentation`] as a JWT claims set
-  /// in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
-  ///
-  /// The resulting string can be used as the payload of a JWS when issuing the credential.  
-  pub fn serialize_jwt(&self, options: &JwtPresentationOptions) -> Result<String>
-  where
-    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
-    CRED: ToOwned<Owned = CRED> + serde::Serialize + serde::de::DeserializeOwned + Clone,
-  {
-    let jwt_representation: PresentationJwtClaims<'_, CRED, T> = PresentationJwtClaims::new(self, options)?;
-    jwt_representation
-      .to_json()
-      .map_err(|err| Error::JwtClaimsSetSerializationError(err.into()))
-  }
-
   /// Sets the value of the proof property.
   ///
   /// Note that this proof is not related to JWT.
   pub fn set_proof(&mut self, proof: Option<Proof>) {
     self.proof = proof;
+  }
+}
+
+impl<C, T> Presentation<C, T>
+where
+  T: Clone + Serialize + DeserializeOwned,
+  C: Clone + Serialize + DeserializeOwned,
+{
+  /// Serializes the [Presentation] as a JWT claims set
+  /// in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token) or
+  /// [VC Data Model v2.0](https://www.w3.org/TR/vc-jose-cose/#securing-vps-with-jose) depending on the
+  /// base context used.
+  ///
+  /// The resulting string can be used as the payload of a JWS when presenting it.  
+  pub fn serialize_jwt(&self, options: &JwtPresentationOptions) -> Result<String> {
+    let context = self.credential_context();
+    if context == Credential::<()>::base_context() {
+      // VC Data Model v1.1
+      let jwt_representation: PresentationJwtClaims<'_, C, T> = PresentationJwtClaims::new(self, options)?;
+      jwt_representation
+        .to_json()
+        .map_err(|err| Error::JwtClaimsSetSerializationError(err.into()))
+    } else if context == CredentialV2::<()>::base_context() {
+      // VC Data Model v2.0
+      JwtPresentationV2Claims::from_options(self.clone(), options)
+        .to_json()
+        .map_err(|err| Error::JwtClaimsSetSerializationError(err.into()))
+    } else {
+      Err(Error::MissingBaseContext)
+    }
   }
 }
 

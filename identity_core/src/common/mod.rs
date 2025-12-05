@@ -4,6 +4,7 @@
 //! Definitions of common types (`Url`, `Timestamp`, JSON types, etc).
 
 pub use self::context::Context;
+pub use self::data_url::*;
 pub use self::key_comparable::KeyComparable;
 pub use self::one_or_many::OneOrMany;
 pub use self::one_or_set::OneOrSet;
@@ -17,6 +18,7 @@ pub use product_common::object::Value;
 pub use string_or_url::StringOrUrl;
 
 mod context;
+mod data_url;
 mod key_comparable;
 mod one_or_many;
 mod one_or_set;

@@ -1,11 +1,15 @@
 // Copyright 2020-2023 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
+#![allow(deprecated)]
+
 use identity_core::common::Context;
 use identity_core::common::Object;
 use identity_core::common::Url;
 use identity_core::common::Value;
 
+use crate::credential::Credential;
+use crate::credential::CredentialV2;
 use crate::credential::Policy;
 use crate::credential::RefreshService;
 use crate::error::Result;
@@ -29,7 +33,7 @@ impl<CRED, T> PresentationBuilder<CRED, T> {
   /// Creates a new `PresentationBuilder`.
   pub fn new(holder: Url, properties: T) -> Self {
     Self {
-      context: vec![Presentation::<T>::base_context().clone()],
+      context: Vec::new(),
       id: None,
       types: vec![Presentation::<T>::base_type().into()],
       credentials: Vec::new(),
@@ -83,7 +87,28 @@ impl<CRED, T> PresentationBuilder<CRED, T> {
   }
 
   /// Returns a new `Presentation` based on the `PresentationBuilder` configuration.
-  pub fn build(self) -> Result<Presentation<CRED, T>> {
+  /// # Notes
+  /// If no context has been set, the base context of VC Data Model 1.1 will be used.
+  pub fn build(mut self) -> Result<Presentation<CRED, T>> {
+    if self.context.first() != Some(Credential::<()>::base_context())
+      || self.context.first() != Some(CredentialV2::<()>::base_context())
+    {
+      self.context.insert(0, Credential::<()>::base_context().clone());
+    }
+
+    Presentation::from_builder(self)
+  }
+
+  /// Returns a new `Presentation` based on the `PresentationBuilder` configuration.
+  /// # Notes
+  /// If no context has been set, the base context of VC Data Model 2.0 will be used.
+  pub fn build_v2(mut self) -> Result<Presentation<CRED, T>> {
+    if self.context.first() != Some(Credential::<()>::base_context())
+      || self.context.first() != Some(CredentialV2::<()>::base_context())
+    {
+      self.context.insert(0, CredentialV2::<()>::base_context().clone());
+    }
+
     Presentation::from_builder(self)
   }
 }

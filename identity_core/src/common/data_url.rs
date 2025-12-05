@@ -39,7 +39,7 @@ impl DataUrl {
   /// # fn main() -> Result<(), InvalidDataUrl> {
   /// let data_url = DataUrl::parse("data:text/plain;base64,SGVsbG8sIFdvcmxkIQ==")?;
   /// assert!(data_url.is_base64());
-  /// assert_eq!(data_url.mediatype(), "text/plain");
+  /// assert_eq!(data_url.media_type(), "text/plain");
   /// assert_eq!(data_url.encoded_data(), "SGVsbG8sIFdvcmxkIQ==");
   /// #  Ok(())
   /// # }

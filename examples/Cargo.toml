@@ -15,7 +15,7 @@ iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", features = ["
 iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.12.0" }
 iota-sdk-legacy = { package = "iota-sdk", version = "1.0", default-features = false, features = ["tls", "client", "stronghold"] }
 json-proof-token.workspace = true
-notarization = { git = "https://github.com/iotaledger/notarization.git", branch = "feat/iota-v1-12-0", features = ["irl"] }
+notarization = { git = "https://github.com/iotaledger/notarization.git", tag = "v0.1.11", features = ["irl"] }
 product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.7", package = "product_common", features = ["core-client", "transaction"] }
 rand = "0.8.5"
 sd-jwt-payload = { version = "0.2.1", default-features = false, features = ["sha"] }

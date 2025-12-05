@@ -23,8 +23,8 @@ use crate::credential::Proof;
 use crate::credential::RefreshService;
 use crate::error::Error;
 use crate::error::Result;
-use crate::presentation::JwtPresentationV2Claims;
 
+use super::jwt_serialization::JwtPresentationV2Claims;
 use super::jwt_serialization::PresentationJwtClaims;
 use super::JwtPresentationOptions;
 use super::PresentationBuilder;

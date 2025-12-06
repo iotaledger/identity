@@ -50,9 +50,9 @@ impl WasmIotaDID {
     Ok(Self::from(IotaDID::new(tag_bytes, &network_name)))
   }
 
-  /// Constructs a new {@link IotaDID} from a hex representation of an Alias Id and the given
+  /// Constructs a new {@link IotaDID} from an object ID and the given
   /// network name.
-  #[wasm_bindgen(js_name = fromAliasId)]
+  #[wasm_bindgen(js_name = fromObjectId)]
   #[allow(non_snake_case)]
   pub fn from_object_id(objectId: String, network: String) -> Result<WasmIotaDID> {
     let network_name: NetworkName = NetworkName::try_from(network).wasm_result()?;
@@ -61,7 +61,7 @@ impl WasmIotaDID {
 
   /// Creates a new placeholder {@link IotaDID} with the given network name.
   ///
-  /// E.g. `did:iota:smr:0x0000000000000000000000000000000000000000000000000000000000000000`.
+  /// E.g. `did:iota:testnet:0x0000000000000000000000000000000000000000000000000000000000000000`.
   #[wasm_bindgen]
   pub fn placeholder(network: String) -> Result<WasmIotaDID> {
     let network_name: NetworkName = NetworkName::try_from(network).wasm_result()?;
@@ -155,7 +155,7 @@ impl WasmIotaDID {
   /// Returns the hex-encoded ObjectID with a '0x' prefix, from the DID tag.
   #[wasm_bindgen(js_name = toObjectID)]
   pub fn to_object_id(&self) -> String {
-    self.0.to_string()
+    self.0.as_str().rsplit_once(':').expect("valid DID").1.to_string()
   }
 
   /// Converts the `DID` into a {@link DIDUrl}, consuming it.

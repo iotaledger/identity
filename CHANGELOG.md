@@ -1,5 +1,14 @@
 # Changelog
 
+## [v1.8.0-beta.1](https://github.com/iotaledger/identity/tree/v1.8.0-beta.1) (2025-12-07)
+
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.8.0-beta.1...v1.7.0-beta.5)
+
+### Added
+
+- Support for [VC Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/) and JWT encoding 
+  [\#1738](https://github.com/iotaledger/identity/pull/1738)
+
 ## [v1.7.0-beta.5](https://github.com/iotaledger/identity/tree/v1.7.0-beta.5) (2025-12-05)
 
 [Full Changelog](https://github.com/iotaledger/identity/compare/v1.7.0-beta.5...v1.7.0-beta.4)

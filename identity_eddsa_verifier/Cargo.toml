@@ -1,6 +1,6 @@
 [package]
 name = "identity_eddsa_verifier"
-version = "1.7.0-beta.5"
+version = "1.8.0-beta.1"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -11,7 +11,7 @@ repository.workspace = true
 description = "JWS EdDSA signature verification for IOTA Identity"
 
 [dependencies]
-identity_jose = { version = "=1.7.0-beta.5", path = "../identity_jose", default-features = false }
+identity_jose = { version = "=1.8.0-beta.1", path = "../identity_jose", default-features = false }
 iota-crypto = { version = "0.23.2", default-features = false, features = ["std"] }
 
 [features]

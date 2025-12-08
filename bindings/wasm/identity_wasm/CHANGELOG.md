@@ -1,5 +1,18 @@
 # Changelog
 
+## [wasm-v1.8.0-beta.1](https://github.com/iotaledger/identity/tree/wasm-v1.8.0-beta.1) (2025-12-07)
+
+### Added
+
+- Support for [VC Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/) and JWT encoding 
+  [\#1738](https://github.com/iotaledger/identity/pull/1738)
+
+### Patch
+
+- Fix `IotaDID.toObjectId` and `IotaDID.fromObjectId` [\#1747](https://github.com/iotaledger/identity/pull/1747)
+
+[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.8.0-beta.1...v1.7.0-beta.1)
+
 ## [wasm-v1.7.0-beta.1](https://github.com/iotaledger/identity/tree/wasm-v1.7.0-beta.1) (2025-10-14)
 
 [Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.7.0-beta.1...wasm-v1.6.0-beta.10)

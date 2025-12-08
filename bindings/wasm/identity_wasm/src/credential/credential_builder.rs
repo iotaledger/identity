@@ -108,6 +108,7 @@ impl TryFrom<ICredential> for CredentialBuilder {
 
 #[wasm_bindgen]
 extern "C" {
+  #[derive(Clone)]
   #[wasm_bindgen(typescript_type = "ICredential")]
   pub type ICredential;
 }

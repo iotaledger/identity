@@ -1,22 +1,21 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use core::fmt::Display;
-use core::fmt::Formatter;
-
-use identity_core::convert::ToJson;
-#[cfg(feature = "jpt-bbs-plus")]
-use jsonprooftoken::jpt::claims::JptClaims;
-use once_cell::sync::Lazy;
-use serde::Deserialize;
-use serde::Serialize;
+use std::fmt::Display;
 
 use identity_core::common::Context;
 use identity_core::common::Object;
 use identity_core::common::OneOrMany;
 use identity_core::common::Timestamp;
 use identity_core::common::Url;
-use identity_core::convert::FmtJson;
+use identity_core::convert::FmtJson as _;
+use identity_core::convert::ToJson as _;
+use once_cell::sync::Lazy;
+use serde::de::DeserializeOwned;
+use serde::de::Error as _;
+use serde::Deserialize;
+use serde::Deserializer;
+use serde::Serialize;
 
 use crate::credential::CredentialBuilder;
 use crate::credential::CredentialSealed;
@@ -24,6 +23,7 @@ use crate::credential::CredentialT;
 use crate::credential::Evidence;
 use crate::credential::Issuer;
 use crate::credential::Policy;
+use crate::credential::Proof;
 use crate::credential::RefreshService;
 use crate::credential::Schema;
 use crate::credential::Status;
@@ -31,17 +31,26 @@ use crate::credential::Subject;
 use crate::error::Error;
 use crate::error::Result;
 
-use super::jwt_serialization::CredentialJwtClaims;
-use super::Proof;
+pub(crate) static BASE_CONTEXT: Lazy<Context> =
+  Lazy::new(|| Context::Url(Url::parse("https://www.w3.org/ns/credentials/v2").unwrap()));
 
-static BASE_CONTEXT: Lazy<Context> =
-  Lazy::new(|| Context::Url(Url::parse("https://www.w3.org/2018/credentials/v1").unwrap()));
+pub(crate) fn deserialize_vc2_0_context<'de, D>(deserializer: D) -> Result<OneOrMany<Context>, D::Error>
+where
+  D: Deserializer<'de>,
+{
+  let ctx = OneOrMany::<Context>::deserialize(deserializer)?;
+  if ctx.contains(&BASE_CONTEXT) {
+    Ok(ctx)
+  } else {
+    Err(D::Error::custom("Missing base context"))
+  }
+}
 
-/// Represents a set of claims describing an entity.
+/// A [VC Data Model](https://www.w3.org/TR/vc-data-model-2.0/) 2.0 Verifiable Credential.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Credential<T = Object> {
   /// The JSON-LD context(s) applicable to the `Credential`.
-  #[serde(rename = "@context")]
+  #[serde(rename = "@context", deserialize_with = "deserialize_vc2_0_context")]
   pub context: OneOrMany<Context>,
   /// A unique `URI` that may be used to identify the `Credential`.
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -55,11 +64,11 @@ pub struct Credential<T = Object> {
   /// A reference to the issuer of the `Credential`.
   pub issuer: Issuer,
   /// A timestamp of when the `Credential` becomes valid.
-  #[serde(rename = "issuanceDate")]
-  pub issuance_date: Timestamp,
-  /// A timestamp of when the `Credential` should no longer be considered valid.
-  #[serde(rename = "expirationDate", skip_serializing_if = "Option::is_none")]
-  pub expiration_date: Option<Timestamp>,
+  #[serde(rename = "validFrom")]
+  pub valid_from: Timestamp,
+  /// The latest point in time at which the `Credential` should be considered valid.
+  #[serde(rename = "validUntil", skip_serializing_if = "Option::is_none")]
+  pub valid_until: Option<Timestamp>,
   /// Information used to determine the current status of the `Credential`.
   #[serde(default, rename = "credentialStatus", skip_serializing_if = "Option::is_none")]
   pub credential_status: Option<Status>,
@@ -88,24 +97,17 @@ pub struct Credential<T = Object> {
 }
 
 impl<T> Credential<T> {
-  /// Returns the base JSON-LD context.
+  /// Returns the base context for `Credential`s.
   pub fn base_context() -> &'static Context {
     &BASE_CONTEXT
   }
 
-  /// Returns the base type.
-  pub const fn base_type() -> &'static str {
+  /// Returns the base type for `Credential`s.
+  pub fn base_type() -> &'static str {
     "VerifiableCredential"
   }
 
-  /// Creates a new `CredentialBuilder` to configure a `Credential`.
-  ///
-  /// This is the same as [CredentialBuilder::new].
-  pub fn builder(properties: T) -> CredentialBuilder<T> {
-    CredentialBuilder::new(properties)
-  }
-
-  /// Returns a new `Credential` based on the `CredentialBuilder` configuration.
+  /// Creates a `Credential` from a `CredentialBuilder`.
   pub fn from_builder(mut builder: CredentialBuilder<T>) -> Result<Self> {
     if builder.context.first() != Some(Self::base_context()) {
       builder.context.insert(0, Self::base_context().clone());
@@ -115,14 +117,14 @@ impl<T> Credential<T> {
       builder.types.insert(0, Self::base_type().to_owned());
     }
 
-    let this: Self = Self {
+    let this = Self {
       context: OneOrMany::Many(builder.context),
       id: builder.id,
       types: builder.types.into(),
       credential_subject: builder.subject.into(),
       issuer: builder.issuer.ok_or(Error::MissingIssuer)?,
-      issuance_date: builder.issuance_date.unwrap_or_default(),
-      expiration_date: builder.expiration_date,
+      valid_from: builder.issuance_date.unwrap_or_default(),
+      valid_until: builder.expiration_date,
       credential_status: builder.status,
       credential_schema: builder.schema.into(),
       refresh_service: builder.refresh_service.into(),
@@ -139,7 +141,7 @@ impl<T> Credential<T> {
   }
 
   /// Validates the semantic structure of the `Credential`.
-  pub fn check_structure(&self) -> Result<()> {
+  pub(crate) fn check_structure(&self) -> Result<()> {
     // Ensure the base context is present and in the correct location
     match self.context.get(0) {
       Some(context) if context == Self::base_context() => {}
@@ -165,44 +167,13 @@ impl<T> Credential<T> {
 
     Ok(())
   }
-
-  /// Sets the proof property of the `Credential`.
-  ///
-  /// Note that this proof is not related to JWT.
-  pub fn set_proof(&mut self, proof: Option<Proof>) {
-    self.proof = proof;
-  }
-
-  /// Serializes the [`Credential`] as a JWT claims set
-  /// in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
-  ///
-  /// The resulting string can be used as the payload of a JWS when issuing the credential.  
-  pub fn serialize_jwt(&self, custom_claims: Option<Object>) -> Result<String>
-  where
-    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
-  {
-    let jwt_representation: CredentialJwtClaims<'_, T> = CredentialJwtClaims::new(self, custom_claims)?;
-    jwt_representation
-      .to_json()
-      .map_err(|err| Error::JwtClaimsSetSerializationError(err.into()))
-  }
-
-  ///Serializes the [`Credential`] as a JPT claims set
-  #[cfg(feature = "jpt-bbs-plus")]
-  pub fn serialize_jpt(&self, custom_claims: Option<Object>) -> Result<JptClaims>
-  where
-    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
-  {
-    let jwt_representation: CredentialJwtClaims<'_, T> = CredentialJwtClaims::new(self, custom_claims)?;
-    Ok(jwt_representation.into())
-  }
 }
 
 impl<T> Display for Credential<T>
 where
   T: Serialize,
 {
-  fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> core::fmt::Result {
     self.fmt_json(f)
   }
 }
@@ -211,7 +182,7 @@ impl<T> CredentialSealed for Credential<T> {}
 
 impl<T> CredentialT for Credential<T>
 where
-  T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
+  T: Clone + Serialize + DeserializeOwned,
 {
   type Properties = T;
 
@@ -236,11 +207,11 @@ where
   }
 
   fn valid_from(&self) -> Timestamp {
-    self.issuance_date
+    self.valid_from
   }
 
   fn valid_until(&self) -> Option<Timestamp> {
-    self.expiration_date
+    self.valid_until
   }
 
   fn properties(&self) -> &Self::Properties {
@@ -260,60 +231,67 @@ where
   }
 }
 
+impl<T> Credential<T>
+where
+  T: Serialize,
+{
+  /// Serializes the [`Credential`] as a JWT claims set
+  /// in accordance with [VC Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/).
+  ///
+  /// The resulting string can be used as the payload of a JWS when issuing the credential.  
+  pub fn serialize_jwt(&self, _custom_claims: Option<Object>) -> Result<String> {
+    self
+      .to_json()
+      .map_err(|err| Error::JwtClaimsSetSerializationError(err.into()))
+  }
+}
+
 #[cfg(test)]
 mod tests {
-  use identity_core::common::OneOrMany;
-  use identity_core::common::Url;
-  use identity_core::convert::FromJson;
+  use identity_verification::jws::Decoder;
 
-  use crate::credential::credential::BASE_CONTEXT;
-  use crate::credential::Credential;
-  use crate::credential::Subject;
-
-  const JSON1: &str = include_str!("../../tests/fixtures/credential-1.json");
-  const JSON2: &str = include_str!("../../tests/fixtures/credential-2.json");
-  const JSON3: &str = include_str!("../../tests/fixtures/credential-3.json");
-  const JSON4: &str = include_str!("../../tests/fixtures/credential-4.json");
-  const JSON5: &str = include_str!("../../tests/fixtures/credential-5.json");
-  const JSON6: &str = include_str!("../../tests/fixtures/credential-6.json");
-  const JSON7: &str = include_str!("../../tests/fixtures/credential-7.json");
-  const JSON8: &str = include_str!("../../tests/fixtures/credential-8.json");
-  const JSON9: &str = include_str!("../../tests/fixtures/credential-9.json");
-  const JSON10: &str = include_str!("../../tests/fixtures/credential-10.json");
-  const JSON11: &str = include_str!("../../tests/fixtures/credential-11.json");
-  const JSON12: &str = include_str!("../../tests/fixtures/credential-12.json");
+  use super::*;
 
   #[test]
-  fn test_from_json() {
-    let _credential: Credential = Credential::from_json(JSON1).unwrap();
-    let _credential: Credential = Credential::from_json(JSON2).unwrap();
-    let _credential: Credential = Credential::from_json(JSON3).unwrap();
-    let _credential: Credential = Credential::from_json(JSON4).unwrap();
-    let _credential: Credential = Credential::from_json(JSON5).unwrap();
-    let _credential: Credential = Credential::from_json(JSON6).unwrap();
-    let _credential: Credential = Credential::from_json(JSON7).unwrap();
-    let _credential: Credential = Credential::from_json(JSON8).unwrap();
-    let _credential: Credential = Credential::from_json(JSON9).unwrap();
-    let _credential: Credential = Credential::from_json(JSON10).unwrap();
-    let _credential: Credential = Credential::from_json(JSON11).unwrap();
-    let _credential: Credential = Credential::from_json(JSON12).unwrap();
+  fn valid_from_json_str() {
+    let json_credential = r#"
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://www.w3.org/ns/credentials/examples/v2"
+  ],
+  "id": "http://university.example/credentials/3732",
+  "type": [
+    "VerifiableCredential",
+    "ExampleDegreeCredential"
+  ],
+  "issuer": "https://university.example/issuers/565049",
+  "validFrom": "2010-01-01T00:00:00Z",
+  "credentialSubject": {
+    "id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
+    "degree": {
+      "type": "ExampleBachelorDegree",
+      "name": "Bachelor of Science and Arts"
+    }
+  }
+}
+    "#;
+    serde_json::from_str::<Credential>(json_credential).expect("valid VC using Data Model 2.0");
   }
 
   #[test]
-  fn credential_with_single_context_is_list_of_contexts_with_single_item() {
-    let mut credential = Credential::builder(serde_json::Value::default())
-      .id(Url::parse("https://example.com/credentials/123").unwrap())
-      .issuer(Url::parse("https://example.com").unwrap())
-      .subject(Subject::with_id(Url::parse("https://example.com/users/123").unwrap()))
-      .build()
-      .unwrap();
+  fn invalid_from_json_str() {
+    let json_credential = include_str!("../../tests/fixtures/credential-1.json");
+    let _error = serde_json::from_str::<Credential>(json_credential).unwrap_err();
+  }
 
-    assert!(matches!(credential.context, OneOrMany::Many(_)));
-    assert_eq!(credential.context.len(), 1);
-    assert!(credential.check_structure().is_ok());
+  #[test]
+  fn parsed_from_jwt_payload() {
+    let jwt = "eyJraWQiOiJFeEhrQk1XOWZtYmt2VjI2Nm1ScHVQMnNVWV9OX0VXSU4xbGFwVXpPOHJvIiwiYWxnIjoiRVMyNTYifQ.eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvbnMvY3JlZGVudGlhbHMvdjIiLCJodHRwczovL3d3dy53My5vcmcvbnMvY3JlZGVudGlhbHMvZXhhbXBsZXMvdjIiXSwiaWQiOiJodHRwOi8vdW5pdmVyc2l0eS5leGFtcGxlL2NyZWRlbnRpYWxzLzM3MzIiLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiRXhhbXBsZURlZ3JlZUNyZWRlbnRpYWwiXSwiaXNzdWVyIjoiaHR0cHM6Ly91bml2ZXJzaXR5LmV4YW1wbGUvaXNzdWVycy81NjUwNDkiLCJ2YWxpZEZyb20iOiIyMDEwLTAxLTAxVDAwOjAwOjAwWiIsImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImlkIjoiZGlkOmV4YW1wbGU6ZWJmZWIxZjcxMmViYzZmMWMyNzZlMTJlYzIxIiwiZGVncmVlIjp7InR5cGUiOiJFeGFtcGxlQmFjaGVsb3JEZWdyZWUiLCJuYW1lIjoiQmFjaGVsb3Igb2YgU2NpZW5jZSBhbmQgQXJ0cyJ9fX0.YEsG9at9Hnt_j-UykCrnl494fcYMTjzpgvlK0KzzjvfmZmSg-sNVJqMZWizYhWv_eRUvAoZohvSJWeagwj_Ajw";
+    let decoded_jwt = Decoder::new()
+      .decode_compact_serialization(jwt.as_bytes(), None)
+      .expect("valid JWT");
 
-    // Check backward compatibility with previously created credentials.
-    credential.context = OneOrMany::One(BASE_CONTEXT.clone());
-    assert!(credential.check_structure().is_ok());
+    let _credential: Credential<Object> = serde_json::from_slice(decoded_jwt.claims()).expect("valid JWT payload");
   }
 }

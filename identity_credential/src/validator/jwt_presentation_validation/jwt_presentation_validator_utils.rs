@@ -5,9 +5,11 @@ use identity_core::common::Object;
 use identity_core::convert::FromJson;
 use identity_did::DID;
 use identity_verification::jws::Decoder;
+use serde_json::Value;
 use std::str::FromStr;
 
 use crate::credential::Jwt;
+use crate::presentation::JwtPresentationV2Claims;
 use crate::presentation::Presentation;
 use crate::presentation::PresentationJwtClaims;
 use crate::validator::jwt_credential_validation::JwtValidationError;
@@ -31,16 +33,24 @@ impl JwtPresentationValidatorUtils {
       .decode_compact_serialization(presentation.as_str().as_bytes(), None)
       .map_err(JwtValidationError::JwsDecodingError)?;
 
-    let claims: PresentationJwtClaims<'_, identity_core::common::Value, Object> =
-      PresentationJwtClaims::from_json_slice(&validation_item.claims()).map_err(|err| {
-        JwtValidationError::PresentationStructure(crate::Error::JwtClaimsSetDeserializationError(err.into()))
-      })?;
+    // Try V1 first.
+    let maybe_holder =
+      if let Ok(claims) = PresentationJwtClaims::<Value, Object>::from_json_slice(&validation_item.claims()) {
+        H::from_str(claims.iss.as_str())
+      } else if let Ok(claims) = JwtPresentationV2Claims::<Value, Object>::from_json_slice(&validation_item.claims()) {
+        H::from_str(claims.vp.holder.as_str())
+      } else {
+        return Err(JwtValidationError::PresentationStructure(
+          crate::error::Error::JwtClaimsSetDeserializationError(
+            "Failed to deserialize JWT presentation claims to either a v1 or v2 Verifiable Presentation".into(),
+          ),
+        ));
+      };
 
-    let holder: H = H::from_str(claims.iss.as_str()).map_err(|err| JwtValidationError::SignerUrl {
+    maybe_holder.map_err(|err| JwtValidationError::SignerUrl {
       signer_ctx: SignerContext::Holder,
       source: err.into(),
-    })?;
-    Ok(holder)
+    })
   }
 
   /// Validates the semantic structure of the `Presentation`.

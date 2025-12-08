@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::credential::Credential;
+use crate::credential::CredentialV2;
 use crate::credential::Issuer;
 use crate::credential::Subject;
 use crate::domain_linkage::DomainLinkageConfiguration;
@@ -100,6 +101,49 @@ impl DomainLinkageCredentialBuilder {
       issuer: Issuer::Url(issuer),
       issuance_date: self.issuance_date.unwrap_or_else(Timestamp::now_utc),
       expiration_date: Some(self.expiration_date.ok_or(Error::MissingExpirationDate)?),
+      credential_status: None,
+      credential_schema: Vec::new().into(),
+      refresh_service: Vec::new().into(),
+      terms_of_use: Vec::new().into(),
+      evidence: Vec::new().into(),
+      non_transferable: None,
+      properties: Object::new(),
+      proof: None,
+    })
+  }
+
+  /// Returns a new VC Data Model 2.0 `Credential` based on the `DomainLinkageCredentialBuilder` configuration.
+  pub fn build_v2(self) -> Result<CredentialV2<Object>> {
+    let origin: Url = self.origin.ok_or(Error::MissingOrigin)?;
+    if origin.domain().is_none() {
+      return Err(Error::DomainLinkageError(
+        "origin must be a domain with http(s) scheme".into(),
+      ));
+    }
+    if !url_only_includes_origin(&origin) {
+      return Err(Error::DomainLinkageError(
+        "origin must not contain any path, query or fragment".into(),
+      ));
+    }
+
+    let mut properties: Object = Object::new();
+    properties.insert("origin".into(), origin.into_string().into());
+    let issuer: Url = self.issuer.ok_or(Error::MissingIssuer)?;
+
+    Ok(CredentialV2 {
+      context: OneOrMany::Many(vec![
+        Credential::<Object>::base_context().clone(),
+        DomainLinkageConfiguration::well_known_context().clone(),
+      ]),
+      id: None,
+      types: OneOrMany::Many(vec![
+        Credential::<Object>::base_type().to_owned(),
+        DomainLinkageConfiguration::domain_linkage_type().to_owned(),
+      ]),
+      credential_subject: OneOrMany::One(Subject::with_id_and_properties(issuer.clone(), properties)),
+      issuer: Issuer::Url(issuer),
+      valid_from: self.issuance_date.unwrap_or_else(Timestamp::now_utc),
+      valid_until: Some(self.expiration_date.ok_or(Error::MissingExpirationDate)?),
       credential_status: None,
       credential_schema: Vec::new().into(),
       refresh_service: Vec::new().into(),

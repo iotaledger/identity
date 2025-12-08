@@ -19,8 +19,10 @@ use crate::common::UOneOrManyNumber;
 use crate::credential::ArrayCoreDID;
 use crate::credential::UnknownCredential;
 use crate::credential::WasmCredential;
+use crate::credential::WasmCredentialV2;
 use crate::credential::WasmJws;
 use crate::credential::WasmJwt;
+use crate::credential::WasmJwtVcV2;
 use crate::credential::WasmPresentation;
 use crate::did::service::WasmService;
 use crate::did::wasm_did_url::WasmDIDUrl;
@@ -45,7 +47,6 @@ use identity_iota::core::OneOrMany;
 use identity_iota::core::OneOrSet;
 use identity_iota::core::OrderedSet;
 use identity_iota::core::Url;
-use identity_iota::credential::Credential;
 use identity_iota::credential::JwtPresentationOptions;
 use identity_iota::credential::Presentation;
 use identity_iota::credential::RevocationDocumentExt;
@@ -713,7 +714,7 @@ impl WasmCoreDocument {
     let storage_clone: Rc<WasmStorageInner> = storage.0.clone();
     let options_clone: JwsSignatureOptions = options.0.clone();
     let document_lock_clone: Rc<CoreDocumentLock> = self.0.clone();
-    let credential_clone: Credential = credential.0.clone();
+    let credential_clone = credential.0.clone();
     let custom: Option<Object> = custom_claims
       .map(|claims| claims.into_serde().wasm_result())
       .transpose()?;
@@ -728,6 +729,30 @@ impl WasmCoreDocument {
         .map(JsValue::from)
     });
     Ok(promise.unchecked_into())
+  }
+
+  /// Produces a JWS where the payload is produced from the given `credential`
+  /// in accordance with [Securing Verifiable Credentials using JOSE and COSE](https://www.w3.org/TR/vc-jose-cose/#securing-with-jose).
+  ///
+  /// Unless the `kid` is explicitly set in the options, the `kid` in the protected header is the `id`
+  /// of the method identified by `fragment` and the JWS signature will be produced by the corresponding
+  /// private key backed by the `storage` in accordance with the passed `options`.
+  #[wasm_bindgen(js_name = createCredentialV2Jwt)]
+  pub async fn create_credential_v2_jwt(
+    &self,
+    storage: &WasmStorage,
+    fragment: String,
+    credential: &WasmCredentialV2,
+    options: &WasmJwsSignatureOptions,
+  ) -> Result<WasmJwtVcV2> {
+    self
+      .0
+      .read()
+      .await
+      .create_credential_v2_jwt(&credential.0, &storage.0, fragment.as_str(), &options.0)
+      .await
+      .wasm_result()
+      .map(WasmJwtVcV2)
   }
 
   /// Produces a JWT where the payload is produced from the given presentation.

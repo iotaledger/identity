@@ -9,7 +9,7 @@ use std::str::FromStr;
 /// Supported algorithms for the JSON Web Signatures `alg` claim.
 ///
 /// [More Info](https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms)
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize, serde::Serialize)]
 #[cfg_attr(not(feature = "custom_alg"), derive(Copy))]
 #[allow(non_camel_case_types)]
 pub enum JwsAlgorithm {

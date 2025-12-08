@@ -80,11 +80,13 @@ impl<TRV: JwsVerifier, PQV: JwsVerifier> JwtCredentialValidatorHybrid<TRV, PQV> 
       })?;
 
     JwtCredentialValidator::<TRV>::validate_decoded_credential(
-      credential_token,
+      &credential_token.credential,
       std::slice::from_ref(issuer.as_ref()),
       options,
       fail_fast,
-    )
+    )?;
+
+    Ok(credential_token)
   }
 
   /// Decode and verify the PQ/T JWS signature of a [`Credential`] issued as a JWT using the DID Document of a trusted

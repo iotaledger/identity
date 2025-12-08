@@ -206,6 +206,27 @@ where
   }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(bound(deserialize = "C: serde::de::DeserializeOwned, T: serde::de::DeserializeOwned"))]
+pub(crate) struct JwtPresentationV2Claims<C, T> {
+  pub(crate) iat: Option<i64>,
+  pub(crate) exp: Option<i64>,
+  pub(crate) aud: Option<Url>,
+  #[serde(flatten)]
+  pub(crate) vp: Presentation<C, T>,
+}
+
+impl<C, T> JwtPresentationV2Claims<C, T> {
+  pub(crate) fn from_options(vp: Presentation<C, T>, options: &JwtPresentationOptions) -> Self {
+    Self {
+      vp,
+      iat: options.issuance_date.map(|ts| ts.to_unix()),
+      exp: options.expiration_date.map(|ts| ts.to_unix()),
+      aud: options.audience.clone(),
+    }
+  }
+}
+
 #[cfg(test)]
 mod test {
   use super::PresentationJwtClaims;

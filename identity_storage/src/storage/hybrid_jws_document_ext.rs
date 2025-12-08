@@ -249,6 +249,9 @@ impl JwkDocumentExtHybrid for CoreDocument {
     let header: JwsHeader = {
       let mut header = JwsHeader::new();
 
+      // We need to disable this lint as JwsAlgorithm is `Copy` only when
+      // a certain feature flag is disabled.
+      #[allow(clippy::clone_on_copy)]
       header.set_alg(alg.clone());
       if let Some(custom) = &options.custom_header_parameters {
         header.set_custom(custom.clone())

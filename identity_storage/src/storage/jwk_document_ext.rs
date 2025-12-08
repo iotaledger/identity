@@ -1,6 +1,8 @@
 // Copyright 2020-2023 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
+use std::borrow::Cow;
+
 use super::JwkStorageDocumentError as Error;
 use super::JwsSignatureOptions;
 use super::Storage;
@@ -17,8 +19,10 @@ use crate::key_storage::KeyType;
 use async_trait::async_trait;
 use identity_core::common::Object;
 use identity_credential::credential::Credential;
+use identity_credential::credential::CredentialV2;
 use identity_credential::credential::Jws;
 use identity_credential::credential::Jwt;
+use identity_credential::credential::JwtVcV2;
 use identity_credential::presentation::JwtPresentationOptions;
 use identity_credential::presentation::Presentation;
 use identity_did::DIDUrl;
@@ -96,7 +100,8 @@ pub trait JwkDocumentExt: private::Sealed {
     I: KeyIdStorage;
 
   /// Produces a JWT where the payload is produced from the given `credential`
-  /// in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
+  /// in accordance with either [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token)
+  /// or [VC Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/).
   ///
   /// Unless the `kid` is explicitly set in the options, the `kid` in the protected header is the `id`
   /// of the method identified by `fragment` and the JWS signature will be produced by the corresponding
@@ -116,8 +121,28 @@ pub trait JwkDocumentExt: private::Sealed {
     I: KeyIdStorage,
     T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync;
 
+  /// Returns a JWT containing the given VC Data Model 2.0 `credential` in accordance with the mediatype
+  /// `application/vc+jwt` defined in [Securing Verifiable Credentials using JOSE and COSE](https://www.w3.org/TR/vc-jose-cose/#securing-with-jose).
+  ///
+  /// Unless the `kid` is explicitly set in the options, the `kid` in the protected header is the `id`
+  /// of the method identified by `fragment` and the JWS signature will be produced by the corresponding
+  /// private key backed by the `storage` in accordance with the passed `options`.
+  async fn create_credential_v2_jwt<K, I, T>(
+    &self,
+    credential: &CredentialV2<T>,
+    storage: &Storage<K, I>,
+    fragment: &str,
+    options: &JwsSignatureOptions,
+  ) -> StorageResult<JwtVcV2>
+  where
+    K: JwkStorage,
+    I: KeyIdStorage,
+    T: Clone + Serialize + Sync;
+
   /// Produces a JWT where the payload is produced from the given `presentation`
-  /// in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
+  /// in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token)
+  /// or with [VC Data Model v2.0](https://www.w3.org/TR/vc-jose-cose/#securing-vps-with-jose) depending
+  /// on the presentation's context.
   ///
   /// Unless the `kid` is explicitly set in the options, the `kid` in the protected header is the `id`
   /// of the method identified by `fragment` and the JWS signature will be produced by the corresponding
@@ -133,7 +158,7 @@ pub trait JwkDocumentExt: private::Sealed {
   where
     K: JwkStorage,
     I: KeyIdStorage,
-    T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
+    T: Clone + Serialize + DeserializeOwned + Sync,
     CRED: ToOwned<Owned = CRED> + Serialize + DeserializeOwned + Clone + Sync;
 }
 
@@ -472,6 +497,45 @@ impl JwkDocumentExt for CoreDocument {
       .map(|jws| Jwt::new(jws.into()))
   }
 
+  async fn create_credential_v2_jwt<K, I, T>(
+    &self,
+    credential: &CredentialV2<T>,
+    storage: &Storage<K, I>,
+    fragment: &str,
+    options: &JwsSignatureOptions,
+  ) -> StorageResult<JwtVcV2>
+  where
+    K: JwkStorage,
+    I: KeyIdStorage,
+    T: Clone + Serialize + Sync,
+  {
+    if options.detached_payload {
+      return Err(Error::EncodingError(
+        "cannot use detached payload for credential signing".into(),
+      ));
+    }
+
+    if !options.b64.unwrap_or(true) {
+      // JWTs should not have `b64` set per https://datatracker.ietf.org/doc/html/rfc7797#section-7.
+      return Err(Error::EncodingError("cannot use `b64 = false` with JWTs".into()));
+    }
+
+    let payload = credential
+      .serialize_jwt(None)
+      .map_err(Error::ClaimsSerializationError)?;
+
+    // Ensure the correct `typ` header for VC Data Model 2.0 JWTs.
+    let mut options = Cow::Borrowed(options);
+    if options.typ.as_deref() != Some("vc+jwt") {
+      options.to_mut().typ = Some("vc+jwt".to_owned());
+    }
+
+    self
+      .create_jws(storage, fragment, payload.as_bytes(), &options)
+      .await
+      .map(|jws| JwtVcV2::parse(jws.as_str()).expect("valid JWT string containing a VC v2.0"))
+  }
+
   async fn create_presentation_jwt<K, I, CRED, T>(
     &self,
     presentation: &Presentation<CRED, T>,
@@ -483,26 +547,32 @@ impl JwkDocumentExt for CoreDocument {
   where
     K: JwkStorage,
     I: KeyIdStorage,
-    T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
+    T: Clone + Serialize + DeserializeOwned + Sync,
     CRED: ToOwned<Owned = CRED> + Serialize + DeserializeOwned + Clone + Sync,
   {
     if jws_options.detached_payload {
-      return Err(Error::EncodingError(Box::<dyn std::error::Error + Send + Sync>::from(
-        "cannot use detached payload for presentation signing",
-      )));
+      return Err(Error::EncodingError(
+        "cannot use detached payload for presentation signing".into(),
+      ));
     }
 
     if !jws_options.b64.unwrap_or(true) {
       // JWTs should not have `b64` set per https://datatracker.ietf.org/doc/html/rfc7797#section-7.
-      return Err(Error::EncodingError(Box::<dyn std::error::Error + Send + Sync>::from(
-        "cannot use `b64 = false` with JWTs",
-      )));
+      return Err(Error::EncodingError("cannot use `b64 = false` with JWTs".into()));
     }
     let payload = presentation
       .serialize_jwt(jwt_options)
       .map_err(Error::ClaimsSerializationError)?;
+
+    let mut jws_options = Cow::Borrowed(jws_options);
+    // Set JWS headers in accordance with the JOSE specification for VPs that use VC Data Model 2.0.
+    // See https://www.w3.org/TR/vc-jose-cose/#securing-vps-with-jose.
+    if presentation.is_v2() {
+      jws_options.to_mut().typ = Some("vp+jwt".to_owned());
+    }
+
     self
-      .create_jws(storage, fragment, payload.as_bytes(), jws_options)
+      .create_jws(storage, fragment, payload.as_bytes(), &jws_options)
       .await
       .map(|jws| Jwt::new(jws.into()))
   }
@@ -534,6 +604,7 @@ where
 #[cfg(feature = "iota-document")]
 mod iota_document {
   use super::*;
+  use identity_credential::credential::Credential;
   use identity_credential::credential::Jwt;
   use identity_iota_core::IotaDocument;
 
@@ -618,12 +689,30 @@ mod iota_document {
     where
       K: JwkStorage,
       I: KeyIdStorage,
-      T: ToOwned<Owned = T> + Serialize + DeserializeOwned + Sync,
+      T: Clone + Serialize + DeserializeOwned + Sync,
       CRED: ToOwned<Owned = CRED> + Serialize + DeserializeOwned + Clone + Sync,
     {
       self
         .core_document()
         .create_presentation_jwt(presentation, storage, fragment, options, jwt_options)
+        .await
+    }
+
+    async fn create_credential_v2_jwt<K, I, T>(
+      &self,
+      credential: &CredentialV2<T>,
+      storage: &Storage<K, I>,
+      fragment: &str,
+      options: &JwsSignatureOptions,
+    ) -> StorageResult<JwtVcV2>
+    where
+      K: JwkStorage,
+      I: KeyIdStorage,
+      T: Clone + Serialize + Sync,
+    {
+      self
+        .core_document()
+        .create_credential_v2_jwt(credential, storage, fragment, options)
         .await
     }
   }

@@ -83,6 +83,10 @@ path = "0_basic/8_legacy_stronghold.rs"
 name = "8_legacy_stronghold"
 
 [[example]]
+path = "0_basic/9_vc_v2.rs"
+name = "9_vc_v2"
+
+[[example]]
 path = "1_advanced/0_did_controls_did.rs"
 name = "0_did_controls_did"
 

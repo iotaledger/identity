@@ -50,6 +50,14 @@ impl WasmPresentation {
     builder.build().map(Self).wasm_result()
   }
 
+  /// Constructs a new presentation in the Verifiable Credentials Data Model 2.0 format.
+  #[wasm_bindgen(js_name = "newV2")]
+  pub fn new_v2(values: IPresentation) -> Result<WasmPresentation> {
+    let builder: PresentationBuilder<UnknownCredential, Object> =
+      PresentationBuilder::<UnknownCredential, Object>::try_from(values)?;
+    builder.build_v2().map(Self).wasm_result()
+  }
+
   /// Returns a copy of the JSON-LD context(s) applicable to the presentation.
   #[wasm_bindgen]
   pub fn context(&self) -> Result<ArrayContext> {

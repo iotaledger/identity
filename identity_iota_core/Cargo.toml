@@ -1,6 +1,6 @@
 [package]
 name = "identity_iota_core"
-version = "1.7.0-beta.5"
+version = "1.8.0-beta.1"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -15,11 +15,11 @@ anyhow = "1.0.75"
 async-trait = { version = "0.1.81", default-features = false, optional = true }
 cfg-if = "1.0.0"
 futures = { version = "0.3", default-features = false }
-identity_core = { version = "=1.7.0-beta.5", path = "../identity_core", default-features = false }
-identity_credential = { version = "=1.7.0-beta.5", path = "../identity_credential", default-features = false, features = ["validator"] }
-identity_did = { version = "=1.7.0-beta.5", path = "../identity_did", default-features = false }
-identity_document = { version = "=1.7.0-beta.5", path = "../identity_document", default-features = false }
-identity_verification = { version = "=1.7.0-beta.5", path = "../identity_verification", default-features = false }
+identity_core = { version = "=1.8.0-beta.1", path = "../identity_core", default-features = false }
+identity_credential = { version = "=1.8.0-beta.1", path = "../identity_credential", default-features = false, features = ["validator"] }
+identity_did = { version = "=1.8.0-beta.1", path = "../identity_did", default-features = false }
+identity_document = { version = "=1.8.0-beta.1", path = "../identity_document", default-features = false }
+identity_verification = { version = "=1.8.0-beta.1", path = "../identity_verification", default-features = false }
 num-derive = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false, features = ["std"] }
 once_cell = { version = "1.18", default-features = false, features = ["std"] }
@@ -34,8 +34,8 @@ thiserror.workspace = true
 # for feature `iota-client`
 bcs = { version = "0.1.4", optional = true }
 fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "69d496c71fb37e3d22fe85e5bbfd4256d61422b9", package = "fastcrypto", optional = true }
-identity_eddsa_verifier = { version = "=1.7.0-beta.5", path = "../identity_eddsa_verifier", optional = true }
-identity_jose = { version = "=1.7.0-beta.5", path = "../identity_jose", optional = true }
+identity_eddsa_verifier = { version = "=1.8.0-beta.1", path = "../identity_eddsa_verifier", optional = true }
+identity_jose = { version = "=1.8.0-beta.1", path = "../identity_jose", optional = true }
 iota-crypto = { version = "0.23", optional = true }
 itertools = { version = "0.13.0", optional = true }
 phf = { version = "0.11.2", features = ["macros"] }

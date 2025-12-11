@@ -9,7 +9,7 @@ use fastcrypto::traits::ToFromBytes;
 use identity_verification::jwk::FromJwk as _;
 use identity_verification::jwk::Jwk;
 
-use iota_interaction::shared_crypto::intent::Intent;
+use iota_sdk_types::crypto::Intent;
 use iota_interaction::types::crypto::PublicKey;
 use iota_interaction::types::crypto::Signature;
 

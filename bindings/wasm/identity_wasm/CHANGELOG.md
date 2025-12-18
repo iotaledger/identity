@@ -1,5 +1,13 @@
 # Changelog
 
+## [wasm-v1.8.0-beta.2](https://github.com/iotaledger/identity/tree/wasm-v1.8.0-beta.2) (2025-12-18)
+
+[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.7.0-beta.1...wasm-v1.6.0-beta.10)
+
+### Patch
+
+- Bump `iota-interaction` to version `0.10.0` [\#1756](https://github.com/iotaledger/identity/pull/1756)
+
 ## [wasm-v1.8.0-beta.1](https://github.com/iotaledger/identity/tree/wasm-v1.8.0-beta.1) (2025-12-07)
 
 ### Added

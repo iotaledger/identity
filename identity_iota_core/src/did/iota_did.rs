@@ -12,6 +12,7 @@ use identity_did::BaseDIDUrl;
 use identity_did::CoreDID;
 use identity_did::Error as DIDError;
 use identity_did::DID;
+use iota_interaction::types::base_types::ObjectID;
 use product_common::network_name::NetworkName;
 use ref_cast::ref_cast_custom;
 use ref_cast::RefCastCustom;
@@ -79,16 +80,18 @@ impl IotaDID {
   /// let did = IotaDID::new(&[1;32], &NetworkName::try_from("smr").unwrap());
   /// assert_eq!(did.as_str(), "did:iota:smr:0x0101010101010101010101010101010101010101010101010101010101010101");
   pub fn new(bytes: &[u8; Self::TAG_BYTES_LEN], network_name: &NetworkName) -> Self {
-    let tag: String = prefix_hex::encode(bytes);
-    let did: String = format!("did:{}:{}:{}", Self::METHOD, network_name, tag);
-
-    Self::parse(did).expect("DIDs constructed with new should be valid")
+    Self::from_object_id(ObjectID::new(*bytes), network_name)
   }
 
   /// Constructs a new [`IotaDID`] from an identity's object id and the given `network_name`.
-  pub fn from_object_id(object_id: &str, network_name: &NetworkName) -> Self {
-    let did: String = format!("did:{}:{}:{}", Self::METHOD, network_name, object_id);
-    Self::parse(did).expect("DIDs constructed with new should be valid")
+  pub fn from_object_id(object_id: ObjectID, network_name: &NetworkName) -> Self {
+    Self::parse(format!("did:iota:{network_name}:{object_id}")).expect("valid IOTA DID")
+  }
+
+  /// Converts this [IotaDID] into an [ObjectID].
+  pub fn to_object_id(&self) -> ObjectID {
+    let object_id_hex = self.as_str().rsplit_once(':').expect("valid IOTA DID").1;
+    ObjectID::from_hex_literal(object_id_hex).expect("valid object ID")
   }
 
   /// Creates a new placeholder [`IotaDID`] with the given network name.

@@ -4,6 +4,7 @@
 use identity_iota::did::Error as DIDError;
 use identity_iota::did::DID;
 use identity_iota::iota::IotaDID;
+use iota_interaction::types::base_types::ObjectID;
 use product_common::network_name::NetworkName;
 use wasm_bindgen::prelude::*;
 
@@ -55,8 +56,10 @@ impl WasmIotaDID {
   #[wasm_bindgen(js_name = fromObjectId)]
   #[allow(non_snake_case)]
   pub fn from_object_id(objectId: String, network: String) -> Result<WasmIotaDID> {
-    let network_name: NetworkName = NetworkName::try_from(network).wasm_result()?;
-    Ok(Self::from(IotaDID::from_object_id(objectId.as_ref(), &network_name)))
+    let network_name = NetworkName::try_from(network).wasm_result()?;
+    let object_id = ObjectID::from_hex_literal(&objectId).map_err(|e| JsError::from(e))?;
+
+    Ok(Self(IotaDID::from_object_id(object_id, &network_name)))
   }
 
   /// Creates a new placeholder {@link IotaDID} with the given network name.
@@ -155,7 +158,7 @@ impl WasmIotaDID {
   /// Returns the hex-encoded ObjectID with a '0x' prefix, from the DID tag.
   #[wasm_bindgen(js_name = toObjectID)]
   pub fn to_object_id(&self) -> String {
-    self.0.as_str().rsplit_once(':').expect("valid DID").1.to_string()
+    self.0.to_object_id().to_string()
   }
 
   /// Converts the `DID` into a {@link DIDUrl}, consuming it.

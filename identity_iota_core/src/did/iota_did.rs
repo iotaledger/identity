@@ -12,7 +12,7 @@ use identity_did::BaseDIDUrl;
 use identity_did::CoreDID;
 use identity_did::Error as DIDError;
 use identity_did::DID;
-use iota_sdk::types::base_types::ObjectID;
+use iota_interaction::types::base_types::ObjectID;
 use product_common::network_name::NetworkName;
 use ref_cast::ref_cast_custom;
 use ref_cast::RefCastCustom;

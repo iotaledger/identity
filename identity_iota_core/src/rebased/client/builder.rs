@@ -5,7 +5,9 @@
 
 use std::fmt::Debug;
 
-use iota_interaction::{types::base_types::ObjectID, IotaClient, IotaKeySignature};
+use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::IotaClient;
+use iota_interaction::IotaKeySignature;
 use secret_storage::Signer;
 
 use crate::rebased::client::IdentityClient;
@@ -21,6 +23,15 @@ const LOCALNET_RPC_ENDPOINT: &str = "http://localhost:9000/";
 pub struct NoSigner;
 
 /// Builder for [`IdentityClient`].
+/// # Example
+/// ```
+/// # use identity_iota_core::rebased::client::builder::IdentityClientBuilder;
+/// # #[tokio::main]
+/// # async fn main() -> anyhow::Result<()> {
+/// let identity_client = IdentityClientBuilder::new().build_testnet().await?;
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Default)]
 pub struct IdentityClientBuilder<S = NoSigner> {
   signer: S,

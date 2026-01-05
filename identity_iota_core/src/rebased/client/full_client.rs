@@ -73,7 +73,7 @@ impl From<KeyId> for String {
   }
 }
 
-/// A client for interacting with the IOTA network.
+/// A client for interacting with the IOTA Identity framework.
 #[derive(Clone)]
 pub struct IdentityClient<S = ()> {
   /// [`IdentityClientReadOnly`] instance, used for read-only operations.
@@ -115,10 +115,7 @@ where
 
   /// Returns a reference to the [PublicKey] wrapped by this client.
   pub fn public_key(&self) -> &PublicKey {
-    self
-      .public_key
-      .as_ref()
-      .expect("public_key is set")
+    self.public_key.as_ref().expect("public_key is set")
   }
 
   /// Returns the [IotaAddress] wrapped by this client.

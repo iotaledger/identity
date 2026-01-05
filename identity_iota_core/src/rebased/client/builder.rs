@@ -88,6 +88,9 @@ impl IdentityClientBuilder<NoSigner> {
   /// Builds an [IdentityClient] connected to the default local network RPC endpoint.
   /// If you are using a different endpoint, use [`Self::build`] instead.
   pub async fn build_localnet(self) -> anyhow::Result<IdentityClient> {
+    if self.pkg_id.is_none() {
+      anyhow::bail!("A custom Identity package ID must be provided when connecting to a local network");
+    }
     self.build(LOCALNET_RPC_ENDPOINT).await
   }
 
@@ -143,6 +146,9 @@ impl<S: Signer<IotaKeySignature>> IdentityClientBuilder<S> {
 
   /// Builds an [IdentityClient] connected to the default local network RPC endpoint.
   pub async fn build_localnet(self) -> anyhow::Result<IdentityClient<S>> {
+    if self.pkg_id.is_none() {
+      anyhow::bail!("A custom Identity package ID must be provided when connecting to a local network");
+    }
     self.build(LOCALNET_RPC_ENDPOINT).await
   }
 

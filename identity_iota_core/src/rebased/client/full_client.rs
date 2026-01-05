@@ -75,13 +75,16 @@ impl From<KeyId> for String {
 
 /// A client for interacting with the IOTA network.
 #[derive(Clone)]
-pub struct IdentityClient<S> {
+pub struct IdentityClient<S = ()> {
   /// [`IdentityClientReadOnly`] instance, used for read-only operations.
-  read_client: IdentityClientReadOnly,
+  pub(super) read_client: IdentityClientReadOnly,
   /// The public key of the client.
-  public_key: PublicKey,
+  /// # Safety
+  /// `public_key` is always `Some` when `S: Signer<IotaKeySignature>`.
+  /// Developers MUST uphold this invariant.
+  pub(super) public_key: Option<PublicKey>,
   /// The signer of the client.
-  signer: S,
+  pub(super) signer: S,
 }
 
 impl<S> Deref for IdentityClient<S> {
@@ -96,6 +99,7 @@ where
   S: Signer<IotaKeySignature>,
 {
   /// Create a new [`IdentityClient`].
+  #[deprecated(since = "1.9.0", note = "Use IdentityClientBuilder instead")]
   pub async fn new(client: IdentityClientReadOnly, signer: S) -> Result<Self, Error> {
     let public_key = signer
       .public_key()
@@ -103,10 +107,29 @@ where
       .map_err(|e| Error::InvalidKey(e.to_string()))?;
 
     Ok(Self {
-      public_key,
+      public_key: Some(public_key),
       read_client: client,
       signer,
     })
+  }
+
+  /// Returns a reference to the [PublicKey] wrapped by this client.
+  pub fn public_key(&self) -> &PublicKey {
+    self
+      .public_key
+      .as_ref()
+      .expect("public_key is set")
+  }
+
+  /// Returns the [IotaAddress] wrapped by this client.
+  #[inline(always)]
+  pub fn address(&self) -> IotaAddress {
+    IotaAddress::from(self.public_key())
+  }
+
+  /// Returns the list of **all** unique DIDs the address wrapped by this client can access as a controller.
+  pub async fn controlled_dids(&self) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
+    self.dids_controlled_by(self.address()).await
   }
 }
 
@@ -122,17 +145,6 @@ impl<S> IdentityClient<S> {
     T: MoveType + DeserializeOwned + Send + Sync + PartialEq,
   {
     AuthenticatedAssetBuilder::new(content)
-  }
-
-  /// Returns the [IotaAddress] wrapped by this client.
-  #[inline(always)]
-  pub fn address(&self) -> IotaAddress {
-    IotaAddress::from(&self.public_key)
-  }
-
-  /// Returns the list of **all** unique DIDs the address wrapped by this client can access as a controller.
-  pub async fn controlled_dids(&self) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
-    self.dids_controlled_by(self.address()).await
   }
 }
 
@@ -268,7 +280,7 @@ where
   S: Signer<IotaKeySignature> + OptionalSync,
 {
   fn sender_address(&self) -> IotaAddress {
-    IotaAddress::from(&self.public_key)
+    IotaAddress::from(self.public_key())
   }
 
   fn signer(&self) -> &S {
@@ -276,7 +288,7 @@ where
   }
 
   fn sender_public_key(&self) -> &PublicKey {
-    &self.public_key
+    self.public_key()
   }
 }
 

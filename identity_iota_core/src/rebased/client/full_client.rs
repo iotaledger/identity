@@ -4,6 +4,7 @@
 use std::ops::Deref;
 
 use crate::iota_interaction_adapter::IotaClientAdapter;
+use crate::rebased::client::builder::NoSigner;
 use crate::rebased::client::QueryControlledDidsError;
 use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
@@ -75,7 +76,7 @@ impl From<KeyId> for String {
 
 /// A client for interacting with the IOTA Identity framework.
 #[derive(Clone)]
-pub struct IdentityClient<S = ()> {
+pub struct IdentityClient<S = NoSigner> {
   /// [`IdentityClientReadOnly`] instance, used for read-only operations.
   pub(super) read_client: IdentityClientReadOnly,
   /// The public key of the client.
@@ -142,6 +143,23 @@ impl<S> IdentityClient<S> {
     T: MoveType + DeserializeOwned + Send + Sync + PartialEq,
   {
     AuthenticatedAssetBuilder::new(content)
+  }
+
+  /// Sets a new signer for this client.
+  pub(super) async fn with_signer<NewS>(self, signer: NewS) -> Result<IdentityClient<NewS>, Error>
+  where
+    NewS: Signer<IotaKeySignature>,
+  {
+    let public_key = signer
+      .public_key()
+      .await
+      .map_err(|e| Error::InvalidKey(e.to_string()))?;
+
+    Ok(IdentityClient {
+      read_client: self.read_client,
+      public_key: Some(public_key),
+      signer,
+    })
   }
 }
 

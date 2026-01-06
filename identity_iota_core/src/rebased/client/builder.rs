@@ -32,10 +32,9 @@ pub struct NoSigner;
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct IdentityClientBuilder<S = NoSigner> {
   signer: S,
-  iota_client: Option<IotaClient>,
   pkg_id: Option<ObjectID>,
 }
 
@@ -45,19 +44,10 @@ impl IdentityClientBuilder<NoSigner> {
     Self::default()
   }
 
-  /// Creates a new [`IdentityClientBuilder`] from an existing [`IotaClient`].
-  pub fn from_iota_client(iota_client: IotaClient) -> Self {
-    Self {
-      iota_client: Some(iota_client),
-      ..Self::new()
-    }
-  }
-
   /// Sets the signer of the resulting [IdentityClient].
-  pub fn with_signer<S>(self, signer: S) -> IdentityClientBuilder<S> {
+  pub fn signer<S>(self, signer: S) -> IdentityClientBuilder<S> {
     IdentityClientBuilder {
       signer,
-      iota_client: self.iota_client,
       pkg_id: self.pkg_id,
     }
   }
@@ -65,22 +55,22 @@ impl IdentityClientBuilder<NoSigner> {
   /// Sets a custom package ID for the identity framework.
   /// # Warning
   /// Using a custom Identity package should only be done when targeting a local or private network.
-  pub fn with_custom_identity_package(mut self, custom_pkg_id: ObjectID) -> Self {
+  pub fn custom_identity_package(mut self, custom_pkg_id: ObjectID) -> Self {
     self.pkg_id = Some(custom_pkg_id);
     self
   }
 
-  /// Builds an [IdentityClient] connected to the mainnet.
+  /// Builds an [IdentityClient] connected to mainnet.
   pub async fn build_mainnet(self) -> anyhow::Result<IdentityClient> {
     self.build(MAINNET_RPC_ENDPOINT).await
   }
 
-  /// Builds an [IdentityClient] connected to the testnet.
+  /// Builds an [IdentityClient] connected to testnet.
   pub async fn build_testnet(self) -> anyhow::Result<IdentityClient> {
     self.build(TESTNET_RPC_ENDPOINT).await
   }
 
-  /// Builds an [IdentityClient] connected to the devnet.
+  /// Builds an [IdentityClient] connected to devnet.
   pub async fn build_devnet(self) -> anyhow::Result<IdentityClient> {
     self.build(DEVNET_RPC_ENDPOINT).await
   }
@@ -94,32 +84,18 @@ impl IdentityClientBuilder<NoSigner> {
     self.build(LOCALNET_RPC_ENDPOINT).await
   }
 
+  /// Builds an [IdentityClient] using the provided [IotaClient].
+  pub async fn build_from_iota_client(self, iota_client: IotaClient) -> anyhow::Result<IdentityClient> {
+    // No need to set the public key since there is no signer.
+    self.build_internal(iota_client).await
+  }
+
   /// Builds an [IdentityClient] connected to the specified RPC endpoint.
   pub async fn build(self, rpc_endpoint: impl AsRef<str>) -> anyhow::Result<IdentityClient> {
     #[cfg(not(target_arch = "wasm32"))]
     {
-      let mut iota_client = iota_sdk::IotaClientBuilder::default().build(rpc_endpoint).await?;
-
-      let chain_id = iota_client.read_api().get_chain_identifier().await?;
-      // Reuse the previously supplied client if it matches the chain ID.
-      if let Some(prev_client) = self.iota_client {
-        let prev_client_chain_id = prev_client.read_api().get_chain_identifier().await?;
-        if chain_id == prev_client_chain_id {
-          iota_client = prev_client;
-        }
-      }
-
-      let read_client = if let Some(custom_pkg_id) = self.pkg_id {
-        IdentityClientReadOnly::new_with_pkg_id(iota_client, custom_pkg_id).await?
-      } else {
-        IdentityClientReadOnly::new(iota_client).await?
-      };
-
-      Ok(IdentityClient {
-        read_client,
-        public_key: None,
-        signer: (),
-      })
+      let iota_client = iota_sdk::IotaClientBuilder::default().build(rpc_endpoint).await?;
+      self.build_internal(iota_client).await
     }
     #[cfg(target_arch = "wasm32")]
     {
@@ -131,52 +107,97 @@ impl IdentityClientBuilder<NoSigner> {
 impl<S: Signer<IotaKeySignature>> IdentityClientBuilder<S> {
   /// Builds an [IdentityClient] connected to the mainnet.
   pub async fn build_mainnet(self) -> anyhow::Result<IdentityClient<S>> {
-    self.build(MAINNET_RPC_ENDPOINT).await
+    let (signer, builder_without_signer) = self.pop_signer();
+    Ok(
+      builder_without_signer
+        .build_mainnet()
+        .await?
+        .with_signer(signer)
+        .await?,
+    )
   }
 
   /// Builds an [IdentityClient] connected to the testnet.
   pub async fn build_testnet(self) -> anyhow::Result<IdentityClient<S>> {
-    self.build(TESTNET_RPC_ENDPOINT).await
+    let (signer, builder_without_signer) = self.pop_signer();
+    Ok(
+      builder_without_signer
+        .build_testnet()
+        .await?
+        .with_signer(signer)
+        .await?,
+    )
   }
 
   /// Builds an [IdentityClient] connected to the devnet.
   pub async fn build_devnet(self) -> anyhow::Result<IdentityClient<S>> {
-    self.build(DEVNET_RPC_ENDPOINT).await
+    let (signer, builder_without_signer) = self.pop_signer();
+    Ok(builder_without_signer.build_devnet().await?.with_signer(signer).await?)
   }
 
   /// Builds an [IdentityClient] connected to the default local network RPC endpoint.
   pub async fn build_localnet(self) -> anyhow::Result<IdentityClient<S>> {
-    if self.pkg_id.is_none() {
-      anyhow::bail!("A custom Identity package ID must be provided when connecting to a local network");
-    }
-    self.build(LOCALNET_RPC_ENDPOINT).await
+    let (signer, builder_without_signer) = self.pop_signer();
+    Ok(
+      builder_without_signer
+        .build_localnet()
+        .await?
+        .with_signer(signer)
+        .await?,
+    )
+  }
+
+  /// Builds an [IdentityClient] using the provided [IotaClient].
+  pub async fn build_from_iota_client(self, iota_client: IotaClient) -> anyhow::Result<IdentityClient<S>> {
+    let (signer, builder_without_signer) = self.pop_signer();
+    let identity_client = builder_without_signer
+      .build_internal(iota_client)
+      .await?
+      // Safety: this sets the signer and the public key, upholding IdentityClient's invariant.
+      .with_signer(signer)
+      .await?;
+
+    Ok(identity_client)
   }
 
   /// Builds an [IdentityClient] connected to the specified RPC endpoint.
   pub async fn build(self, rpc_endpoint: impl AsRef<str>) -> anyhow::Result<IdentityClient<S>> {
-    let signer = self.signer;
-    let public_key = signer.public_key().await?;
-    let builder = IdentityClientBuilder {
-      signer: NoSigner,
-      iota_client: self.iota_client,
-      pkg_id: self.pkg_id,
-    };
+    let (signer, builder_without_signer) = self.pop_signer();
+    let identity_client = builder_without_signer
+      .build(rpc_endpoint)
+      .await?
+      // Safety: this sets the signer and the public key, upholding IdentityClient's invariant.
+      .with_signer(signer)
+      .await?;
 
-    let identity_client = builder.build(rpc_endpoint).await?;
-    Ok(IdentityClient {
-      read_client: identity_client.read_client,
-      public_key: Some(public_key),
-      signer,
-    })
+    Ok(identity_client)
   }
 }
 
-impl<S: Debug> Debug for IdentityClientBuilder<S> {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.debug_struct("IdentityClientBuilder")
-      .field("signer", &self.signer)
-      .field("iota_client", &self.iota_client.as_ref().and(Some("[IotaClient]")))
-      .field("pkg_id", &self.pkg_id)
-      .finish()
+impl<S> IdentityClientBuilder<S> {
+  /// Builds an [IdentityClient] using the provided [IotaClient] and whatever signer and package ID had been set.
+  /// Note: if the signer impl `Signer<IotaKeySignature>`, the caller *MUST* set the client's public key.
+  async fn build_internal(self, client: IotaClient) -> anyhow::Result<IdentityClient<S>> {
+    let read_client = if let Some(custom_pkg_id) = self.pkg_id {
+      IdentityClientReadOnly::new_with_pkg_id(client, custom_pkg_id).await?
+    } else {
+      IdentityClientReadOnly::new(client).await?
+    };
+
+    Ok(IdentityClient {
+      read_client,
+      public_key: None,
+      signer: self.signer,
+    })
+  }
+
+  fn pop_signer(self) -> (S, IdentityClientBuilder<NoSigner>) {
+    (
+      self.signer,
+      IdentityClientBuilder {
+        signer: NoSigner,
+        pkg_id: self.pkg_id,
+      },
+    )
   }
 }

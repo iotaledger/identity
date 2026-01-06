@@ -52,14 +52,6 @@ impl IdentityClientBuilder<NoSigner> {
     }
   }
 
-  /// Sets a custom package ID for the identity framework.
-  /// # Warning
-  /// Using a custom Identity package should only be done when targeting a local or private network.
-  pub fn custom_identity_package(mut self, custom_pkg_id: ObjectID) -> Self {
-    self.pkg_id = Some(custom_pkg_id);
-    self
-  }
-
   /// Builds an [IdentityClient] connected to mainnet.
   pub async fn build_mainnet(self) -> anyhow::Result<IdentityClient> {
     self.build(MAINNET_RPC_ENDPOINT).await
@@ -175,6 +167,14 @@ impl<S: Signer<IotaKeySignature>> IdentityClientBuilder<S> {
 }
 
 impl<S> IdentityClientBuilder<S> {
+  /// Sets a custom package ID for the identity framework.
+  /// # Warning
+  /// Using a custom Identity package should only be done when targeting a local or private network.
+  pub fn custom_identity_package(mut self, custom_pkg_id: ObjectID) -> Self {
+    self.pkg_id = Some(custom_pkg_id);
+    self
+  }
+
   /// Builds an [IdentityClient] using the provided [IotaClient] and whatever signer and package ID had been set.
   /// Note: if the signer impl `Signer<IotaKeySignature>`, the caller *MUST* set the client's public key.
   async fn build_internal(self, client: IotaClient) -> anyhow::Result<IdentityClient<S>> {

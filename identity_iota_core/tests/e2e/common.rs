@@ -5,8 +5,8 @@
 use anyhow::anyhow;
 use anyhow::Context;
 use async_trait::async_trait;
+use identity_iota_core::rebased::client::builder::IdentityClientBuilder;
 use identity_iota_core::rebased::client::IdentityClient;
-use identity_iota_core::rebased::client::IdentityClientReadOnly;
 use identity_iota_core::rebased::keytool::KeytoolSigner;
 use identity_iota_core::rebased::utils::request_funds;
 use identity_iota_core::rebased::Error;
@@ -242,9 +242,12 @@ impl TestClient {
     }
 
     let storage = Arc::new(Storage::new(JwkMemStore::new(), KeyIdMemstore::new()));
-    let identity_client = IdentityClientReadOnly::new_with_pkg_id(client, package_id).await?;
     let signer = KeytoolSigner::builder().build()?;
-    let client = IdentityClient::new(identity_client, signer).await?;
+    let client = IdentityClientBuilder::new()
+      .signer(signer)
+      .custom_identity_package(package_id)
+      .build_from_iota_client(client)
+      .await?;
 
     Ok(TestClient {
       client: Arc::new(client),
@@ -313,6 +316,7 @@ impl TestClient {
     let public_key_jwk = generate.jwk.to_public().expect("public components should be derivable");
     let signer = StorageSigner::new(&self.storage, generate.key_id, public_key_jwk);
 
+    #[allow(deprecated)]
     let user_client = IdentityClient::new((*self.client).clone(), signer).await?;
 
     request_funds(&user_client.sender_address()).await?;

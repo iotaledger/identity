@@ -369,8 +369,8 @@ mod tests {
       .finish(&TestSigner, "HS256")
       .await?;
 
-    assert_eq!(sd_jwt_vc.claims().nbf.as_ref().unwrap(), &credential.issuance_date);
-    assert_eq!(&sd_jwt_vc.claims().iss, credential.issuer.url());
+    assert_eq!(sd_jwt_vc.claims().nbf.as_ref(), Some(&credential.issuance_date));
+    assert_eq!(sd_jwt_vc.claims().iss.as_ref(), Some(credential.issuer.url()));
     assert_eq!(
       sd_jwt_vc.claims().sub.as_ref().unwrap().as_url(),
       credential.credential_subject.first().unwrap().id.as_ref()

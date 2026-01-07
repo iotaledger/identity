@@ -17,9 +17,6 @@ use super::ClaimMetadata;
 use super::DisplayMetadata;
 use super::IntegrityMetadata;
 
-/// Path used to retrieve VC Type Metadata.
-pub const WELL_KNOWN_VCT: &str = "/.well-known/vct";
-
 /// SD-JWT VC's credential type.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TypeMetadata {

@@ -10,7 +10,6 @@ use super::metadata::ClaimMetadata;
 use super::metadata::IssuerMetadata;
 use super::metadata::Jwks;
 use super::metadata::TypeMetadata;
-use super::metadata::WELL_KNOWN_VCT;
 use super::metadata::WELL_KNOWN_VC_ISSUER;
 use super::resolver::Error as ResolverErr;
 use super::Error;
@@ -20,7 +19,6 @@ use super::SdJwtVcPresentationBuilder;
 use crate::validator::JwtCredentialValidator as JwsUtils;
 use crate::validator::KeyBindingJWTValidationOptions;
 use anyhow::anyhow;
-use identity_core::common::StringOrUrl;
 use identity_core::common::Timestamp;
 use identity_core::common::Url;
 use identity_core::convert::ToJson as _;
@@ -35,11 +33,14 @@ use sd_jwt_payload_rework::SHA_ALG_NAME;
 use serde_json::Value;
 
 /// SD-JWT VC's JOSE header `typ`'s value.
-pub const SD_JWT_VC_TYP: &str = "vc+sd-jwt";
+pub const SD_JWT_VC_TYP: &str = "dc+sd-jwt";
+/// SD-JWT VC's alternative JOSE header `typ`'s value.
+/// This value is accepted for interoperability with older implementations.
+pub const SD_JWT_VC_TYP_ALTERNATIVE: &str = "vc+sd-jwt";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// An SD-JWT carrying a verifiable credential as described in
-/// [SD-JWT VC specification](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-04.html).
+/// [SD-JWT VC specification](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-13.html).
 pub struct SdJwtVc {
   pub(crate) sd_jwt: SdJwt,
   pub(crate) parsed_claims: SdJwtVcClaims,
@@ -93,9 +94,12 @@ impl SdJwtVc {
   where
     R: Resolver<Url, Vec<u8>>,
   {
+    let Some(iss) = self.claims().iss.as_ref() else {
+      return Ok(None);
+    };
     let metadata_url = {
-      let origin = self.claims().iss.origin().ascii_serialization();
-      let path = self.claims().iss.path();
+      let origin = iss.origin().ascii_serialization();
+      let path = iss.path();
       format!("{origin}{WELL_KNOWN_VC_ISSUER}{path}").parse().unwrap()
     };
     match resolver.resolve(&metadata_url).await {
@@ -111,26 +115,18 @@ impl SdJwtVc {
   }
 
   /// Retrieve this SD-JWT VC credential's type metadata [`TypeMetadata`].
-  /// ## Notes
-  /// `resolver` is fed with whatever value [`SdJwtVc`]'s `vct` might have.
-  /// If `vct` is a URI with scheme `https`, `resolver` must fetch the [`TypeMetadata`]
-  /// resource by combining `vct`'s value with [`WELL_KNOWN_VCT`]. To simplify this process
-  /// the utility function [`vct_to_url`] is provided.
   ///
   /// Returns the parsed [`TypeMetadata`] along with the raw [`Resolver`]'s response.
   /// The latter can be used to validate the `vct#integrity` claim if present.
   pub async fn type_metadata<R>(&self, resolver: &R) -> Result<(TypeMetadata, Vec<u8>)>
   where
-    R: Resolver<StringOrUrl, Vec<u8>>,
+    R: Resolver<String, Vec<u8>>,
   {
-    let vct = match self.claims().vct.clone() {
-      StringOrUrl::Url(url) => StringOrUrl::Url(vct_to_url(&url).unwrap_or(url)),
-      s => s,
-    };
-    let raw = resolver.resolve(&vct).await.map_err(|e| Error::Resolution {
-      input: vct.to_string(),
-      source: e,
-    })?;
+    let vct = self.claims().vct.clone();
+    let raw = resolver
+      .resolve(&vct)
+      .await
+      .map_err(|e| Error::Resolution { input: vct, source: e })?;
     let metadata = serde_json::from_slice(&raw).map_err(|e| Error::InvalidTypeMetadata(e.into()))?;
 
     Ok((metadata, raw))
@@ -208,7 +204,10 @@ impl SdJwtVc {
   {
     let sd_jwt_str = self.sd_jwt.to_string();
     let jws_input = {
-      let jwt_str = sd_jwt_str.split_once('~').unwrap().0;
+      let jwt_str = sd_jwt_str
+        .split_once('~')
+        .expect("SD-JWT must contain a '~' separator")
+        .0;
       JwsUtils::<V>::decode(jwt_str).map_err(|e| Error::Verification(e.into()))?
     };
 
@@ -237,7 +236,7 @@ impl SdJwtVc {
   pub async fn validate<R, V>(&self, resolver: &R, jws_verifier: &V, hasher: &dyn Hasher) -> Result<()>
   where
     R: Resolver<Url, Vec<u8>>,
-    R: Resolver<StringOrUrl, Vec<u8>>,
+    R: Resolver<String, Vec<u8>>,
     R: Resolver<Url, Value>,
     V: JwsVerifier,
   {
@@ -376,19 +375,6 @@ impl SdJwtVc {
   }
 }
 
-/// Converts `vct` claim's URI value into the appropriate well-known URL.
-/// ## Warnings
-/// Returns an [`Option::None`] if the URI's scheme is not `https`.
-pub fn vct_to_url(resource: &Url) -> Option<Url> {
-  if resource.scheme() != "https" {
-    None
-  } else {
-    let origin = resource.origin().ascii_serialization();
-    let path = resource.path();
-    Some(format!("{origin}{WELL_KNOWN_VCT}{path}").parse().unwrap())
-  }
-}
-
 impl TryFrom<SdJwt> for SdJwtVc {
   type Error = Error;
   fn try_from(mut sd_jwt: SdJwt) -> std::result::Result<Self, Self::Error> {
@@ -404,7 +390,7 @@ impl TryFrom<SdJwt> for SdJwtVc {
       .get("typ")
       .and_then(Value::as_str)
       .ok_or_else(|| Error::InvalidJoseType("null".to_string()))?;
-    if !typ.contains(SD_JWT_VC_TYP) {
+    if !typ.contains(SD_JWT_VC_TYP) && !typ.contains(SD_JWT_VC_TYP_ALTERNATIVE) {
       return Err(Error::InvalidJoseType(typ.to_string()));
     }
 
@@ -445,19 +431,13 @@ impl From<SdJwtVc> for SdJwt {
 mod tests {
   use std::sync::LazyLock;
 
-  use identity_core::common::StringOrUrl;
   use identity_core::common::Url;
 
   use super::*;
 
   const EXAMPLE_SD_JWT_VC: &str = "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogInZjK3NkLWp3dCJ9.eyJfc2QiOiBbIjBIWm1uU0lQejMzN2tTV2U3QzM0bC0tODhnekppLWVCSjJWel9ISndBVGciLCAiOVpicGxDN1RkRVc3cWFsNkJCWmxNdHFKZG1lRU9pWGV2ZEpsb1hWSmRSUSIsICJJMDBmY0ZVb0RYQ3VjcDV5eTJ1anFQc3NEVkdhV05pVWxpTnpfYXdEMGdjIiwgIklFQllTSkdOaFhJbHJRbzU4eWtYbTJaeDN5bGw5WmxUdFRvUG8xN1FRaVkiLCAiTGFpNklVNmQ3R1FhZ1hSN0F2R1RyblhnU2xkM3o4RUlnX2Z2M2ZPWjFXZyIsICJodkRYaHdtR2NKUXNCQ0EyT3RqdUxBY3dBTXBEc2FVMG5rb3ZjS09xV05FIiwgImlrdXVyOFE0azhxM1ZjeUE3ZEMtbU5qWkJrUmVEVFUtQ0c0bmlURTdPVFUiLCAicXZ6TkxqMnZoOW80U0VYT2ZNaVlEdXZUeWtkc1dDTmcwd1RkbHIwQUVJTSIsICJ3elcxNWJoQ2t2a3N4VnZ1SjhSRjN4aThpNjRsbjFqb183NkJDMm9hMXVnIiwgInpPZUJYaHh2SVM0WnptUWNMbHhLdUVBT0dHQnlqT3FhMXoySW9WeF9ZRFEiXSwgImlzcyI6ICJodHRwczovL2V4YW1wbGUuY29tL2lzc3VlciIsICJpYXQiOiAxNjgzMDAwMDAwLCAiZXhwIjogMTg4MzAwMDAwMCwgInZjdCI6ICJodHRwczovL2JtaS5idW5kLmV4YW1wbGUvY3JlZGVudGlhbC9waWQvMS4wIiwgImFnZV9lcXVhbF9vcl9vdmVyIjogeyJfc2QiOiBbIkZjOElfMDdMT2NnUHdyREpLUXlJR085N3dWc09wbE1Makh2UkM0UjQtV2ciLCAiWEx0TGphZFVXYzl6Tl85aE1KUm9xeTQ2VXNDS2IxSXNoWnV1cVVGS1NDQSIsICJhb0NDenNDN3A0cWhaSUFoX2lkUkNTQ2E2NDF1eWNuYzh6UGZOV3o4bngwIiwgImYxLVAwQTJkS1dhdnYxdUZuTVgyQTctRVh4dmhveHY1YUhodUVJTi1XNjQiLCAiazVoeTJyMDE4dnJzSmpvLVZqZDZnNnl0N0Fhb25Lb25uaXVKOXplbDNqbyIsICJxcDdaX0t5MVlpcDBzWWdETzN6VnVnMk1GdVBOakh4a3NCRG5KWjRhSS1jIl19LCAiX3NkX2FsZyI6ICJzaGEtMjU2IiwgImNuZiI6IHsiandrIjogeyJrdHkiOiAiRUMiLCAiY3J2IjogIlAtMjU2IiwgIngiOiAiVENBRVIxOVp2dTNPSEY0ajRXNHZmU1ZvSElQMUlMaWxEbHM3dkNlR2VtYyIsICJ5IjogIlp4amlXV2JaTVFHSFZXS1ZRNGhiU0lpcnNWZnVlY0NFNnQ0alQ5RjJIWlEifX19.CaXec2NNooWAy4eTxYbGWI--UeUL0jpC7Zb84PP_09Z655BYcXUTvfj6GPk4mrNqZUU5GT6QntYR8J9rvcBjvA~WyJuUHVvUW5rUkZxM0JJZUFtN0FuWEZBIiwgIm5hdGlvbmFsaXRpZXMiLCBbIkRFIl1d~WyJNMEpiNTd0NDF1YnJrU3V5ckRUM3hBIiwgIjE4IiwgdHJ1ZV0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE3MjA0NTQyOTUsICJzZF9oYXNoIjogIlZFejN0bEtqOVY0UzU3TTZoRWhvVjRIc19SdmpXZWgzVHN1OTFDbmxuZUkifQ.GqtiTKNe3O95GLpdxFK_2FZULFk6KUscFe7RPk8OeVLiJiHsGvtPyq89e_grBplvGmnDGHoy8JAt1wQqiwktSg";
   static EXAMPLE_ISSUER: LazyLock<Url> = LazyLock::new(|| "https://example.com/issuer".parse().unwrap());
-  static EXAMPLE_VCT: LazyLock<StringOrUrl> = LazyLock::new(|| {
-    "https://bmi.bund.example/credential/pid/1.0"
-      .parse::<Url>()
-      .unwrap()
-      .into()
-  });
+  const EXAMPLE_VCT: &str = "https://bmi.bund.example/credential/pid/1.0";
 
   #[test]
   fn simple_sd_jwt_is_not_a_valid_sd_jwt_vc() {
@@ -470,7 +450,7 @@ mod tests {
   #[test]
   fn parsing_a_valid_sd_jwt_vc_works() {
     let sd_jwt_vc: SdJwtVc = EXAMPLE_SD_JWT_VC.parse().unwrap();
-    assert_eq!(sd_jwt_vc.claims().iss, *EXAMPLE_ISSUER);
-    assert_eq!(sd_jwt_vc.claims().vct, *EXAMPLE_VCT);
+    assert_eq!(sd_jwt_vc.claims().iss, Some(EXAMPLE_ISSUER.clone()));
+    assert_eq!(sd_jwt_vc.claims().vct.as_str(), EXAMPLE_VCT);
   }
 }

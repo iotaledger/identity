@@ -3,9 +3,7 @@
 
 use std::ops::Deref;
 
-use identity_iota::core::Url;
 use identity_iota::credential::sd_jwt_vc::metadata::ClaimMetadata;
-use identity_iota::credential::sd_jwt_vc::vct_to_url as vct_to_url_impl;
 use identity_iota::credential::sd_jwt_vc::SdJwtVc;
 use wasm_bindgen::prelude::*;
 
@@ -163,10 +161,4 @@ impl WasmSdJwtVc {
   pub fn to_string(&self) -> JsValue {
     JsValue::from_str(&self.0.to_string())
   }
-}
-
-#[wasm_bindgen(js_name = "vctToUrl")]
-pub fn vct_to_url(resource: &str) -> Option<String> {
-  let url = resource.parse::<Url>().ok()?;
-  vct_to_url_impl(&url).map(|url| url.to_string())
 }

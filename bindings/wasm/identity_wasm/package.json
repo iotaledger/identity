@@ -85,7 +85,7 @@
     "node-fetch": "^2.6.7"
   },
   "peerDependencies": {
-    "@iota/iota-sdk": "^1.9.1"
+    "@iota/iota-sdk": "^1.10.1"
   },
   "engines": {
     "node": ">=20"

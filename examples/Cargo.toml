@@ -12,7 +12,7 @@ identity_pqc_verifier = { path = "../identity_pqc_verifier", default-features = 
 identity_storage = { path = "../identity_storage" }
 identity_stronghold = { path = "../identity_stronghold", default-features = false, features = ["send-sync-storage"] }
 iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", features = ["iota", "resolver"] }
-iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.14.0-rc" }
+iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.14.1-rc" }
 iota-sdk-legacy = { package = "iota-sdk", version = "1.0", default-features = false, features = ["tls", "client", "stronghold"] }
 json-proof-token.workspace = true
 notarization = { git = "https://github.com/iotaledger/notarization.git", branch = "feat/iota-v1-14-0", features = ["irl"] }

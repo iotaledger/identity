@@ -22,7 +22,7 @@ use identity_credential::sd_jwt_payload::SdObjectEncoder;
 use identity_credential::sd_jwt_payload::Sha256Hasher;
 use identity_credential::validator::FailFast;
 use identity_credential::validator::JwtCredentialValidationOptions;
-use identity_credential::validator::KeyBindingJWTValidationOptions;
+use identity_credential::validator::KeyBindingJwtValidationOptions;
 use identity_credential::validator::KeyBindingJwtError;
 use identity_credential::validator::SdJwtCredentialValidator;
 use identity_eddsa_verifier::EdDSAJwsVerifier;
@@ -130,7 +130,7 @@ async fn kb_validation() {
   let (setup, _credential, sd_jwt) = setup_test().await;
   let decoder = SdObjectDecoder::new_with_sha256();
   let validator = SdJwtCredentialValidator::with_signature_verifier(EdDSAJwsVerifier::default(), decoder);
-  let options = KeyBindingJWTValidationOptions::new().nonce(NONCE).aud(VERIFIER_ID);
+  let options = KeyBindingJwtValidationOptions::new().nonce(NONCE).aud(VERIFIER_ID);
   let _kb_validation = validator
     .validate_key_binding_jwt(&sd_jwt, &setup.subject_doc, &options)
     .expect("KB validation failed!");
@@ -142,7 +142,7 @@ async fn kb_too_early() {
   let decoder = SdObjectDecoder::new_with_sha256();
   let validator = SdJwtCredentialValidator::with_signature_verifier(EdDSAJwsVerifier::default(), decoder);
   let timestamp = Timestamp::now_utc().checked_add(Duration::seconds(1)).unwrap();
-  let options = KeyBindingJWTValidationOptions::new()
+  let options = KeyBindingJwtValidationOptions::new()
     .nonce(NONCE)
     .aud(VERIFIER_ID)
     .earliest_issuance_date(timestamp);
@@ -160,7 +160,7 @@ async fn kb_too_late() {
   let decoder = SdObjectDecoder::new_with_sha256();
   let validator = SdJwtCredentialValidator::with_signature_verifier(EdDSAJwsVerifier::default(), decoder);
   let timestamp = Timestamp::now_utc().checked_sub(Duration::seconds(20)).unwrap();
-  let options = KeyBindingJWTValidationOptions::new()
+  let options = KeyBindingJwtValidationOptions::new()
     .nonce(NONCE)
     .aud(VERIFIER_ID)
     .latest_issuance_date(timestamp);
@@ -206,7 +206,7 @@ async fn kb_in_the_future() {
 
   let decoder = SdObjectDecoder::new_with_sha256();
   let validator = SdJwtCredentialValidator::with_signature_verifier(EdDSAJwsVerifier::default(), decoder);
-  let options = KeyBindingJWTValidationOptions::new()
+  let options = KeyBindingJwtValidationOptions::new()
     .nonce(NONCE.to_string())
     .aud(VERIFIER_ID.to_string());
   let kb_validation = validator.validate_key_binding_jwt(&sd_jwt, &setup.subject_doc, &options);
@@ -221,7 +221,7 @@ async fn kb_aud() {
   let (setup, _credential, sd_jwt) = setup_test().await;
   let decoder = SdObjectDecoder::new_with_sha256();
   let validator = SdJwtCredentialValidator::with_signature_verifier(EdDSAJwsVerifier::default(), decoder);
-  let options = KeyBindingJWTValidationOptions::new().nonce(NONCE).aud("wrong verifier");
+  let options = KeyBindingJwtValidationOptions::new().nonce(NONCE).aud("wrong verifier");
   let kb_validation = validator.validate_key_binding_jwt(&sd_jwt, &setup.subject_doc, &options);
   assert!(matches!(
     kb_validation.err().unwrap(),
@@ -234,7 +234,7 @@ async fn kb_nonce() {
   let (setup, _credential, sd_jwt) = setup_test().await;
   let decoder = SdObjectDecoder::new_with_sha256();
   let validator = SdJwtCredentialValidator::with_signature_verifier(EdDSAJwsVerifier::default(), decoder);
-  let options = KeyBindingJWTValidationOptions::new()
+  let options = KeyBindingJwtValidationOptions::new()
     .nonce("wrong nonce")
     .aud(VERIFIER_ID);
   let kb_validation = validator.validate_key_binding_jwt(&sd_jwt, &setup.subject_doc, &options);

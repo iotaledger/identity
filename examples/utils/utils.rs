@@ -20,6 +20,7 @@ use identity_iota::iota::rebased::utils::request_funds;
 use identity_storage::JwkStorage;
 use identity_storage::KeyIdStorage;
 use identity_storage::KeyType;
+use identity_storage::MethodDigest;
 use identity_storage::StorageSigner;
 use identity_stronghold::StrongholdStorage;
 use iota_sdk::types::base_types::IotaAddress;
@@ -176,4 +177,18 @@ pub fn pretty_print_json(label: &str, value: &str) {
   println!("{label}:");
   println!("--------------------------------------");
   println!("{pretty_json} \n");
+}
+
+pub async fn get_storage_signer<'s>(
+  storage: &'s MemStorage,
+  did_document: &IotaDocument,
+  vm_fragment: &str,
+) -> anyhow::Result<StorageSigner<'s, JwkMemStore, KeyIdMemstore>> {
+  let vm = did_document
+    .resolve_method(vm_fragment, Some(MethodScope::VerificationMethod))
+    .with_context(|| format!("cannot find verification method #{vm_fragment}"))?;
+  let key_id = storage.key_id_storage().get_key_id(&MethodDigest::new(vm)?).await?;
+  let pk = storage.key_storage().get_public_key(&key_id).await?;
+
+  Ok(StorageSigner::new(storage, key_id, pk))
 }

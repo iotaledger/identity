@@ -116,3 +116,40 @@ where
       .map_err(|e| SecretStorageError::Other(anyhow!("failed to create valid IOTA signature: {e}")))
   }
 }
+
+#[cfg(feature = "sd-jwt-signer")]
+mod sd_jwt_signer_integration {
+  use crate::KeyStorageError;
+
+  use super::*;
+  use identity_verification::jwu::{encode_b64, encode_b64_json};
+  use sd_jwt::{JsonObject, JwsSigner};
+
+  #[async_trait]
+  impl<K, I> JwsSigner for StorageSigner<'_, K, I>
+  where
+    K: JwkStorage + Sync,
+    I: Sync,
+  {
+    type Error = KeyStorageError;
+    async fn sign(&self, header: &JsonObject, payload: &JsonObject) -> Result<Vec<u8>, Self::Error> {
+      let header_json = encode_b64_json(header)
+        .map_err(|e| KeyStorageError::new(KeyStorageErrorKind::SerializationError).with_source(e))?;
+      let payload_json = encode_b64_json(payload)
+        .map_err(|e| KeyStorageError::new(KeyStorageErrorKind::SerializationError).with_source(e))?;
+
+      let mut signing_input = format!("{header_json}.{payload_json}");
+
+      let signature_bytes = self
+        .storage
+        .key_storage()
+        .sign(&self.key_id, signing_input.as_bytes(), &self.public_key)
+        .await?;
+
+      signing_input.push('.');
+      signing_input.push_str(&encode_b64(signature_bytes));
+
+      Ok(signing_input.into_bytes())
+    }
+  }
+}

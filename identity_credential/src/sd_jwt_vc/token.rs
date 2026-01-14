@@ -17,7 +17,7 @@ use super::Resolver;
 use super::Result;
 use super::SdJwtVcPresentationBuilder;
 use crate::validator::JwtCredentialValidator as JwsUtils;
-use crate::validator::KeyBindingJWTValidationOptions;
+use crate::validator::KeyBindingJwtValidationOptions;
 use anyhow::anyhow;
 use identity_core::common::Timestamp;
 use identity_core::common::Url;
@@ -25,11 +25,12 @@ use identity_core::convert::ToJson as _;
 use identity_verification::jwk::Jwk;
 use identity_verification::jwk::JwkSet;
 use identity_verification::jws::JwsVerifier;
-use sd_jwt_payload_rework::Hasher;
-use sd_jwt_payload_rework::JsonObject;
-use sd_jwt_payload_rework::RequiredKeyBinding;
-use sd_jwt_payload_rework::SdJwt;
-use sd_jwt_payload_rework::SHA_ALG_NAME;
+use sd_jwt::Hasher;
+use sd_jwt::JsonObject;
+use sd_jwt::KeyBindingJwt;
+use sd_jwt::RequiredKeyBinding;
+use sd_jwt::SdJwt;
+use sd_jwt::SHA_ALG_NAME;
 use serde_json::Value;
 
 /// SD-JWT VC's JOSE header `typ`'s value.
@@ -69,6 +70,11 @@ impl SdJwtVc {
   /// Returns a reference to this [`SdJwtVc`]'s JWT claims.
   pub fn claims(&self) -> &SdJwtVcClaims {
     &self.parsed_claims
+  }
+
+  /// Attaches a KB-JWT to this [`SdJwtVc`].
+  pub fn attach_key_binding_jwt(&mut self, kb_jwt: KeyBindingJwt) {
+    self.sd_jwt.attach_key_binding_jwt(kb_jwt);
   }
 
   /// Prepares this [`SdJwtVc`] for a presentation, returning an [`SdJwtVcPresentationBuilder`].
@@ -141,7 +147,7 @@ impl SdJwtVc {
     R: Resolver<Url, Vec<u8>>,
   {
     let kid = self
-      .header()
+      .headers()
       .get("kid")
       .and_then(|value| value.as_str())
       .ok_or_else(|| Error::Verification(anyhow!("missing header claim `kid`")))?;
@@ -259,7 +265,7 @@ impl SdJwtVc {
     Ok(())
   }
 
-  /// Verify the signature of this [`SdJwtVc`]'s [sd_jwt_payload_rework::KeyBindingJwt].
+  /// Verify the signature of this [`SdJwtVc`]'s [sd_jwt::KeyBindingJwt].
   pub fn verify_key_binding<V: JwsVerifier>(&self, jws_verifier: &V, jwk: &Jwk) -> Result<()> {
     let Some(kb_jwt) = self.key_binding_jwt() else {
       return Ok(());
@@ -272,7 +278,7 @@ impl SdJwtVc {
       .and(Ok(()))
   }
 
-  /// Check the validity of this [`SdJwtVc`]'s [sd_jwt_payload_rework::KeyBindingJwt].
+  /// Check the validity of this [`SdJwtVc`]'s [sd_jwt::KeyBindingJwt].
   /// # Notes
   /// Validation of the required key binding (specified through the `cnf` JWT's claim)
   /// is only partially validated - custom and "jwe" requirement are not checked.
@@ -281,7 +287,7 @@ impl SdJwtVc {
     jws_verifier: &V,
     jwk: &Jwk,
     hasher: &dyn Hasher,
-    options: &KeyBindingJWTValidationOptions,
+    options: &KeyBindingJwtValidationOptions,
   ) -> Result<()> {
     self.verify_key_binding(jws_verifier, jwk)?;
 
@@ -315,7 +321,7 @@ impl SdJwtVc {
     let Some(kb_jwt) = self.key_binding_jwt() else {
       return Ok(());
     };
-    let KeyBindingJWTValidationOptions {
+    let KeyBindingJwtValidationOptions {
       nonce,
       aud,
       earliest_issuance_date,
@@ -386,7 +392,7 @@ impl TryFrom<SdJwt> for SdJwtVc {
 
     // Validate Header's typ.
     let typ = sd_jwt
-      .header()
+      .headers()
       .get("typ")
       .and_then(Value::as_str)
       .ok_or_else(|| Error::InvalidJoseType("null".to_string()))?;

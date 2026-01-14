@@ -37,6 +37,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio = { version = "1.46.1", default-features = false, features = ["macros", "sync"], optional = true }
 zkryptium = { workspace = true, optional = true }
+sd-jwt = { package = "sd-jwt-payload", version = "0.5.0", default-features = false, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.8", package = "iota_interaction", optional = true }
@@ -91,6 +92,9 @@ pqc = []
 pqc-liboqs = ["pqc", "memstore", "dep:oqs"]
 hybrid = ["pqc", "dep:iota-crypto"]
 hybrid-liboqs = ["hybrid", "pqc-liboqs"]
+
+# Enables the integration with SD-JWT's JwsSigner.
+sd-jwt-signer = ["dep:sd-jwt", "storage-signer"]
 
 [lints]
 workspace = true

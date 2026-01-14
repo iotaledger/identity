@@ -15,8 +15,8 @@ pub const WELL_KNOWN_VC_ISSUER: &str = "/.well-known/jwt-vc-issuer";
 /// SD-JWT VC issuer's metadata. Contains information about one issuer's
 /// public keys, either as an embedded JWK Set or a reference to one.
 /// ## Notes
-/// - [`IssuerMetadata::issuer`] must exactly match [`SdJwtVcClaims::iss`](crate::sd_jwt_vc::SdJwtVcClaims::iss)
-///   in order to be considered valid.
+/// - [`IssuerMetadata::issuer`] must exactly match [`SdJwtVcClaims::iss`](crate::sd_jwt_vc::SdJwtVcClaims::iss) in
+///   order to be considered valid.
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct IssuerMetadata {
   /// Issuer URI.

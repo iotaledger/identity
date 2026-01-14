@@ -26,7 +26,7 @@ pub enum Error {
   },
   /// A low level SD-JWT error.
   #[error(transparent)]
-  SdJwt(#[from] sd_jwt_payload_rework::Error),
+  SdJwt(#[from] sd_jwt::Error),
   /// Value of header parameter `typ` is not valid.
   #[error("invalid \"typ\" value; expected \"vc+sd-jwt\" (or a superset) but found \"{0}\"")]
   InvalidJoseType(String),

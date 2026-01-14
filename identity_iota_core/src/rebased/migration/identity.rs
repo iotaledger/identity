@@ -104,7 +104,7 @@ impl Identity {
         let state_metadata = alias.state_metadata.as_deref().ok_or_else(|| {
           Error::DidDocParsingFailed("legacy stardust alias doesn't contain a DID Document".to_string())
         })?;
-        let did = IotaDID::from_object_id(&alias.id.object_id().to_string(), network);
+        let did = IotaDID::from_object_id(*alias.id.object_id(), network);
         StateMetadataDocument::unpack(state_metadata)
           .and_then(|state_metadata_doc| state_metadata_doc.into_iota_document(&did))
           .map_err(|e| Error::DidDocParsingFailed(e.to_string()))
@@ -429,7 +429,7 @@ pub(crate) async fn get_identity_impl(
 
   let data = response.data.expect("already handled errors in response");
   let network = client.network_name();
-  let did = IotaDID::from_object_id(&object_id.to_string(), network);
+  let did = IotaDID::from_object_id(object_id, network);
   let IdentityData {
     id,
     multicontroller,
@@ -440,7 +440,7 @@ pub(crate) async fn get_identity_impl(
     deleted,
     deleted_did,
   } = unpack_identity_data(data)?;
-  let legacy_did = legacy_id.map(|legacy_id| IotaDID::from_object_id(&legacy_id.to_string(), client.network_name()));
+  let legacy_did = legacy_id.map(|legacy_id| IotaDID::from_object_id(legacy_id, client.network_name()));
 
   let did_doc = multicontroller
     .controlled_value()

@@ -121,13 +121,13 @@ where
     storage: &'a Storage<K, I>,
     document: &D,
     fragment: &str,
-  ) -> Result<Self, StorageSignerFromVmError> 
+  ) -> Result<Self, StorageSignerFromVmError>
   where
     D: AsRef<CoreDocument>,
   {
     use StorageSignerFromVmError as Error;
     use StorageSignerFromVmErrorKind as ErrorKind;
-    
+
     let document = document.as_ref();
     let make_err = |kind| Error {
       did: document.id().clone(),
@@ -212,8 +212,10 @@ mod sd_jwt_signer_integration {
   use crate::KeyStorageError;
 
   use super::*;
-  use identity_verification::jwu::{encode_b64, encode_b64_json};
-  use sd_jwt::{JsonObject, JwsSigner};
+  use identity_verification::jwu::encode_b64;
+  use identity_verification::jwu::encode_b64_json;
+  use sd_jwt::JsonObject;
+  use sd_jwt::JwsSigner;
 
   #[cfg_attr(not(feature = "send-sync-storage"), async_trait(?Send))]
   #[cfg_attr(feature = "send-sync-storage", async_trait)]

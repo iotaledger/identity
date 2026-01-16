@@ -187,6 +187,22 @@ impl<T> Credential<T> {
       .map_err(|err| Error::JwtClaimsSetSerializationError(err.into()))
   }
 
+  /// Converts the [`Credential`] into a JWT claims set in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
+  pub fn to_jwt_claims(&self, custom_claims: Option<Object>) -> Result<serde_json::Map<String, serde_json::Value>>
+  where
+    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
+  {
+    let jwt_representation: CredentialJwtClaims<'_, T> = CredentialJwtClaims::new(self, custom_claims)?;
+    let serde_json::Value::Object(jwt_claims) = jwt_representation
+      .to_json_value()
+      .map_err(|err| Error::JwtClaimsSetSerializationError(err.into()))?
+    else {
+      unreachable!("CredentialJwtClaims always serializes to a JSON object");
+    };
+
+    Ok(jwt_claims)
+  }
+
   ///Serializes the [`Credential`] as a JPT claims set
   #[cfg(feature = "jpt-bbs-plus")]
   pub fn serialize_jpt(&self, custom_claims: Option<Object>) -> Result<JptClaims>

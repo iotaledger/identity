@@ -51,6 +51,7 @@ pub struct WasmJwtVcV2(pub(crate) JwtVcV2);
 
 #[wasm_bindgen(js_class = JwtVcV2)]
 impl WasmJwtVcV2 {
+  #[allow(clippy::inherent_to_string)]
   #[wasm_bindgen(js_name = toString)]
   pub fn to_string(&self) -> String {
     self.0.as_str().to_owned()

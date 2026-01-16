@@ -3,7 +3,7 @@
 
 use identity_core::common::Timestamp;
 use identity_core::common::Url;
-use sd_jwt_payload_rework::Sha256Hasher;
+use sd_jwt::Sha256Hasher;
 use serde_json::json;
 
 use crate::sd_jwt_vc::tests::TestSigner;
@@ -19,7 +19,7 @@ async fn test_sd_jwt_presentation_builder() -> anyhow::Result<()> {
     },
     "degree": []
   }))?
-  .header(std::iter::once(("kid".to_string(), serde_json::Value::String("key1".to_string()))).collect())
+  .header("kid", "key1")
   .vct("https://example.com/education_credential".parse::<Url>()?)
   .iat(Timestamp::now_utc())
   .iss("https://example.com".parse()?)
@@ -29,9 +29,9 @@ async fn test_sd_jwt_presentation_builder() -> anyhow::Result<()> {
   .await?;
 
   let (concealed_address_credential, conceiled_disclosures) = credential
-    .into_presentation(&Sha256Hasher::new())?
+    .into_presentation(&Sha256Hasher)?
     .conceal("/address")?
-    .finish()?;
+    .finish();
 
   // Object "address" has been omitted from the credential.
   assert!(!concealed_address_credential.claims().contains_key("address"));

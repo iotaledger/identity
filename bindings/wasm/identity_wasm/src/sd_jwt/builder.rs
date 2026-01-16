@@ -1,18 +1,19 @@
 // Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use identity_iota::sd_jwt_rework::SdJwtBuilder;
+use identity_iota::sd_jwt_payload::SdJwtBuilder;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
 use crate::error::Result;
 use crate::error::WasmResult;
-use crate::sd_jwt_vc::sd_jwt_v2::WasmSdJwt;
+use crate::sd_jwt::WasmSdJwt;
 
 use super::WasmHasher;
 use super::WasmJwsSigner;
 use super::WasmRequiredKeyBinding;
 
+/// A class for constructing an {@link SdJwt} in a step-by-step manner.
 #[wasm_bindgen(js_name = SdJwtBuilder)]
 pub struct WasmSdJwtBuilder(pub(crate) SdJwtBuilder<WasmHasher>);
 
@@ -38,15 +39,20 @@ impl WasmSdJwtBuilder {
     self.0.make_concealable(path).map(Self).wasm_result()
   }
 
+  /// Sets a single JWT header by its key and value.
+  pub fn header(self, key: &str, value: JsValue) -> Result<Self> {
+    let value: serde_json::Value = serde_wasm_bindgen::from_value(value)?;
+    Ok(Self(self.0.header(key, value)))
+  }
+
   /// Sets the JWT header.
   /// ## Notes
   /// - if {@link SdJwtVcBuilder.header} is not called, the default header is used: ```json { "typ": "sd-jwt", "alg":
   ///   "<algorithm used in SdJwtBuilder.finish>" } ```
   /// - `alg` is always replaced with the value passed to {@link SdJwtVcBuilder.finish}.
-  #[wasm_bindgen]
-  pub fn header(self, header: js_sys::Object) -> Self {
-    let header = serde_wasm_bindgen::from_value(header.into()).expect("JS object is a valid JSON object");
-    Self(self.0.header(header))
+  pub fn headers(self, headers: js_sys::Object) -> Self {
+    let headers = serde_wasm_bindgen::from_value(headers.into()).expect("JS object is a valid JSON object");
+    Self(self.0.headers(headers))
   }
 
   /// Adds a new claim to the underlying object.
@@ -78,7 +84,6 @@ impl WasmSdJwtBuilder {
   }
 
   /// Creates an {@link SdJwtVc} with the provided data.
-  #[wasm_bindgen]
   pub async fn finish(self, signer: &WasmJwsSigner, alg: &str) -> Result<WasmSdJwt> {
     self.0.finish(signer, alg).await.map(WasmSdJwt).wasm_result()
   }

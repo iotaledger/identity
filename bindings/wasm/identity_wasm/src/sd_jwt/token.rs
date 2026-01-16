@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use identity_iota::credential::sd_jwt_vc::Error;
-use identity_iota::sd_jwt_rework::SdJwt;
-use identity_iota::sd_jwt_rework::SdJwtPresentationBuilder;
-use identity_iota::sd_jwt_rework::Sha256Hasher;
+use identity_iota::sd_jwt_payload::SdJwt;
+use identity_iota::sd_jwt_payload::SdJwtPresentationBuilder;
+use identity_iota::sd_jwt_payload::Sha256Hasher;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
@@ -33,34 +33,38 @@ extern "C" {
   pub type WasmSdJwtClaims;
 }
 
+/// Representation of an [SD-JWT](https://www.rfc-editor.org/rfc/rfc9901.html#name-sd-jwt-and-sd-jwtkb-data-fo)
+/// of the format `<Issuer-signed JWT>~<D.1>~<D.2>~...~<D.N>~<optional KB-JWT>`.
 #[derive(Clone)]
-#[wasm_bindgen(js_name = SdJwtV2)]
+#[wasm_bindgen(js_name = SdJwt)]
 pub struct WasmSdJwt(pub(crate) SdJwt);
 
-#[wasm_bindgen(js_class = SdJwtV2)]
+#[wasm_bindgen(js_class = SdJwt)]
 impl WasmSdJwt {
-  #[wasm_bindgen]
+  /// Attempts to parse a semantically valid {@link SdJwt} from the given string.
   pub fn parse(s: &str) -> Result<WasmSdJwt> {
     SdJwt::parse(s).map(Self).map_err(Error::from).wasm_result()
   }
 
-  #[wasm_bindgen]
-  pub fn header(&self) -> JsValue {
-    serde_wasm_bindgen::to_value(self.0.header()).unwrap()
+  /// Returns the JWT headers of this SD-JWT token.
+  #[wasm_bindgen(unchecked_return_type = "object")]
+  pub fn headers(&self) -> JsValue {
+    serde_wasm_bindgen::to_value(self.0.headers()).unwrap()
   }
 
-  #[wasm_bindgen]
+  /// Returns the raw SD-JWT claims object.
   pub fn claims(&self) -> Result<WasmSdJwtClaims> {
     serde_wasm_bindgen::to_value(self.0.claims())
       .wasm_result()
       .map(JsCast::unchecked_into)
   }
 
-  #[wasm_bindgen]
+  /// Returns a list of disclosure strings.
   pub fn disclosures(&self) -> Vec<String> {
     self.0.disclosures().iter().map(ToString::to_string).collect()
   }
 
+  /// Returns the issuer's key binding requirements for this token, if any.
   #[wasm_bindgen(js_name = "requiredKeyBind")]
   pub fn required_key_bind(&self) -> Option<WasmRequiredKeyBinding> {
     self.0.required_key_bind().map(|required_kb| {
@@ -82,8 +86,15 @@ impl WasmSdJwt {
       .wasm_result()
   }
 
-  /// Serializes the components into the final SD-JWT.
-  #[wasm_bindgen]
+  /// Attaches a {@link KeyBindingJwt} to this {@link SdJwt} token.
+  /// ## Notes
+  /// This method does *not* validate the given {@link KeyBindingJwt} in any way.
+  #[wasm_bindgen(js_name = attachKeyBindingJwt)]
+  pub fn attach_key_binding_jwt(&mut self, kb_jwt: WasmKeyBindingJwt) {
+    self.0.attach_key_binding_jwt(kb_jwt.0);
+  }
+
+  /// Returns the string representation for this SD-JWT token.
   pub fn presentation(&self) -> String {
     self.0.presentation()
   }
@@ -100,6 +111,8 @@ impl WasmSdJwt {
   }
 }
 
+/// A class that enables users to conceal or disclose disclosable claims
+/// within an {@link SdJwt}.
 #[wasm_bindgen(js_name = SdJwtPresentationBuilder)]
 pub struct WasmSdJwtPresentationBuilder(pub(crate) SdJwtPresentationBuilder);
 
@@ -115,30 +128,37 @@ impl WasmSdJwtPresentationBuilder {
   /// ## Notes
   /// - When concealing a claim more than one disclosure may be removed: the disclosure for the claim itself and the
   ///   disclosures for any concealable sub-claim.
-  #[wasm_bindgen]
   pub fn conceal(self, path: &str) -> Result<Self> {
     self.0.conceal(path).map(Self).wasm_result()
   }
 
-  /// Adds a {@link KeyBindingJwt} to this {@link SdJwt}'s presentation.
-  #[wasm_bindgen(js_name = attachKeyBindingJwt)]
-  pub fn attach_key_binding_jwt(self, kb_jwt: WasmKeyBindingJwt) -> Self {
-    Self(self.0.attach_key_binding_jwt(kb_jwt.0))
+  /// Removes all disclosures from this SD-JWT, resulting in a token that,
+  /// when presented, will have *all* selectively-disclosable properties
+  /// omitted.
+  pub fn conceal_all(self) -> Self {
+    Self(self.0.conceal_all())
   }
 
-  /// Returns the resulting {@link SdJwt} together with all removed disclosures.
-  /// ## Errors
-  /// - Fails with `Error::MissingKeyBindingJwt` if this {@link SdJwt} requires a key binding but none was provided.
+  /// Discloses a value that was previously concealed.
+  /// # Notes
+  /// - This method may disclose multiple values, if the given path references a disclosable value stored within another
+  ///   disclosable value. That is, {@link SdJwtPresentationBuilder.disclose} will unconceal the selectively disclosable
+  ///   value at `path` together with *all* its parents that are disclosable values themselves.
+  /// - By default *all* disclosable claims are disclosed, therefore this method can only be used to *undo* any
+  ///   concealment operations previously performed by either {@link SdJwtPresentationBuilder.conceal} or {@link
+  ///   SdJwtPresentationBuilder.conceal_all}.
+  pub fn disclose(self, path: &str) -> Result<Self> {
+    self.0.disclose(path).map(Self).wasm_result()
+  }
+
+  /// Returns the resulting {@link SdJwt} together with all omitted disclosures.
   #[wasm_bindgen]
-  pub fn finish(self) -> Result<SdJwtPresentationResult> {
-    self
-      .0
-      .finish()
-      .map(|(sd_jwt, disclosures)| SdJwtPresentationResult {
-        sd_jwt: WasmSdJwt(sd_jwt),
-        disclosures: disclosures.into_iter().map(WasmDisclosure::from).collect(),
-      })
-      .wasm_result()
+  pub fn finish(self) -> SdJwtPresentationResult {
+    let (sd_jwt, disclosures) = self.0.finish();
+    SdJwtPresentationResult {
+      sd_jwt: WasmSdJwt(sd_jwt),
+      disclosures: disclosures.into_iter().map(WasmDisclosure::from).collect(),
+    }
   }
 }
 

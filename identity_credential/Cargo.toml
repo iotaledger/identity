@@ -27,8 +27,7 @@ jsonschema = { version = "0.19", optional = true, default-features = false }
 once_cell = { version = "1.18", default-features = false, features = ["std"] }
 reqwest = { version = "0.12", default-features = false, features = ["default-tls", "json", "stream"], optional = true }
 roaring = { version = "0.10.2", default-features = false, features = ["serde"], optional = true }
-sd-jwt-payload = { version = "0.2.1", default-features = false, features = ["sha"], optional = true }
-sd-jwt-payload-rework = { package = "sd-jwt-payload", version = "0.4", features = ["sha"], optional = true }
+sd-jwt = { package = "sd-jwt-payload", version = "0.5.1", default-features = false, features = ["sha"], optional = true }
 serde.workspace = true
 serde-aux = { version = "4.3.1", default-features = false }
 serde_json.workspace = true
@@ -69,8 +68,8 @@ status-list-2021 = ["revocation-bitmap"]
 validator = ["dep:serde_repr", "credential", "presentation"]
 domain-linkage = ["validator"]
 domain-linkage-fetch = ["domain-linkage", "dep:reqwest", "dep:futures"]
-sd-jwt = ["credential", "validator", "dep:sd-jwt-payload"]
-sd-jwt-vc = ["sd-jwt", "dep:sd-jwt-payload-rework", "dep:jsonschema", "dep:futures"]
+sd-jwt = ["credential", "validator", "dep:sd-jwt"]
+sd-jwt-vc = ["sd-jwt", "dep:jsonschema", "dep:futures"]
 jpt-bbs-plus = [
   "credential",
   "validator",

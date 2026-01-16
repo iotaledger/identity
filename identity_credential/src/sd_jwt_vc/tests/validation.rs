@@ -4,7 +4,7 @@
 use identity_core::common::Timestamp;
 use identity_core::common::Url;
 use identity_verification::jwk::JwkSet;
-use sd_jwt_payload_rework::Sha256Hasher;
+use sd_jwt::Sha256Hasher;
 use serde_json::json;
 
 use crate::sd_jwt_vc::metadata::IssuerMetadata;
@@ -30,10 +30,7 @@ fn issuer_metadata() -> IssuerMetadata {
 fn test_resolver() -> TestResolver {
   let mut test_resolver = TestResolver::new();
   test_resolver.insert_resource("https://example.com/.well-known/jwt-vc-issuer/", issuer_metadata());
-  test_resolver.insert_resource(
-    "https://example.com/.well-known/vct/education_credential",
-    vc_metadata(),
-  );
+  test_resolver.insert_resource("https://example.com/education_credential", vc_metadata());
 
   test_resolver
 }
@@ -48,7 +45,7 @@ async fn validation_of_valid_token_works() -> anyhow::Result<()> {
     },
     "degree": []
   }))?
-  .header(std::iter::once(("kid".to_string(), serde_json::Value::String("key1".to_string()))).collect())
+  .header("kid", "key1")
   .vct("https://example.com/education_credential".parse::<Url>()?)
   .iat(Timestamp::now_utc())
   .iss("https://example.com".parse()?)
@@ -74,7 +71,7 @@ async fn validation_of_invalid_token_fails() -> anyhow::Result<()> {
     },
     "degree": []
   }))?
-  .header(std::iter::once(("kid".to_string(), serde_json::Value::String("invalid_key".to_string()))).collect())
+  .header("kid", "invalid_key")
   .vct("https://example.com/education_credential".parse::<Url>()?)
   .iat(Timestamp::now_utc())
   .iss("https://example.com".parse()?)

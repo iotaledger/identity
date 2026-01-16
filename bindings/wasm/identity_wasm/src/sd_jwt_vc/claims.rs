@@ -6,7 +6,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[wasm_bindgen(typescript_custom_section)]
 const I_SD_JWT_VC_CLAIMS: &str = r#"
 interface ISdJwtVcClaims {
-  iss: string;
+  iss?: string;
   vct: string;
   status: SdJwtVcStatus;
   nbf?: string;

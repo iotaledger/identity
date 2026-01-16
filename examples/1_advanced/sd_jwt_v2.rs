@@ -9,7 +9,6 @@
 use examples::create_did_document;
 use examples::get_funded_client;
 use examples::get_memstorage;
-use examples::get_storage_signer;
 use identity_eddsa_verifier::EdDSAJwsVerifier;
 use identity_iota::core::json;
 use identity_iota::core::FromJson;
@@ -24,6 +23,7 @@ use identity_iota::credential::KeyBindingJwtValidationOptions;
 use identity_iota::credential::SdJwtCredentialValidator;
 use identity_iota::credential::Subject;
 use identity_iota::did::DID;
+use identity_storage::StorageSigner;
 use sd_jwt::KeyBindingJwtBuilder;
 use sd_jwt::RequiredKeyBinding;
 use sd_jwt::SdJwtBuilder;
@@ -76,7 +76,8 @@ async fn main() -> anyhow::Result<()> {
   // and "street_address" properties selectively disclosable.
   // The issuer also requires a Key Binding JWT signed by the holder's key to be
   // presented along with the SD-JWT.
-  let issuer_signer = get_storage_signer(&issuer_storage, &issuer_document, &issuer_vm_fragment).await?;
+  let issuer_signer =
+    StorageSigner::new_from_vm_fragment(&issuer_storage, &issuer_document, &issuer_vm_fragment).await?;
   let sd_jwt_credential = SdJwtBuilder::new(credential)?
     // Narrow the type to VC SD-JWT as per the spec.
     .header("typ", "vc+sd-jwt")
@@ -111,7 +112,8 @@ async fn main() -> anyhow::Result<()> {
   // Step 5: Holder presents its SD-JWT token to the verifier.
   // ===========================================================================
 
-  let holder_signer = get_storage_signer(&holder_storage, &holder_document, &holder_vm_fragment).await?;
+  let holder_signer =
+    StorageSigner::new_from_vm_fragment(&holder_storage, &holder_document, &holder_vm_fragment).await?;
   // The holder only wants to present "locality" and "postal_code" but not "street_address".
   let (mut sd_jwt, _concealed_claims) = sd_jwt_credential
     .into_presentation(&Sha256Hasher)?

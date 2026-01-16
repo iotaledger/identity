@@ -117,14 +117,18 @@ where
   /// Creates a new [StorageSigner] from a given DID Document and a verification method fragment.
   /// ## Notes
   /// At this time, this function only supports "JsonWebKey2020"-based verification methods.
-  pub async fn new_from_vm_fragment(
+  pub async fn new_from_vm_fragment<D>(
     storage: &'a Storage<K, I>,
-    document: &CoreDocument,
+    document: &D,
     fragment: &str,
-  ) -> Result<Self, StorageSignerFromVmError> {
+  ) -> Result<Self, StorageSignerFromVmError> 
+  where
+    D: AsRef<CoreDocument>,
+  {
     use StorageSignerFromVmError as Error;
     use StorageSignerFromVmErrorKind as ErrorKind;
-
+    
+    let document = document.as_ref();
     let make_err = |kind| Error {
       did: document.id().clone(),
       fragment: fragment.into(),

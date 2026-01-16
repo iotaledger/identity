@@ -30,6 +30,7 @@ k256 = { version = "0.13.3", default-features = false, features = ["std", "ecdsa
 oqs = { workspace = true, optional = true }
 p256 = { version = "0.13.2", default-features = false, features = ["std", "ecdsa", "ecdsa-core", "jwk"], optional = true }
 rand = { version = "0.8.5", default-features = false, features = ["std", "std_rng"], optional = true }
+sd-jwt = { package = "sd-jwt-payload", version = "0.5.0", default-features = false, optional = true }
 seahash = { version = "4.1.0", default-features = false }
 secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", default-features = false, tag = "v0.3.0", optional = true }
 serde.workspace = true
@@ -37,7 +38,6 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio = { version = "1.46.1", default-features = false, features = ["macros", "sync"], optional = true }
 zkryptium = { workspace = true, optional = true }
-sd-jwt = { package = "sd-jwt-payload", version = "0.5.0", default-features = false, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.8", package = "iota_interaction", optional = true }

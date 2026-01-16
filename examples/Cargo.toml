@@ -9,7 +9,7 @@ publish = false
 anyhow = "1.0.62"
 identity_eddsa_verifier = { path = "../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
 identity_pqc_verifier = { path = "../identity_pqc_verifier", default-features = true }
-identity_storage = { path = "../identity_storage", features = ["sd-jwt-signer"]}
+identity_storage = { path = "../identity_storage", features = ["sd-jwt-signer"] }
 identity_stronghold = { path = "../identity_stronghold", default-features = false, features = ["send-sync-storage"] }
 iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", features = ["iota", "resolver"] }
 iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.13.1" }

@@ -104,7 +104,7 @@ async fn kb_validation() -> anyhow::Result<()> {
   let (setup, _credential, sd_jwt) = setup_test().await?;
   let validator = SdJwtCredentialValidator::new(EdDSAJwsVerifier::default(), Sha256Hasher);
   let options = KeyBindingJwtValidationOptions::new().nonce(NONCE).aud(VERIFIER_ID);
-  let _kb_validation = validator.validate_key_binding_jwt(&sd_jwt, &setup.subject_doc, &options)?;
+  validator.validate_key_binding_jwt(&sd_jwt, &setup.subject_doc, &options)?;
 
   Ok(())
 }

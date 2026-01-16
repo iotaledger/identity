@@ -112,7 +112,6 @@ impl_wasm_error_from!(
   identity_iota::credential::status_list_2021::StatusListError,
   identity_iota::credential::status_list_2021::StatusList2021CredentialError,
   identity_iota::iota::rebased::Error,
-  identity_iota::sd_jwt_rework::Error,
   ProductCommonError
 );
 

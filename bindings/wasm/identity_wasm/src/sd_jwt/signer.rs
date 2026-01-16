@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use async_trait::async_trait;
-use identity_iota::sd_jwt_rework::JsonObject;
-use identity_iota::sd_jwt_rework::JwsSigner;
+use identity_iota::sd_jwt_payload::JsonObject;
+use identity_iota::sd_jwt_payload::JwsSigner;
 use js_sys::Error as JsError;
 use js_sys::Object;
 use js_sys::Uint8Array;

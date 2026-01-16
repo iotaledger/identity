@@ -4,12 +4,11 @@
 use identity_iota::credential::sd_jwt_vc::SdJwtVcPresentationBuilder;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use super::sd_jwt_v2::WasmDisclosure;
-use super::sd_jwt_v2::WasmHasher;
-use super::sd_jwt_v2::WasmKeyBindingJwt;
 use super::WasmSdJwtVc;
 use crate::error::Result;
 use crate::error::WasmResult;
+use crate::sd_jwt::WasmDisclosure;
+use crate::sd_jwt::WasmHasher;
 
 #[wasm_bindgen(js_name = SdJwtVcPresentationBuilder)]
 pub struct WasmSdJwtVcPresentationBuilder(pub(crate) SdJwtVcPresentationBuilder);
@@ -22,26 +21,25 @@ impl WasmSdJwtVcPresentationBuilder {
     SdJwtVcPresentationBuilder::new(token.0, hasher).map(Self).wasm_result()
   }
 
-  #[wasm_bindgen]
   pub fn conceal(self, path: &str) -> Result<Self> {
     self.0.conceal(path).map(Self).wasm_result()
   }
 
-  #[wasm_bindgen(js_name = attachKeyBindingJwt)]
-  pub fn attach_key_binding_jwt(self, kb_jwt: WasmKeyBindingJwt) -> Self {
-    Self(self.0.attach_key_binding_jwt(kb_jwt.0))
+  pub fn conceal_all(self) -> Self {
+    Self(self.0.conceal_all())
   }
 
-  #[wasm_bindgen]
-  pub fn finish(self) -> Result<PresentationResult> {
-    self
-      .0
-      .finish()
-      .map(|(token, disclosures)| PresentationResult {
-        sd_jwt_vc: WasmSdJwtVc(token),
-        disclosures: disclosures.into_iter().map(WasmDisclosure::from).collect(),
-      })
-      .wasm_result()
+  pub fn disclose(self, path: &str) -> Result<Self> {
+    self.0.disclose(path).map(Self).wasm_result()
+  }
+
+  pub fn finish(self) -> PresentationResult {
+    let (token, disclosures) = self.0.finish();
+
+    PresentationResult {
+      sd_jwt_vc: WasmSdJwtVc(token),
+      disclosures: disclosures.into_iter().map(WasmDisclosure::from).collect(),
+    }
   }
 }
 

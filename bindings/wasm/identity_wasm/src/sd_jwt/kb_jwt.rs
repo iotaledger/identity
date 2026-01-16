@@ -3,9 +3,9 @@
 
 use identity_iota::credential;
 use identity_iota::credential::sd_jwt_vc;
-use identity_iota::sd_jwt_rework::KeyBindingJwt;
-use identity_iota::sd_jwt_rework::KeyBindingJwtBuilder;
-use identity_iota::sd_jwt_rework::Sha256Hasher;
+use identity_iota::sd_jwt_payload::KeyBindingJwt;
+use identity_iota::sd_jwt_payload::KeyBindingJwtBuilder;
+use identity_iota::sd_jwt_payload::Sha256Hasher;
 use js_sys::Object;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast;
@@ -29,7 +29,7 @@ type RequiredKeyBinding = { jwk: Jwk }
 
 #[wasm_bindgen(typescript_custom_section)]
 const I_KB_JWT_CLAIMS: &str = r#"
-interface KeyBindingJwtClaimsV2 {
+interface KeyBindingJwtClaims {
   iat: number;
   aud: string;
   nonce: string;
@@ -43,16 +43,17 @@ extern "C" {
   #[wasm_bindgen(typescript_type = "RequiredKeyBinding")]
   pub type WasmRequiredKeyBinding;
 
-  #[wasm_bindgen(typescript_type = "KeyBindingJwtClaimsV2")]
+  #[wasm_bindgen(typescript_type = "KeyBindingJwtClaims")]
   pub type WasmKeyBindingJwtClaims;
 }
 
+/// A semantically valid [KB-JWT](https://www.rfc-editor.org/rfc/rfc9901.html#name-key-binding-jwt).
 #[wasm_bindgen(js_name = KeyBindingJwt)]
 pub struct WasmKeyBindingJwt(pub(crate) KeyBindingJwt);
 
 #[wasm_bindgen(js_class = KeyBindingJwt)]
 impl WasmKeyBindingJwt {
-  #[wasm_bindgen]
+  /// Attempts to parse a {@link KeyBindingJwt} from the given string.
   pub fn parse(s: &str) -> Result<WasmKeyBindingJwt> {
     s.parse::<KeyBindingJwt>()
       .map_err(sd_jwt_vc::Error::from)
@@ -60,7 +61,7 @@ impl WasmKeyBindingJwt {
       .wasm_result()
   }
 
-  #[wasm_bindgen]
+  /// Returns this KB-JWT's claims object.
   pub fn claims(&self) -> WasmKeyBindingJwtClaims {
     serde_wasm_bindgen::to_value(self.0.claims()).unwrap().unchecked_into()
   }
@@ -77,6 +78,7 @@ impl WasmKeyBindingJwt {
   }
 }
 
+/// A class for constructing a {@link KeyBindingJwt} in a step-by-step manner.
 #[wasm_bindgen(js_name = KeyBindingJwtBuilder)]
 pub struct WasmKeyBindingJwtBuilder(pub(crate) KeyBindingJwtBuilder);
 
@@ -88,6 +90,7 @@ impl WasmKeyBindingJwtBuilder {
     Self(KeyBindingJwtBuilder::default())
   }
 
+  /// Start the creation of a {@link KeyBindingJwt} that will have the given object as its payload.
   #[wasm_bindgen(js_name = "fromObject")]
   pub fn from_object(obj: Object) -> Result<Self> {
     serde_wasm_bindgen::from_value(obj.into())
@@ -96,10 +99,16 @@ impl WasmKeyBindingJwtBuilder {
       .wasm_result()
   }
 
-  #[wasm_bindgen]
-  pub fn header(self, header: Object) -> Result<Self> {
-    serde_wasm_bindgen::from_value(header.into())
-      .map(|obj| self.0.header(obj))
+  /// Sets a single JWT header by its key and value.
+  pub fn header(self, key: &str, value: JsValue) -> Result<Self> {
+    let value: serde_json::Value = serde_wasm_bindgen::from_value(value)?;
+    Ok(Self(self.0.header(key, value)))
+  }
+
+  /// Sets the JWT headers.
+  pub fn headers(self, headers: Object) -> Result<Self> {
+    serde_wasm_bindgen::from_value(headers.into())
+      .map(|obj| self.0.headers(obj))
       .map(Self)
       .wasm_result()
   }

@@ -6,8 +6,11 @@ use async_trait::async_trait;
 use fastcrypto::hash::Blake2b256;
 use fastcrypto::traits::ToFromBytes;
 
+use identity_did::CoreDID;
+use identity_document::document::CoreDocument;
 use identity_verification::jwk::FromJwk as _;
 use identity_verification::jwk::Jwk;
+use identity_verification::MethodData;
 
 use iota_interaction::types::crypto::PublicKey;
 use iota_interaction::types::crypto::Signature;
@@ -22,7 +25,10 @@ use secret_storage::Signer;
 use crate::JwkStorage;
 use crate::KeyId;
 use crate::KeyIdStorage;
+use crate::KeyIdStorageErrorKind;
 use crate::KeyStorageErrorKind;
+use crate::MethodDigest;
+use crate::MethodDigestConstructionError;
 use crate::Storage;
 
 /// Signer that offers signing capabilities for `Signer` trait from `secret_storage`.
@@ -66,6 +72,86 @@ impl<'a, K, I> StorageSigner<'a, K, I> {
   /// Returns a reference to this [`Signer`]'s [`Storage`].
   pub fn storage(&self) -> &Storage<K, I> {
     self.storage
+  }
+}
+
+/// Error type that may be returned by [StorageSigner::new_from_vm_fragment].
+#[derive(Debug, thiserror::Error)]
+#[error("failed to create signer for '{did}#{fragment}'")]
+#[non_exhaustive]
+pub struct StorageSignerFromVmError {
+  /// The [DID](CoreDID) of the given [document](CoreDocument).
+  pub did: CoreDID,
+  /// The verification method fragment.
+  pub fragment: Box<str>,
+  /// Specific type of failure for this error.
+  pub kind: StorageSignerFromVmErrorKind,
+}
+
+/// Types of failure for [StorageSignerFromVmError].
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum StorageSignerFromVmErrorKind {
+  /// The given DID Document doesn't contain a VM identified by the given fragment.
+  #[error("verification method not found")]
+  VmNotFound,
+  /// Storage doesn't contain VM's private key.
+  #[error("corresponding private key not found in storage")]
+  KeyNotFound,
+  /// Unknown storage-related error.
+  #[error(transparent)]
+  StorageError(#[from] Box<dyn std::error::Error + Send + Sync>),
+  /// Failed to construct VM's digest.
+  #[error(transparent)]
+  MethodDigestConstruction(#[from] MethodDigestConstructionError),
+  /// The type of the resolved verification method is not supported.
+  #[error("unsupported verification method type '{0}'")]
+  UnsupportedVmType(Box<str>),
+}
+
+impl<'a, K, I> StorageSigner<'a, K, I>
+where
+  K: JwkStorage + OptionalSync,
+  I: KeyIdStorage + OptionalSync,
+{
+  /// Creates a new [StorageSigner] from a given DID Document and a verification method fragment.
+  /// ## Notes
+  /// At this time, this function only supports "JsonWebKey2020"-based verification methods.
+  pub async fn new_from_vm_fragment(
+    storage: &'a Storage<K, I>,
+    document: &CoreDocument,
+    fragment: &str,
+  ) -> Result<Self, StorageSignerFromVmError> {
+    use StorageSignerFromVmError as Error;
+    use StorageSignerFromVmErrorKind as ErrorKind;
+
+    let make_err = |kind| Error {
+      did: document.id().clone(),
+      fragment: fragment.into(),
+      kind,
+    };
+
+    // Resolve the given VM from the given DID and fragment.
+    let vm = document
+      .resolve_method(fragment, None)
+      .ok_or_else(|| make_err(ErrorKind::VmNotFound))?;
+    // Ensure the resolved VM has a supported type - AKA its embedded public key can be converted to a JWK.
+    let MethodData::PublicKeyJwk(jwk) = vm.data() else {
+      return Err(make_err(ErrorKind::UnsupportedVmType(vm.type_().as_str().into())));
+    };
+
+    // Find the corresponding private key in storage.
+    let method_digest = MethodDigest::new(vm).map_err(|e| make_err(e.into()))?;
+    let key_id = storage
+      .key_id_storage
+      .get_key_id(&method_digest)
+      .await
+      .map_err(|e| match e.kind() {
+        KeyIdStorageErrorKind::KeyIdNotFound => make_err(ErrorKind::KeyNotFound),
+        _ => make_err(ErrorKind::StorageError(e.into())),
+      })?;
+
+    Ok(Self::new(storage, key_id, jwk.clone()))
   }
 }
 
@@ -125,11 +211,12 @@ mod sd_jwt_signer_integration {
   use identity_verification::jwu::{encode_b64, encode_b64_json};
   use sd_jwt::{JsonObject, JwsSigner};
 
-  #[async_trait]
+  #[cfg_attr(not(feature = "send-sync-storage"), async_trait(?Send))]
+  #[cfg_attr(feature = "send-sync-storage", async_trait)]
   impl<K, I> JwsSigner for StorageSigner<'_, K, I>
   where
-    K: JwkStorage + Sync,
-    I: Sync,
+    K: JwkStorage + OptionalSync,
+    I: OptionalSync,
   {
     type Error = KeyStorageError;
     async fn sign(&self, header: &JsonObject, payload: &JsonObject) -> Result<Vec<u8>, Self::Error> {

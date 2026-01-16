@@ -7,10 +7,11 @@ use identity_iota::credential::sd_jwt_vc::metadata::ClaimMetadata;
 use identity_iota::credential::sd_jwt_vc::SdJwtVc;
 use wasm_bindgen::prelude::*;
 
-use crate::credential::WasmKeyBindingJWTValidationOptions;
+use crate::credential::WasmKeyBindingJwtValidationOptions;
 use crate::error::Result;
 use crate::error::WasmResult;
 use crate::jose::WasmJwk;
+use crate::sd_jwt::WasmKeyBindingJwt;
 use crate::sd_jwt_vc::metadata::WasmTypeMetadata;
 use crate::verification::IJwsVerifier;
 use crate::verification::WasmJwsVerifier;
@@ -18,10 +19,10 @@ use crate::verification::WasmJwsVerifier;
 use super::metadata::WasmClaimMetadata;
 use super::metadata::WasmIssuerMetadata;
 use super::resolver::ResolverStringToUint8Array;
-use super::sd_jwt_v2::WasmHasher;
-use super::sd_jwt_v2::WasmSdJwt;
 use super::WasmSdJwtVcClaims;
 use super::WasmSdJwtVcPresentationBuilder;
+use crate::sd_jwt::WasmHasher;
+use crate::sd_jwt::WasmSdJwt;
 
 #[derive(Clone)]
 #[wasm_bindgen(js_name = SdJwtVc)]
@@ -42,6 +43,14 @@ impl WasmSdJwtVc {
     serde_wasm_bindgen::to_value(self.0.claims())
       .map(JsCast::unchecked_into)
       .wasm_result()
+  }
+
+  /// Attaches a {@link KeyBindingJwt} to this token.
+  /// ## Notes
+  /// This method does *not* perform any validation on the given KB-JWT.
+  #[wasm_bindgen(js_name = attachKeyBindingJwt)]
+  pub fn attach_key_binding_jwt(&mut self, kb_jwt: WasmKeyBindingJwt) {
+    self.0.attach_key_binding_jwt(kb_jwt.0)
   }
 
   #[wasm_bindgen(js_name = "asSdJwt")]
@@ -120,7 +129,7 @@ impl WasmSdJwtVc {
     &self,
     jwk: &WasmJwk,
     hasher: &WasmHasher,
-    options: &WasmKeyBindingJWTValidationOptions,
+    options: &WasmKeyBindingJwtValidationOptions,
     jws_verifier: Option<IJwsVerifier>,
   ) -> Result<()> {
     let jws_verifier = WasmJwsVerifier::new(jws_verifier);

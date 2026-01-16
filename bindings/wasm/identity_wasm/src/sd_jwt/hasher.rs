@@ -1,10 +1,8 @@
 // Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use std::sync::OnceLock;
-
-use identity_iota::sd_jwt_rework::Hasher;
-use identity_iota::sd_jwt_rework::Sha256Hasher;
+use identity_iota::sd_jwt_payload::Hasher;
+use identity_iota::sd_jwt_payload::Sha256Hasher;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen(typescript_custom_section)]
@@ -33,8 +31,7 @@ extern "C" {
 
 impl Hasher for WasmHasher {
   fn alg_name(&self) -> &str {
-    static ALG: OnceLock<String> = OnceLock::new();
-    ALG.get_or_init(|| self.alg_name())
+    Box::leak(self.alg_name().into_boxed_str())
   }
 
   fn digest(&self, input: &[u8]) -> Vec<u8> {

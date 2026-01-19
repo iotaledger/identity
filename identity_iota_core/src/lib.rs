@@ -30,7 +30,6 @@ mod state_metadata;
 
 #[cfg(feature = "iota-client")]
 mod did_resolution;
-#[cfg(feature = "iota-client")]
 mod iota_interaction_adapter;
 
 #[cfg(feature = "iota-client")]

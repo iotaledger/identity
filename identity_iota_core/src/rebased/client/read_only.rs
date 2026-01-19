@@ -374,8 +374,7 @@ async fn resolve_migrated(client: &IdentityClientReadOnly, object_id: ObjectID) 
   let Some(mut onchain_identity) = onchain_identity else {
     return Ok(None);
   };
-  let object_id_str = object_id.to_string();
-  let queried_did = IotaDID::from_object_id(&object_id_str, &client.network);
+  let queried_did = IotaDID::from_object_id(object_id, &client.network);
   let doc = onchain_identity.did_document_mut();
   let identity_did = doc.id().clone();
   // When querying a migrated identity we obtain a DID document with DID `identity_did` and the `alsoKnownAs`

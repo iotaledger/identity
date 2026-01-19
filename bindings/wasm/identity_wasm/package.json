@@ -74,8 +74,8 @@
     "wasm-opt": "^1.4.0"
   },
   "dependencies": {
-    "@iota/iota-interaction-ts": "^0.10.0",
-    "@iota/notarization": "^0.1.8",
+    "@iota/iota-interaction-ts": "^0.11.0",
+    "@iota/notarization": "^0.1.9",
     "@noble/ed25519": "^1.7.3",
     "@noble/hashes": "^1.4.0",
     "@noble/post-quantum": "^0.2",
@@ -85,7 +85,7 @@
     "node-fetch": "^2.6.7"
   },
   "peerDependencies": {
-    "@iota/iota-sdk": "^1.9.1"
+    "@iota/iota-sdk": "^1.10.1"
   },
   "engines": {
     "node": ">=20"

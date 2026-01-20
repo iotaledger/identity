@@ -1,6 +1,6 @@
 {
   "name": "@iota/identity-wasm",
-  "version": "1.8.0-beta.2",
+  "version": "1.8.0-beta.3",
   "author": "IOTA Foundation <info@iota.org>",
   "description": "WASM bindings for IOTA Identity - A Self Sovereign Identity Framework implementing the DID and VC standards from W3C. To be used in JavaScript/TypeScript",
   "homepage": "https://www.iota.org",

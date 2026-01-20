@@ -23,6 +23,7 @@ import { zkp } from "./1_advanced/8_zkp";
 import { zkp_revocation } from "./1_advanced/9_zkp_revocation";
 import { hybrid } from "./1_advanced/hybrid";
 import { pq } from "./1_advanced/pq";
+import { sdJwtV2 } from "./1_advanced/sd_jwt_v2";
 
 export async function main(example?: string) {
     // Extract example name.
@@ -76,6 +77,8 @@ export async function main(example?: string) {
             return await iotaKeytoolIntegration();
         case "13_linked_verifiable_presentation":
             return await linkedVp();
+        case "sd_jwt_v2":
+            return await sdJwtV2();
         default:
             throw "Unknown example name: '" + argument + "'";
     }

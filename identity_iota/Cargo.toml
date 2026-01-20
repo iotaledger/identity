@@ -79,7 +79,7 @@ domain-linkage-fetch = ["identity_credential/domain-linkage-fetch"]
 memstore = ["identity_storage/memstore"]
 
 # Enables selective disclosure features.
-sd-jwt = ["identity_credential/sd-jwt"]
+sd-jwt = ["identity_credential/sd-jwt", "identity_storage/sd-jwt-signer"]
 
 # Enables selectively disclosable credentials.
 sd-jwt-vc = ["identity_credential/sd-jwt-vc"]

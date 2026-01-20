@@ -9,7 +9,7 @@ publish = false
 anyhow = "1.0.62"
 identity_eddsa_verifier = { path = "../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
 identity_pqc_verifier = { path = "../identity_pqc_verifier", default-features = true }
-identity_storage = { path = "../identity_storage" }
+identity_storage = { path = "../identity_storage", features = ["sd-jwt-signer"] }
 identity_stronghold = { path = "../identity_stronghold", default-features = false, features = ["send-sync-storage"] }
 iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", features = ["iota", "resolver"] }
 iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.14.1" }
@@ -18,7 +18,7 @@ json-proof-token.workspace = true
 notarization = { git = "https://github.com/iotaledger/notarization.git", tag = "v0.1.13", features = ["irl"] }
 product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.9", package = "product_common", features = ["core-client", "transaction"] }
 rand = "0.8.5"
-sd-jwt-payload = { version = "0.2.1", default-features = false, features = ["sha"] }
+sd-jwt = { package = "sd-jwt-payload", version = "0.5.1", default-features = false, features = ["sha"] }
 secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag = "v0.3.0" }
 serde_json = { version = "1.0", default-features = false }
 tokio = { version = "1.46.1", default-features = false, features = ["rt", "macros"] }
@@ -137,3 +137,7 @@ name = "12_advanced_transactions"
 [[example]]
 path = "1_advanced/13_iota_keytool_integration.rs"
 name = "13_iota_keytool_integration"
+
+[[example]]
+path = "1_advanced/sd_jwt_v2.rs"
+name = "sd_jwt_v2"

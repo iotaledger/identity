@@ -13,8 +13,8 @@ use josekit::jws::JwsHeader;
 use josekit::jws::HS256;
 use josekit::jwt::JwtPayload;
 use josekit::jwt::{self};
-use sd_jwt_payload_rework::JsonObject;
-use sd_jwt_payload_rework::JwsSigner;
+use sd_jwt::JsonObject;
+use sd_jwt::JwsSigner;
 use serde::Serialize;
 use serde_json::Value;
 

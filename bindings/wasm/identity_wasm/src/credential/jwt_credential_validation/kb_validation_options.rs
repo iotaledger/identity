@@ -3,54 +3,54 @@
 
 use crate::error::Result;
 use crate::error::WasmResult;
-use identity_iota::credential::KeyBindingJWTValidationOptions;
+use identity_iota::credential::KeyBindingJwtValidationOptions;
 use wasm_bindgen::prelude::*;
 
 /// Options to declare validation criteria when validating credentials.
-#[wasm_bindgen(js_name = KeyBindingJWTValidationOptions)]
-pub struct WasmKeyBindingJWTValidationOptions(pub(crate) KeyBindingJWTValidationOptions);
+#[wasm_bindgen(js_name = KeyBindingJwtValidationOptions)]
+pub struct WasmKeyBindingJwtValidationOptions(pub(crate) KeyBindingJwtValidationOptions);
 
-#[wasm_bindgen(js_class = KeyBindingJWTValidationOptions)]
-impl WasmKeyBindingJWTValidationOptions {
+#[wasm_bindgen(js_class = KeyBindingJwtValidationOptions)]
+impl WasmKeyBindingJwtValidationOptions {
   #[wasm_bindgen(constructor)]
-  pub fn new(options: Option<IKeyBindingJWTValidationOptions>) -> Result<WasmKeyBindingJWTValidationOptions> {
+  pub fn new(options: Option<IKeyBindingJwtValidationOptions>) -> Result<WasmKeyBindingJwtValidationOptions> {
     if let Some(opts) = options {
-      let options: KeyBindingJWTValidationOptions = opts.into_serde().wasm_result()?;
-      Ok(WasmKeyBindingJWTValidationOptions::from(options))
+      let options: KeyBindingJwtValidationOptions = opts.into_serde().wasm_result()?;
+      Ok(WasmKeyBindingJwtValidationOptions::from(options))
     } else {
-      Ok(WasmKeyBindingJWTValidationOptions::from(
-        KeyBindingJWTValidationOptions::default(),
+      Ok(WasmKeyBindingJwtValidationOptions::from(
+        KeyBindingJwtValidationOptions::default(),
       ))
     }
   }
 }
 
-impl_wasm_json!(WasmKeyBindingJWTValidationOptions, KeyBindingJWTValidationOptions);
-impl_wasm_clone!(WasmKeyBindingJWTValidationOptions, KeyBindingJWTValidationOptions);
+impl_wasm_json!(WasmKeyBindingJwtValidationOptions, KeyBindingJwtValidationOptions);
+impl_wasm_clone!(WasmKeyBindingJwtValidationOptions, KeyBindingJwtValidationOptions);
 
-impl From<KeyBindingJWTValidationOptions> for WasmKeyBindingJWTValidationOptions {
-  fn from(options: KeyBindingJWTValidationOptions) -> Self {
+impl From<KeyBindingJwtValidationOptions> for WasmKeyBindingJwtValidationOptions {
+  fn from(options: KeyBindingJwtValidationOptions) -> Self {
     Self(options)
   }
 }
 
-impl From<WasmKeyBindingJWTValidationOptions> for KeyBindingJWTValidationOptions {
-  fn from(options: WasmKeyBindingJWTValidationOptions) -> Self {
+impl From<WasmKeyBindingJwtValidationOptions> for KeyBindingJwtValidationOptions {
+  fn from(options: WasmKeyBindingJwtValidationOptions) -> Self {
     options.0
   }
 }
 
-// Interface to allow creating `KeyBindingJWTValidationOptions` easily.
+// Interface to allow creating `KeyBindingJwtValidationOptions` easily.
 #[wasm_bindgen]
 extern "C" {
-  #[wasm_bindgen(typescript_type = "IKeyBindingJWTValidationOptions")]
-  pub type IKeyBindingJWTValidationOptions;
+  #[wasm_bindgen(typescript_type = "IKeyBindingJwtValidationOptions")]
+  pub type IKeyBindingJwtValidationOptions;
 }
 
 #[wasm_bindgen(typescript_custom_section)]
 const I_KEY_BINDING_JWT_VALIDATION_OPTIONS: &'static str = r#"
-/** Holds options to create a new `KeyBindingJWTValidationOptions`. */
-interface IKeyBindingJWTValidationOptions {
+/** Holds options to create a new `KeyBindingJwtValidationOptions`. */
+interface IKeyBindingJwtValidationOptions {
     /**
      * Validates the nonce value of the KB-JWT claims.
      */
@@ -60,11 +60,6 @@ interface IKeyBindingJWTValidationOptions {
      * Validates the `aud` properties in the KB-JWT claims.
      */
     readonly aud?: string;
-
-    /**
-     * Options which affect the verification of the signature on the KB-JWT.
-     */
-    readonly jwsOptions: JwsVerificationOptions;
 
     /**
      * Declares that the KB-JWT is considered invalid if the `iat` value in the claims

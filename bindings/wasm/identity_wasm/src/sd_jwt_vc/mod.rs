@@ -6,7 +6,6 @@ mod claims;
 pub mod metadata;
 mod presentation;
 mod resolver;
-pub mod sd_jwt_v2;
 mod status;
 mod token;
 

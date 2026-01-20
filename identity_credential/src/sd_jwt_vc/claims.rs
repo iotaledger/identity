@@ -7,8 +7,8 @@ use std::ops::DerefMut;
 use identity_core::common::StringOrUrl;
 use identity_core::common::Timestamp;
 use identity_core::common::Url;
-use sd_jwt_payload_rework::Disclosure;
-use sd_jwt_payload_rework::SdJwtClaims;
+use sd_jwt::Disclosure;
+use sd_jwt::SdJwtClaims;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -21,8 +21,8 @@ use super::Status;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct SdJwtVcClaims {
-  /// Issuer.
-  pub iss: Url,
+  /// Issuer. Explicitly indicated the issuer of the verifiable credential when not conveyed by other means.
+  pub iss: Option<Url>,
   /// Not before.
   /// See [RFC7519 section 4.1.5](https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.5) for more information.
   pub nbf: Option<Timestamp>,
@@ -30,9 +30,9 @@ pub struct SdJwtVcClaims {
   /// See [RFC7519 section 4.1.4](https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4) for more information.
   pub exp: Option<Timestamp>,
   /// Verifiable credential type.
-  /// See [SD-JWT VC specification](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-04.html#type-claim)
+  /// See [SD-JWT VC specification](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-13.html#name-verifiable-credential-type-)
   /// for more information.
-  pub vct: StringOrUrl,
+  pub vct: String,
   /// Token's status.
   /// See [OAuth status list specification](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-02)
   /// for more information.
@@ -70,9 +70,7 @@ impl SdJwtVcClaims {
     };
     let iss = claims
       .remove("iss")
-      .ok_or(Error::MissingClaim("iss"))
-      .map_err(|e| check_disclosed("iss").unwrap_or(e))
-      .and_then(|value| {
+      .map(|value| {
         value
           .as_str()
           .and_then(|s| Url::parse(s).ok())
@@ -81,7 +79,8 @@ impl SdJwtVcClaims {
             expected: "URL",
             found: value,
           })
-      })?;
+      })
+      .transpose()?;
     let nbf = {
       if let Some(value) = claims.remove("nbf") {
         value
@@ -127,10 +126,10 @@ impl SdJwtVcClaims {
       .and_then(|value| {
         value
           .as_str()
-          .and_then(|s| StringOrUrl::parse(s).ok())
+          .map(ToOwned::to_owned)
           .ok_or_else(|| Error::InvalidClaimValue {
             name: "vct",
-            expected: "String or URL",
+            expected: "String",
             found: value,
           })
       })?;
@@ -204,10 +203,10 @@ impl From<SdJwtVcClaims> for SdJwtClaims {
       mut sd_jwt_claims,
     } = claims;
 
-    sd_jwt_claims.insert("iss".to_string(), Value::String(iss.into_string()));
+    iss.and_then(|iss| sd_jwt_claims.insert("iss".to_string(), Value::String(iss.to_string())));
     nbf.and_then(|t| sd_jwt_claims.insert("nbf".to_string(), Value::Number(t.to_unix().into())));
     exp.and_then(|t| sd_jwt_claims.insert("exp".to_string(), Value::Number(t.to_unix().into())));
-    sd_jwt_claims.insert("vct".to_string(), Value::String(vct.into()));
+    sd_jwt_claims.insert("vct".to_string(), Value::String(vct));
     status.and_then(|status| sd_jwt_claims.insert("status".to_string(), serde_json::to_value(status).unwrap()));
     iat.and_then(|t| sd_jwt_claims.insert("iat".to_string(), Value::Number(t.to_unix().into())));
     sub.and_then(|sub| sd_jwt_claims.insert("sub".to_string(), Value::String(sub.into())));

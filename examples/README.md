@@ -8,13 +8,13 @@ The following code examples demonstrate how to use IOTA Identity.
 
 Examples can be run against
 - a local IOTA node
-- or an existing network, e.g. the IOTA testnet
+- or an existing network, e.g. IOTA testnet
 
 When setting up the local node, you'll also need to publish an identity package as described in
 [Local Network Setup](https://docs.iota.org/iota-identity/getting-started/local-network-setup) in the documentation portal.
 You'll also need to provide an environment variable `IOTA_IDENTITY_PKG_ID` set to the package-id of your locally deployed
 identity package, to be able to run the examples against the local node.
-If running the examples on `testnet`, use the `IOTA_IDENTITY_PKG_ID` `0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555`.
+When running the examples on any official IOTA network - e.g. `testnet` - IOTA_IDENTITY_PKG_ID is **not** required.
 
 In case of running the examples against an existing network, this network needs to have a faucet to fund your accounts (the IOTA testnet (`https://api.testnet.iota.cafe`) supports this), and you need to specify this via `API_ENDPOINT`.
 
@@ -24,10 +24,10 @@ The examples require you to have the node you want to use in the iota clients "e
 
 Summarizing the last point, you'll need one or more of the following environment variables:
 
-| Name                 | Required for local node | Required for testnet | Required for other node |
-| -------------------- | :---------------------: | :------------------: | :---------------------: |
-| IOTA_IDENTITY_PKG_ID |            x            |          x           |            x            |
-| API_ENDPOINT         |                         |          x           |            x            |
+| Name                 | Required for local node | Required for official IOTA nodes |
+| -------------------- | :---------------------: | :------------------------------: |
+| IOTA_IDENTITY_PKG_ID |            x            |                                  |
+| API_ENDPOINT         |                         |                x                 |
 
 ### Running examples
 
@@ -56,7 +56,7 @@ The following basic CRUD (Create, Read, Update, Delete) examples are available:
 | [5_create_vc](./0_basic/5_create_vc.rs)                 | Demonstrates how to create and verify verifiable credentials.               |
 | [6_create_vp](./0_basic/6_create_vp.rs)                 | Demonstrates how to create and verify verifiable presentations.             |
 | [7_revoke_vc](./0_basic/7_revoke_vc.rs)                 | Demonstrates how to revoke a verifiable credential.                         |
-| [8_legacy_stronghold](./0_basic/8_legacy_stronghold.rs) | Demonstrates how to use stronghold for secure storage.                      |                     |
+| [8_legacy_stronghold](./0_basic/8_legacy_stronghold.rs) | Demonstrates how to use stronghold for secure storage.                      |
 
 ## Advanced Examples
 

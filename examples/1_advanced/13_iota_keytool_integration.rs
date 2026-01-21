@@ -3,7 +3,6 @@
 
 use examples::get_read_only_client;
 use identity_iota::core::ToJson;
-use identity_iota::iota::rebased::client::IdentityClient;
 use identity_iota::iota::rebased::utils::request_funds;
 use identity_iota::iota::IotaDocument;
 use identity_iota::iota_interaction::KeytoolStorage as Keytool;
@@ -35,9 +34,7 @@ async fn main() -> anyhow::Result<()> {
     let read_only_client = get_read_only_client().await?;
     // If we don't specify the address to use KeytoolSigner will use the current active-address.
     let signer = keytool.signer().with_address(address).build()?;
-    assert_eq!(signer.public_key(), &pk);
-
-    IdentityClient::new(read_only_client, signer).await?
+    read_only_client.set_signer(signer).await?
   };
 
   // Let's create a new DID Document, with a verification method

@@ -14,18 +14,15 @@ import {
     Transaction,
 } from "@iota/identity-wasm/node";
 import { CoreClientReadOnly } from "@iota/iota-interaction-ts/node/core_client";
-import { IotaClient, TransactionEffects } from "@iota/iota-sdk/client";
+import { getFullnodeUrl, IotaClient, TransactionEffects } from "@iota/iota-sdk/client";
 import { getFaucetHost, requestIotaFromFaucetV0 } from "@iota/iota-sdk/faucet";
 import { IotaEvent } from "@iota/iota-sdk/src/client/types/generated";
 import { Transaction as SdkTransaction } from "@iota/iota-sdk/transactions";
 
 export const IOTA_IDENTITY_PKG_ID = globalThis?.process?.env?.IOTA_IDENTITY_PKG_ID || "";
 export const NETWORK_NAME_FAUCET = globalThis?.process?.env?.NETWORK_NAME_FAUCET || "localnet";
-export const NETWORK_URL = globalThis?.process?.env?.NETWORK_URL || "http://127.0.0.1:9000";
+export const NETWORK_URL = getFullnodeUrl(NETWORK_NAME_FAUCET);
 
-if (!IOTA_IDENTITY_PKG_ID) {
-    throw new Error("IOTA_IDENTITY_PKG_ID env variable must be set to run the examples");
-}
 export const TEST_GAS_BUDGET = BigInt(50_000_000);
 
 export function getMemstorage(): Storage {
@@ -55,16 +52,20 @@ export async function requestFunds(address: string) {
 }
 
 export async function getFundedClient(storage: Storage): Promise<IdentityClient> {
-    if (!IOTA_IDENTITY_PKG_ID) {
-        throw new Error(`IOTA_IDENTITY_PKG_ID env variable must be provided to run the examples`);
-    }
-
     const iotaClient = new IotaClient({ url: NETWORK_URL });
 
-    const identityClientReadOnly = await IdentityClientReadOnly.createWithPkgId(
-        iotaClient,
-        IOTA_IDENTITY_PKG_ID,
-    );
+    let identityClientReadOnly;
+    if (NETWORK_NAME_FAUCET != "localnet") {
+        identityClientReadOnly = await IdentityClientReadOnly.create(iotaClient);
+    } else {
+        if (!IOTA_IDENTITY_PKG_ID) {
+            throw new Error(`IOTA_IDENTITY_PKG_ID env variable must be provided to run the examples`);
+        }
+        identityClientReadOnly = await IdentityClientReadOnly.createWithPkgId(
+            iotaClient,
+            IOTA_IDENTITY_PKG_ID,
+        );
+    }
 
     // generate new key
     let generate = await storage.keyStorage().generate("Ed25519", JwsAlgorithm.EdDSA);

@@ -4,7 +4,6 @@
 use std::ops::Deref;
 
 use crate::iota_interaction_adapter::IotaClientAdapter;
-use crate::rebased::client::builder::NoSigner;
 use crate::rebased::client::QueryControlledDidsError;
 use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
@@ -24,6 +23,10 @@ use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::crypto::PublicKey;
 use iota_interaction::types::transaction::ProgrammableTransaction;
+#[cfg(not(target_arch = "wasm32"))]
+use iota_interaction::IotaClient;
+#[cfg(target_arch = "wasm32")]
+use iota_interaction_ts::bindings::WasmIotaClient as IotaClient;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
@@ -74,6 +77,11 @@ impl From<KeyId> for String {
   }
 }
 
+/// A marker type indicating the absence of a signer.
+#[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
+pub struct NoSigner;
+
 /// A client for interacting with the IOTA Identity framework.
 #[derive(Clone)]
 pub struct IdentityClient<S = NoSigner> {
@@ -95,12 +103,83 @@ impl<S> Deref for IdentityClient<S> {
   }
 }
 
+/// The error that results from a failed attempt at creating an [IdentityClient]
+/// from a given [IotaClient].
+#[derive(Debug, thiserror::Error)]
+#[error("failed to create an 'IdentityClient' from the given 'IotaClient'")]
+#[non_exhaustive]
+pub struct FromIotaClientError {
+  /// Type of failure for this error.
+  #[source]
+  pub kind: FromIotaClientErrorKind,
+}
+
+/// Types of failure for [FromIotaClientError].
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum FromIotaClientErrorKind {
+  /// A package ID is required, but was not supplied.
+  #[error("an IOTA Identity package ID must be supplied when connecting to an unofficial IOTA network")]
+  MissingPackageId,
+  /// Network ID resolution through an RPC call failed.
+  #[error("failed to resolve the network the given client is connected to")]
+  NetworkResolution(#[source] Box<dyn std::error::Error + Send + Sync>),
+}
+
+impl IdentityClient<NoSigner> {
+  /// Creates a new [IdentityClient], with **no** signing capabilities, from the given [IotaClient].
+  ///
+  /// # Warning
+  /// Passing a `custom_package_id` is **only** required when connecting to a custom IOTA network.
+  ///
+  /// Relying on a custom Identity package when connected to an official IOTA network is **highly
+  /// discouraged** and is sure to result in compatibility issues when interacting with other official
+  /// IOTA Trust Framework's products.
+  ///
+  /// # Examples
+  /// ```
+  /// # use crate::rebased::client::IdentityClient;
+  ///
+  /// # #[tokio::main]
+  /// # async fn main() -> anyhow::Result<()> {
+  /// let iota_client = iota_sdk::IotaClientBuilder::default()
+  ///   .build_testnet()
+  ///   .await?;
+  /// // No package ID is required since we are connecting to an official IOTA network.
+  /// let identity_client = IdentityClient::from_iota_client(iota_client, None).await?;
+  /// # Ok(())
+  /// # }
+  /// ```
+  pub async fn from_iota_client(
+    iota_client: IotaClient,
+    custom_package_id: impl Into<Option<ObjectID>>,
+  ) -> Result<Self, FromIotaClientError> {
+    let read_only_client = if let Some(custom_package_id) = custom_package_id.into() {
+      IdentityClientReadOnly::new_with_pkg_id(iota_client, custom_package_id).await
+    } else {
+      IdentityClientReadOnly::new(iota_client).await
+    }
+    .map_err(|e| match e {
+      Error::InvalidConfig(_) => FromIotaClientErrorKind::MissingPackageId,
+      Error::RpcError(msg) => FromIotaClientErrorKind::NetworkResolution(msg.into()),
+      _ => unreachable!("'IdentityClientReadOnly::new' has been changed without updating error handling in 'IdentityClient::from_iota_client'"),
+    })
+    .map_err(|kind| FromIotaClientError { kind })?;
+
+    Ok(Self {
+      read_client: read_only_client,
+      public_key: None,
+      signer: NoSigner,
+    })
+  }
+}
+
 impl<S> IdentityClient<S>
 where
   S: Signer<IotaKeySignature>,
 {
-  /// Create a new [`IdentityClient`].
-  #[deprecated(since = "1.9.0", note = "Use IdentityClientBuilder instead")]
+  /// Creates a new [`IdentityClient`].
+  #[deprecated(since = "1.9.0", note = "Use `IdentityClient::from_iota_client` instead")]
   pub async fn new(client: IdentityClientReadOnly, signer: S) -> Result<Self, Error> {
     let public_key = signer
       .public_key()
@@ -146,14 +225,11 @@ impl<S> IdentityClient<S> {
   }
 
   /// Sets a new signer for this client.
-  pub(super) async fn with_signer<NewS>(self, signer: NewS) -> Result<IdentityClient<NewS>, Error>
+  pub async fn set_signer<NewS>(self, signer: NewS) -> Result<IdentityClient<NewS>, secret_storage::Error>
   where
     NewS: Signer<IotaKeySignature>,
   {
-    let public_key = signer
-      .public_key()
-      .await
-      .map_err(|e| Error::InvalidKey(e.to_string()))?;
+    let public_key = signer.public_key().await?;
 
     Ok(IdentityClient {
       read_client: self.read_client,

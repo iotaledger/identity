@@ -5,7 +5,6 @@
 use anyhow::anyhow;
 use anyhow::Context;
 use async_trait::async_trait;
-use identity_iota_core::rebased::client::builder::IdentityClientBuilder;
 use identity_iota_core::rebased::client::IdentityClient;
 use identity_iota_core::rebased::keytool::KeytoolSigner;
 use identity_iota_core::rebased::utils::request_funds;
@@ -243,10 +242,9 @@ impl TestClient {
 
     let storage = Arc::new(Storage::new(JwkMemStore::new(), KeyIdMemstore::new()));
     let signer = KeytoolSigner::builder().build()?;
-    let client = IdentityClientBuilder::new()
-      .signer(signer)
-      .custom_identity_package(package_id)
-      .build_from_iota_client(client)
+    let client = IdentityClient::from_iota_client(client, package_id)
+      .await?
+      .set_signer(signer)
       .await?;
 
     Ok(TestClient {

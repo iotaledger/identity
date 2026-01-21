@@ -42,6 +42,12 @@ thiserror = { version = "1.0", default-features = false }
 json-proof-token = { version = "0.4" }
 zkryptium = { version = "0.2.2", default-features = false, features = ["bbsplus"] }
 
+[patch."https://github.com/iotaledger/product-core.git"]
+product_common = { path = "../product-core/product_common" }
+iota_interaction = { path = "../product-core/iota_interaction" }
+iota_interaction_rust = { path = "../product-core/iota_interaction_rust" }
+iota_interaction_ts = { path = "../product-core/bindings/wasm/iota_interaction_ts" }
+
 [workspace.lints.clippy]
 result_large_err = "allow"
 large_enum_variant = "allow"

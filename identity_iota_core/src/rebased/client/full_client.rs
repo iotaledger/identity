@@ -225,7 +225,7 @@ where
   pub async fn publish_did_update(
     &self,
     did_document: IotaDocument,
-  ) -> Result<TransactionBuilder<impl Transaction<Output = IotaDocument, Error = Error>>, MakeUpdateDidDocTxError> {
+  ) -> Result<TransactionBuilder<ShorthandDidUpdate>, MakeUpdateDidDocTxError> {
     use MakeUpdateDidDocTxError as Error;
     use MakeUpdateDidDocTxErrorKind as ErrorKind;
 
@@ -422,8 +422,9 @@ impl Transaction for PublishDidDocument {
   }
 }
 
+/// The actual Transaction type returned by [IdentityClient::publish_did_update].
 #[derive(Debug)]
-struct ShorthandDidUpdate {
+pub struct ShorthandDidUpdate {
   identity: RwLock<OnChainIdentity>,
   controller_token: ControllerToken,
   did_document: IotaDocument,

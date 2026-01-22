@@ -1,6 +1,6 @@
 [package]
 name = "identity_iota_core"
-version = "1.8.0-beta.2"
+version = "1.8.0-beta.3"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -15,16 +15,16 @@ anyhow = "1.0.75"
 async-trait = { version = "0.1.81", default-features = false, optional = true }
 cfg-if = "1.0.0"
 futures = { version = "0.3", default-features = false }
-identity_core = { version = "=1.8.0-beta.2", path = "../identity_core", default-features = false }
-identity_credential = { version = "=1.8.0-beta.2", path = "../identity_credential", default-features = false, features = ["validator"] }
-identity_did = { version = "=1.8.0-beta.2", path = "../identity_did", default-features = false }
-identity_document = { version = "=1.8.0-beta.2", path = "../identity_document", default-features = false }
-identity_verification = { version = "=1.8.0-beta.2", path = "../identity_verification", default-features = false }
+identity_core = { version = "=1.8.0-beta.3", path = "../identity_core", default-features = false }
+identity_credential = { version = "=1.8.0-beta.3", path = "../identity_credential", default-features = false, features = ["validator"] }
+identity_did = { version = "=1.8.0-beta.3", path = "../identity_did", default-features = false }
+identity_document = { version = "=1.8.0-beta.3", path = "../identity_document", default-features = false }
+identity_verification = { version = "=1.8.0-beta.3", path = "../identity_verification", default-features = false }
 num-derive = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false, features = ["std"] }
 once_cell = { version = "1.18", default-features = false, features = ["std"] }
 prefix-hex = { version = "0.7", default-features = false }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.8", package = "product_common", default-features = false }
+product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.9", package = "product_common", default-features = false }
 ref-cast = { version = "1.0.14", default-features = false }
 serde.workspace = true
 serde_json.workspace = true
@@ -34,8 +34,8 @@ thiserror.workspace = true
 # for feature `iota-client`
 bcs = { version = "0.1.4", optional = true }
 fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "69d496c71fb37e3d22fe85e5bbfd4256d61422b9", package = "fastcrypto", optional = true }
-identity_eddsa_verifier = { version = "=1.8.0-beta.2", path = "../identity_eddsa_verifier", optional = true }
-identity_jose = { version = "=1.8.0-beta.2", path = "../identity_jose", optional = true }
+identity_eddsa_verifier = { version = "=1.8.0-beta.3", path = "../identity_eddsa_verifier", optional = true }
+identity_jose = { version = "=1.8.0-beta.3", path = "../identity_jose", optional = true }
 iota-crypto = { version = "0.23", optional = true }
 itertools = { version = "0.13.0", optional = true }
 phf = { version = "0.11.2", features = ["macros"] }
@@ -49,14 +49,14 @@ serde-aux = { version = "4.5.0", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 iota-config = { git = "https://github.com/iotaledger/iota.git", package = "iota-config", tag = "v1.14.1", optional = true }
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.8", package = "iota_interaction", optional = true }
-iota_interaction_rust = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.8", package = "iota_interaction_rust", optional = true }
-iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.14.1", optional = true }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.9", package = "iota_interaction" }
+iota_interaction_rust = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.9", package = "iota_interaction_rust" }
+iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.14.1" }
 move-core-types = { git = "https://github.com/iotaledger/iota.git", package = "move-core-types", tag = "v1.14.1", optional = true }
 tokio = { version = "1.46.1", default-features = false, features = ["macros", "sync", "rt", "process"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.8", package = "iota_interaction", default-features = false, optional = true }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.9", package = "iota_interaction", default-features = false }
 
 # Dependency iota_interaction_ts is always used on wasm32 platform. It is not controlled by the "iota-client" feature
 # because it's unclear how to implement this. wasm32 build will most probably always use the "iota-client" feature
@@ -91,9 +91,6 @@ iota-client = [
   "dep:identity_jose",
   "dep:iota-config",
   "dep:iota-crypto",
-  "dep:iota_interaction",
-  "dep:iota_interaction_rust",
-  "dep:iota-sdk",
   "dep:itertools",
   "dep:move-core-types",
   "dep:rand",

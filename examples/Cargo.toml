@@ -1,6 +1,6 @@
 [package]
 name = "examples"
-version = "1.8.0-beta.2"
+version = "1.8.0-beta.3"
 authors = ["IOTA Stiftung"]
 edition = "2021"
 publish = false
@@ -15,8 +15,8 @@ iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", features = ["
 iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.14.1" }
 iota-sdk-legacy = { package = "iota-sdk", version = "1.0", default-features = false, features = ["tls", "client", "stronghold"] }
 json-proof-token.workspace = true
-notarization = { git = "https://github.com/iotaledger/notarization.git", tag = "v0.1.12", features = ["irl"] }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.8", package = "product_common", features = ["core-client", "transaction"] }
+notarization = { git = "https://github.com/iotaledger/notarization.git", tag = "v0.1.13", features = ["irl"] }
+product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.9", package = "product_common", features = ["core-client", "transaction"] }
 rand = "0.8.5"
 sd-jwt-payload = { version = "0.2.1", default-features = false, features = ["sha"] }
 secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag = "v0.3.0" }

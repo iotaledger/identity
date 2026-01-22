@@ -3,40 +3,103 @@ name: Wasm publish to npm
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag to publish Wasm under (e.g. e.g. `dev`, will default to `latest`)'
+      operation:
+        description: "Which operation to perform"
         required: true
-      branch:
-        description: 'Branch to run publish from'
-        required: true
-      dry-run:
-        description: 'Run in dry-run mode'
+        type: choice
+        options:
+          - publish
+          - retag
+      publish-tag:
+        description: "PUBLISH - Tag to publish Wasm under"
+        required: false
+      publish-branch:
+        description: "PUBLISH - Branch to run publish from"
+        required: false
+      publish-dry-run:
+        description: "PUBLISH - Run in dry-run mode"
         type: boolean
         required: false
         default: true
+      retag-version:
+        description: "RETAG - version to set tag on"
+        required: false
+      retag-tag:
+        description: "RETAG - Tag to set"
+        required: false
+
+permissions:
+  id-token: write # Required for OIDC
+  contents: read
 
 jobs:
+  check-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check inputs
+        shell: bash
+        run: |
+          check_vars()
+          {
+              var_names=("$@")
+              for var_name in "${var_names[@]}"; do
+                  [ -z "${!var_name}" ] && echo "$var_name is unset." && var_unset=true
+              done
+              [ -n "$var_unset" ] && exit 1
+              return 0
+          }
 
-  build-wasm: 
-    uses: './.github/workflows/shared-build-wasm.yml'
+          publish_tag=${{ github.event.inputs.publish-tag }}
+          publish_branch=${{ github.event.inputs.publish-branch }}
+
+          retag_version=${{ github.event.inputs.retag-version }}
+          retag_tag=${{ github.event.inputs.retag-tag }}
+
+          if [[ ${{ github.event.inputs.operation }} == 'publish' ]]; then
+            check_vars publish_tag publish_branch
+          fi
+
+          if [[ ${{ github.event.inputs.operation }} == 'retag' ]]; then
+            check_vars retag_version retag_tag
+          fi
+
+  build-wasm:
+    if: ${{ github.event.inputs.operation == 'publish' }}
+    needs: [check-inputs]
+    uses: "./.github/workflows/shared-build-wasm.yml"
     with:
       run-unit-tests: false
-      ref: ${{ github.event.inputs.branch }}
-      output-artifact-name: identity-wasm-bindings-build
+      ref: ${{ github.event.inputs.publish-branch }}
+      output-artifact-name: identity-wasm-build
 
   release-wasm:
+    if: ${{ github.event.inputs.operation == 'publish' }}
     runs-on: ubuntu-latest
     needs: [build-wasm]
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch }}
+          ref: ${{ github.event.inputs.publish-branch }}
       - name: Release to npm
-        uses: './.github/actions/publish/publish-wasm'
+        uses: "./.github/actions/publish/publish-wasm"
         with:
-          dry-run: ${{ github.event.inputs.dry-run }}
-          input-artifact-name: identity-wasm-bindings-build
-          npm-token: ${{ secrets.NPM_TOKEN }}
+          dry-run: ${{ github.event.inputs.publish-dry-run }}
+          input-artifact-name: identity-wasm-build
           working-directory: ./bindings/wasm/identity_wasm
-          tag: ${{ github.event.inputs.tag }}
+          tag: ${{ github.event.inputs.publish-tag }}
+  retag-wasm:
+    if: ${{ github.event.inputs.operation == 'retag' }}
+    needs: [check-inputs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "lts/*"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Run dist-tag
+        shell: bash
+        run: |
+          npm dist-tag add @iota/identity-wasm@${{ github.event.inputs.retag-version }} ${{ github.event.inputs.retag-tag }}

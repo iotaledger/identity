@@ -24,7 +24,7 @@ identity_iota = { path = "../../identity_iota", features = ["resolver", "sd-jwt"
 identity_jose = { path = "../../identity_jose" }
 identity_storage = { path = "../../identity_storage", features = ["memstore"] }
 identity_stronghold = { path = "../../identity_stronghold", features = ["send-sync-storage"] }
-iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.13.1" }
+iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.14.1" }
 iota-sdk-legacy = { package = "iota-sdk", version = "1.1.2", features = ["stronghold"] }
 prost = "0.13"
 rand = "0.8.5"

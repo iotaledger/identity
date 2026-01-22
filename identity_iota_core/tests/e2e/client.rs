@@ -6,7 +6,12 @@ use crate::common::TestClient;
 use identity_iota_core::rebased::migration;
 use identity_iota_core::IotaDocument;
 
+use identity_jose::jws::JwsAlgorithm;
+use identity_storage::JwkDocumentExt;
+use identity_storage::JwkMemStore;
+use identity_verification::MethodScope;
 use iota_sdk::types::crypto::SignatureScheme;
+use product_common::core_client::CoreClient;
 
 #[tokio::test]
 async fn can_create_an_identity() -> anyhow::Result<()> {
@@ -22,6 +27,44 @@ async fn can_create_an_identity() -> anyhow::Result<()> {
 
   let did = identity.did_document().id();
   assert_eq!(did.network_str(), identity_client.network().as_ref());
+
+  Ok(())
+}
+
+#[tokio::test]
+async fn can_update_a_did_document() -> anyhow::Result<()> {
+  let test_client = get_funded_test_client().await?;
+  let identity_client = test_client.new_user_client().await?;
+
+  let identity = identity_client
+    .create_identity(IotaDocument::new(identity_client.network()))
+    .finish()
+    .build_and_execute(&identity_client)
+    .await?
+    .output;
+
+  let mut did_document: IotaDocument = identity.into();
+  did_document
+    .generate_method(
+      identity_client.signer().storage(),
+      JwkMemStore::ED25519_KEY_TYPE,
+      JwsAlgorithm::EdDSA,
+      Some("my-key"),
+      MethodScope::VerificationMethod,
+    )
+    .await?;
+
+  let updated_document = identity_client
+    .publish_did_update(did_document)
+    .await?
+    .build_and_execute(&identity_client)
+    .await?
+    .output;
+
+  // Fetch the document again and make sure it matches the result of the update.
+  let fetched_document = identity_client.resolve_did(updated_document.id()).await?;
+
+  assert_eq!(updated_document, fetched_document);
 
   Ok(())
 }

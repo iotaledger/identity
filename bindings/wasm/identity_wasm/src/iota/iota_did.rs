@@ -57,7 +57,7 @@ impl WasmIotaDID {
   #[allow(non_snake_case)]
   pub fn from_object_id(objectId: String, network: String) -> Result<WasmIotaDID> {
     let network_name = NetworkName::try_from(network).wasm_result()?;
-    let object_id = ObjectID::from_hex_literal(&objectId).map_err(|e| JsError::from(e))?;
+    let object_id = ObjectID::from_hex_literal(&objectId).map_err(JsError::from)?;
 
     Ok(Self(IotaDID::from_object_id(object_id, &network_name)))
   }

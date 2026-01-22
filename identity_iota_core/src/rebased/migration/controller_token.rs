@@ -4,6 +4,7 @@
 use super::OnChainIdentity;
 
 use crate::rebased::iota::move_calls;
+use crate::IotaDID;
 
 use crate::rebased::iota::move_calls::ControllerTokenRef;
 use crate::rebased::iota::package::identity_package_id;
@@ -675,6 +676,33 @@ impl Transaction for DeleteDelegationToken {
 
     Ok(())
   }
+}
+
+/// An address tried to access a certain identity, but the operation
+/// failed because the address is not an identity's controller.
+#[derive(Debug, thiserror::Error)]
+#[error("address '{address}' is not a controller of '{identity}'")]
+#[non_exhaustive]
+pub struct NotAController {
+  /// The address that attempted to access an Identity.
+  pub address: IotaAddress,
+  /// The identity that tried to be accessed.
+  pub identity: IotaDID,
+}
+
+/// A controller doesn't have enough voting power to perform a given operation.
+#[derive(Debug, thiserror::Error)]
+#[error(
+  "controller '{controller_token_id}' has a voting power of {controller_voting_power}, but {required} is required"
+)]
+#[non_exhaustive]
+pub struct InsufficientControllerVotingPower {
+  /// ID of the controller token.
+  pub controller_token_id: ObjectID,
+  /// Voting power of the controller.
+  pub controller_voting_power: u64,
+  /// Required voting power.
+  pub required: u64,
 }
 
 /// An invalid [ControllerToken] was presented to a controller-restricted

@@ -7,6 +7,7 @@ use std::rc::Rc;
 use anyhow::anyhow;
 use identity_iota::iota::rebased::client::IdentityClient;
 use identity_iota::iota::rebased::client::PublishDidDocument;
+use identity_iota::iota::rebased::client::ShorthandDidUpdate;
 use product_common::core_client::CoreClient as _;
 use product_common::core_client::CoreClientReadOnly as _;
 use product_common::transaction::TransactionOutputInternal;
@@ -188,6 +189,31 @@ impl WasmIdentityClient {
     Ok(WasmIotaDocument(Rc::new(IotaDocumentLock::new(document))))
   }
 
+  /// A shorthand for {@link OnChainIdentity.updateDidDocument}.
+  ///
+  /// This method makes the following assumptions:
+  /// - The given `did_document` has already been published on-chain within an Identity.
+  /// - This {@link IdentityClient} is a controller of the corresponding Identity with enough voting power to execute
+  ///   the transaction without any other controller approval.
+  #[wasm_bindgen(
+    js_name = publishDidUpdate,
+    unchecked_return_type = "TransactionBuilder<Transaction<IotaDocument>>",
+  )]
+  pub async fn publish_did_update(
+    &self,
+    document: &WasmIotaDocument,
+  ) -> std::result::Result<WasmTransactionBuilder, JsError> {
+    let doc: IotaDocument = document
+      .0
+      .try_read()
+      .map_err(|err| JsError::new(&format!("failed to read DID document; {err:?}")))?
+      .clone();
+
+    let tx = self.0.publish_did_update(doc).await?.into_inner();
+    let wasm_tx = WasmShorthandDidUpdate(tx);
+    Ok(WasmTransactionBuilder::new(JsValue::from(wasm_tx).unchecked_into()))
+  }
+
   #[wasm_bindgen(js_name = deactivateDidOutput)]
   pub async fn deactivate_did_output(&self, did: &WasmIotaDID, gas_budget: u64) -> Result<()> {
     self
@@ -261,6 +287,37 @@ impl WasmPublishDidDocument {
   }
 
   #[wasm_bindgen]
+  pub async fn apply(
+    self,
+    wasm_effects: &WasmIotaTransactionBlockEffects,
+    client: &WasmCoreClientReadOnly,
+  ) -> Result<WasmIotaDocument> {
+    let managed_client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
+    let mut effects = wasm_effects.clone().into();
+    let apply_result = self.0.apply(&mut effects, &managed_client).await;
+    let wasm_remaining_effects = WasmIotaTransactionBlockEffects::from(&effects);
+    Object::assign(wasm_effects.as_ref(), &wasm_remaining_effects);
+
+    apply_result.wasm_result().map(WasmIotaDocument::from)
+  }
+}
+
+#[wasm_bindgen(js_name = ShorthandDidUpdate, skip_typescript)]
+pub struct WasmShorthandDidUpdate(ShorthandDidUpdate);
+
+#[wasm_bindgen(js_class = ShorthandDidUpdate)]
+impl WasmShorthandDidUpdate {
+  #[wasm_bindgen(js_name = buildProgrammableTransaction)]
+  pub async fn build_programmable_transaction(&self, client: &WasmCoreClientReadOnly) -> Result<Vec<u8>> {
+    let managed_client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
+    let pt = self
+      .0
+      .build_programmable_transaction(&managed_client)
+      .await
+      .wasm_result()?;
+    bcs::to_bytes(&pt).wasm_result()
+  }
+
   pub async fn apply(
     self,
     wasm_effects: &WasmIotaTransactionBlockEffects,

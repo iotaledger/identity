@@ -23,6 +23,10 @@ use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::crypto::PublicKey;
 use iota_interaction::types::transaction::ProgrammableTransaction;
+#[cfg(not(target_arch = "wasm32"))]
+use iota_interaction::IotaClient;
+#[cfg(target_arch = "wasm32")]
+use iota_interaction_ts::bindings::WasmIotaClient as IotaClient;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
@@ -73,15 +77,23 @@ impl From<KeyId> for String {
   }
 }
 
-/// A client for interacting with the IOTA network.
+/// A marker type indicating the absence of a signer.
+#[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
+pub struct NoSigner;
+
+/// A client for interacting with the IOTA Identity framework.
 #[derive(Clone)]
-pub struct IdentityClient<S> {
+pub struct IdentityClient<S = NoSigner> {
   /// [`IdentityClientReadOnly`] instance, used for read-only operations.
-  read_client: IdentityClientReadOnly,
+  pub(super) read_client: IdentityClientReadOnly,
   /// The public key of the client.
-  public_key: PublicKey,
+  /// # Safety
+  /// `public_key` is always `Some` when `S: Signer<IotaKeySignature>`.
+  /// Developers MUST uphold this invariant.
+  pub(super) public_key: Option<PublicKey>,
   /// The signer of the client.
-  signer: S,
+  pub(super) signer: S,
 }
 
 impl<S> Deref for IdentityClient<S> {
@@ -91,11 +103,83 @@ impl<S> Deref for IdentityClient<S> {
   }
 }
 
+/// The error that results from a failed attempt at creating an [IdentityClient]
+/// from a given [IotaClient].
+#[derive(Debug, thiserror::Error)]
+#[error("failed to create an 'IdentityClient' from the given 'IotaClient'")]
+#[non_exhaustive]
+pub struct FromIotaClientError {
+  /// Type of failure for this error.
+  #[source]
+  pub kind: FromIotaClientErrorKind,
+}
+
+/// Types of failure for [FromIotaClientError].
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum FromIotaClientErrorKind {
+  /// A package ID is required, but was not supplied.
+  #[error("an IOTA Identity package ID must be supplied when connecting to an unofficial IOTA network")]
+  MissingPackageId,
+  /// Network ID resolution through an RPC call failed.
+  #[error("failed to resolve the network the given client is connected to")]
+  NetworkResolution(#[source] Box<dyn std::error::Error + Send + Sync>),
+}
+
+impl IdentityClient<NoSigner> {
+  /// Creates a new [IdentityClient], with **no** signing capabilities, from the given [IotaClient].
+  ///
+  /// # Warning
+  /// Passing a `custom_package_id` is **only** required when connecting to a custom IOTA network.
+  ///
+  /// Relying on a custom Identity package when connected to an official IOTA network is **highly
+  /// discouraged** and is sure to result in compatibility issues when interacting with other official
+  /// IOTA Trust Framework's products.
+  ///
+  /// # Examples
+  /// ```
+  /// # use crate::rebased::client::IdentityClient;
+  ///
+  /// # #[tokio::main]
+  /// # async fn main() -> anyhow::Result<()> {
+  /// let iota_client = iota_sdk::IotaClientBuilder::default()
+  ///   .build_testnet()
+  ///   .await?;
+  /// // No package ID is required since we are connecting to an official IOTA network.
+  /// let identity_client = IdentityClient::from_iota_client(iota_client, None).await?;
+  /// # Ok(())
+  /// # }
+  /// ```
+  pub async fn from_iota_client(
+    iota_client: IotaClient,
+    custom_package_id: impl Into<Option<ObjectID>>,
+  ) -> Result<Self, FromIotaClientError> {
+    let read_only_client = if let Some(custom_package_id) = custom_package_id.into() {
+      IdentityClientReadOnly::new_with_pkg_id(iota_client, custom_package_id).await
+    } else {
+      IdentityClientReadOnly::new(iota_client).await
+    }
+    .map_err(|e| match e {
+      Error::InvalidConfig(_) => FromIotaClientErrorKind::MissingPackageId,
+      Error::RpcError(msg) => FromIotaClientErrorKind::NetworkResolution(msg.into()),
+      _ => unreachable!("'IdentityClientReadOnly::new' has been changed without updating error handling in 'IdentityClient::from_iota_client'"),
+    })
+    .map_err(|kind| FromIotaClientError { kind })?;
+
+    Ok(Self {
+      read_client: read_only_client,
+      public_key: None,
+      signer: NoSigner,
+    })
+  }
+}
+
 impl<S> IdentityClient<S>
 where
   S: Signer<IotaKeySignature>,
 {
-  /// Create a new [`IdentityClient`].
+  /// Creates a new [`IdentityClient`].
+  #[deprecated(since = "1.9.0", note = "Use `IdentityClient::from_iota_client` instead")]
   pub async fn new(client: IdentityClientReadOnly, signer: S) -> Result<Self, Error> {
     let public_key = signer
       .public_key()
@@ -103,10 +187,26 @@ where
       .map_err(|e| Error::InvalidKey(e.to_string()))?;
 
     Ok(Self {
-      public_key,
+      public_key: Some(public_key),
       read_client: client,
       signer,
     })
+  }
+
+  /// Returns a reference to the [PublicKey] wrapped by this client.
+  pub fn public_key(&self) -> &PublicKey {
+    self.public_key.as_ref().expect("public_key is set")
+  }
+
+  /// Returns the [IotaAddress] wrapped by this client.
+  #[inline(always)]
+  pub fn address(&self) -> IotaAddress {
+    IotaAddress::from(self.public_key())
+  }
+
+  /// Returns the list of **all** unique DIDs the address wrapped by this client can access as a controller.
+  pub async fn controlled_dids(&self) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
+    self.dids_controlled_by(self.address()).await
   }
 }
 
@@ -124,15 +224,18 @@ impl<S> IdentityClient<S> {
     AuthenticatedAssetBuilder::new(content)
   }
 
-  /// Returns the [IotaAddress] wrapped by this client.
-  #[inline(always)]
-  pub fn address(&self) -> IotaAddress {
-    IotaAddress::from(&self.public_key)
-  }
+  /// Sets a new signer for this client.
+  pub async fn set_signer<NewS>(self, signer: NewS) -> Result<IdentityClient<NewS>, secret_storage::Error>
+  where
+    NewS: Signer<IotaKeySignature>,
+  {
+    let public_key = signer.public_key().await?;
 
-  /// Returns the list of **all** unique DIDs the address wrapped by this client can access as a controller.
-  pub async fn controlled_dids(&self) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
-    self.dids_controlled_by(self.address()).await
+    Ok(IdentityClient {
+      read_client: self.read_client,
+      public_key: Some(public_key),
+      signer,
+    })
   }
 }
 
@@ -268,7 +371,7 @@ where
   S: Signer<IotaKeySignature> + OptionalSync,
 {
   fn sender_address(&self) -> IotaAddress {
-    IotaAddress::from(&self.public_key)
+    IotaAddress::from(self.public_key())
   }
 
   fn signer(&self) -> &S {
@@ -276,7 +379,7 @@ where
   }
 
   fn sender_public_key(&self) -> &PublicKey {
-    &self.public_key
+    self.public_key()
   }
 }
 

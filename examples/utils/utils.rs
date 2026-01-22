@@ -14,7 +14,6 @@ use identity_iota::verification::jws::JwsAlgorithm;
 use identity_iota::verification::MethodScope;
 
 use identity_iota::iota::rebased::client::IdentityClient;
-use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use identity_iota::iota::rebased::client::IotaKeySignature;
 use identity_iota::iota::rebased::utils::request_funds;
 use identity_storage::JwkStorage;
@@ -23,9 +22,12 @@ use identity_storage::KeyType;
 use identity_storage::StorageSigner;
 use identity_stronghold::StrongholdStorage;
 use iota_sdk::types::base_types::IotaAddress;
+use iota_sdk::types::base_types::ObjectID;
 use iota_sdk::IotaClient;
 use iota_sdk::IotaClientBuilder;
+use iota_sdk::IOTA_DEVNET_URL;
 use iota_sdk::IOTA_LOCAL_NETWORK_URL;
+use iota_sdk::IOTA_TESTNET_URL;
 use iota_sdk_legacy::client::secret::stronghold::StrongholdSecretManager;
 use iota_sdk_legacy::client::Password;
 use notarization::NotarizationClient;
@@ -82,6 +84,10 @@ pub fn get_iota_endpoint() -> String {
   std::env::var("API_ENDPOINT").unwrap_or_else(|_| IOTA_LOCAL_NETWORK_URL.to_string())
 }
 
+fn is_unofficial_node() -> bool {
+  ![IOTA_TESTNET_URL, IOTA_DEVNET_URL].contains(&get_iota_endpoint().as_str())
+}
+
 pub async fn get_iota_client() -> anyhow::Result<IotaClient> {
   let api_endpoint = std::env::var("API_ENDPOINT").unwrap_or_else(|_| IOTA_LOCAL_NETWORK_URL.to_string());
   IotaClientBuilder::default()
@@ -90,17 +96,23 @@ pub async fn get_iota_client() -> anyhow::Result<IotaClient> {
     .map_err(|err| anyhow::anyhow!(format!("failed to connect to network; {}", err)))
 }
 
-pub async fn get_read_only_client() -> anyhow::Result<IdentityClientReadOnly> {
+pub async fn get_read_only_client() -> anyhow::Result<IdentityClient> {
   let iota_client = get_iota_client().await?;
-  let package_id = std::env::var("IOTA_IDENTITY_PKG_ID")
-    .map_err(|e| {
-      anyhow::anyhow!("env variable IOTA_IDENTITY_PKG_ID must be set in order to run the examples").context(e)
-    })
-    .and_then(|pkg_str| pkg_str.parse().context("invalid package id"))?;
+  let package_id = if is_unofficial_node() {
+    let Ok(pkg_id_str) = std::env::var("IOTA_IDENTITY_PKG_ID") else {
+      anyhow::bail!(
+        "env variable IOTA_IDENTITY_PKG_ID must be set in order to run the examples against a local network"
+      );
+    };
+    let pkg_id = pkg_id_str
+      .parse()
+      .context("IOTA_IDENTITY_PKG_id is not a valid package ID")?;
+    Some(pkg_id)
+  } else {
+    None
+  };
 
-  IdentityClientReadOnly::new_with_pkg_id(iota_client, package_id)
-    .await
-    .context("failed to create a read-only IdentityClient")
+  Ok(IdentityClient::from_iota_client(iota_client, package_id).await?)
 }
 
 pub async fn get_funded_client<K, I>(
@@ -121,9 +133,19 @@ where
 
   request_funds(&sender_address).await?;
 
-  let read_only_client = get_read_only_client().await?;
-  let identity_client = IdentityClient::new(read_only_client, signer).await?;
+  let iota_client = get_iota_client().await?;
+  let package_id: ObjectID = std::env::var("IOTA_IDENTITY_PKG_ID")
+    .map_err(|e| {
+      anyhow::anyhow!("env variable IOTA_IDENTITY_PKG_ID must be set in order to run the examples").context(e)
+    })
+    .and_then(|pkg_str| pkg_str.parse().context("invalid package id"))?;
 
+  // Passing a package ID to `IdentityClient::from_iota_client` is required because the client is connected to a local and unofficial
+  // iota network. If we were to connect to testnet for instance, no package ID would be required.
+  let identity_client = IdentityClient::from_iota_client(iota_client, package_id)
+    .await?
+    .set_signer(signer)
+    .await?;
   Ok(identity_client)
 }
 

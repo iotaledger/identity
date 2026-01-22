@@ -75,6 +75,7 @@ impl WasmIdentityClient {
 
   #[wasm_bindgen(js_name = create)]
   pub async fn new(client: WasmIdentityClientReadOnly, signer: WasmTransactionSigner) -> Result<WasmIdentityClient> {
+    #[allow(deprecated)]
     let inner_client = IdentityClient::new(client.0, signer).await.wasm_result()?;
     Ok(WasmIdentityClient(inner_client))
   }

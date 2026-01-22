@@ -471,27 +471,32 @@ pub(crate) async fn get_identity_impl(
 /// Type of failures that can be encountered when resolving an Identity.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
-pub(crate) enum IdentityResolutionErrorKind {
+pub enum IdentityResolutionErrorKind {
   /// RPC request to an IOTA Node failed.
   #[error("object lookup RPC request failed")]
   RpcError(#[source] Box<dyn StdError + Send + Sync>),
   /// The queried object ID doesn't exist on-chain.
   #[error("Identity does not exist")]
   NotFound,
-  /// Type
+  /// Type.
   #[error("invalid object type: expected `iota_identity::identity::Identity`, found `{0}`")]
   InvalidType(String),
+  /// Malformed DID Document.
   #[error("invalid or malformed DID Document")]
   InvalidDidDocument(#[source] Box<dyn StdError + Send + Sync>),
+  /// Malformed Identity object
   #[error("malformed Identity object")]
   Malformed(#[source] Box<dyn StdError + Send + Sync>),
 }
 
+/// Failed to resolve an Identity by its ID.
 #[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
 #[error("failed to resolve Identity `{resolving}`")]
-pub(crate) struct IdentityResolutionError {
+#[non_exhaustive]
+pub struct IdentityResolutionError {
+  /// The Identity's ID.
   pub resolving: ObjectID,
+  /// Specific type of failure for this error.
   #[source]
   pub kind: IdentityResolutionErrorKind,
 }

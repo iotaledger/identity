@@ -7,7 +7,13 @@ use crate::iota_interaction_adapter::IotaClientAdapter;
 use crate::rebased::client::QueryControlledDidsError;
 use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
+use crate::rebased::migration::get_identity_impl;
+use crate::rebased::migration::ControllerToken;
 use crate::rebased::migration::CreateIdentity;
+use crate::rebased::migration::IdentityResolutionError;
+use crate::rebased::migration::InsufficientControllerVotingPower;
+use crate::rebased::migration::NotAController;
+use crate::rebased::migration::OnChainIdentity;
 use crate::IotaDID;
 use crate::IotaDocument;
 use crate::StateMetadataDocument;
@@ -31,6 +37,7 @@ use product_common::transaction::transaction_builder::TransactionBuilder;
 use secret_storage::Signer;
 use serde::de::DeserializeOwned;
 use tokio::sync::OnceCell;
+use tokio::sync::RwLock;
 
 use super::get_object_id_from_did;
 use crate::rebased::assets::AuthenticatedAssetBuilder;
@@ -207,6 +214,71 @@ where
     Ok(())
   }
 
+  /// A shorthand for
+  /// [OnChainIdentity::update_did_document](crate::rebased::migration::OnChainIdentity::update_did_document)'s DID
+  /// Document.
+  ///
+  /// This method makes the following assumptions:
+  /// - The given `did_document` has already been published on-chain within an Identity.
+  /// - This [IdentityClient] is a controller of the corresponding Identity with enough voting power to execute the
+  ///   transaction without any other controller approval.
+  pub async fn publish_did_update(
+    &self,
+    did_document: IotaDocument,
+  ) -> Result<TransactionBuilder<impl Transaction<Output = IotaDocument, Error = Error>>, MakeUpdateDidDocTxError> {
+    use MakeUpdateDidDocTxError as Error;
+    use MakeUpdateDidDocTxErrorKind as ErrorKind;
+
+    let make_err = |kind| Error {
+      did_document: did_document.clone(),
+      kind,
+    };
+
+    let identity_id = did_document.id().to_object_id();
+    let identity = get_identity_impl(self, identity_id)
+      .await
+      .map_err(|e| make_err(e.into()))?;
+
+    if identity.has_deleted_did() {
+      return Err(make_err(ErrorKind::DeletedIdentityDocument));
+    }
+
+    let controller_token = identity
+      .get_controller_token(self)
+      .await
+      .map_err(|e| make_err(ErrorKind::RpcError(e.into())))?
+      .ok_or_else(|| {
+        make_err(
+          NotAController {
+            address: self.address(),
+            identity: did_document.id().clone(),
+          }
+          .into(),
+        )
+      })?;
+
+    let vp = identity
+      .controller_voting_power(controller_token.controller_id())
+      .expect("is a controller");
+    let threshold = identity.threshold();
+    if vp < threshold {
+      return Err(make_err(
+        InsufficientControllerVotingPower {
+          controller_token_id: controller_token.controller_id(),
+          controller_voting_power: vp,
+          required: threshold,
+        }
+        .into(),
+      ));
+    }
+
+    Ok(TransactionBuilder::new(ShorthandDidUpdate {
+      identity: RwLock::new(identity),
+      controller_token,
+      did_document,
+    }))
+  }
+
   /// Query the objects owned by the address wrapped by this client to find the object of type `tag`
   /// and that satisfies `predicate`.
   pub async fn find_owned_ref<P>(&self, tag: StructTag, predicate: P) -> Result<Option<ObjectRef>, Error>
@@ -348,4 +420,81 @@ impl Transaction for PublishDidDocument {
 
     tx.apply(effects, client).await.map(IotaDocument::from)
   }
+}
+
+#[derive(Debug)]
+struct ShorthandDidUpdate {
+  identity: RwLock<OnChainIdentity>,
+  controller_token: ControllerToken,
+  did_document: IotaDocument,
+}
+
+#[cfg_attr(not(feature = "send-sync"), async_trait(?Send))]
+#[cfg_attr(feature = "send-sync", async_trait)]
+impl Transaction for ShorthandDidUpdate {
+  type Error = Error;
+  type Output = IotaDocument;
+
+  async fn build_programmable_transaction<C>(&self, client: &C) -> Result<ProgrammableTransaction, Self::Error>
+  where
+    C: CoreClientReadOnly + OptionalSync,
+  {
+    let mut identity = self.identity.write().await;
+    let ptb = identity
+      .update_did_document(self.did_document.clone(), &self.controller_token)
+      .finish(client)
+      .await?
+      .into_inner()
+      .ptb;
+
+    Ok(ptb)
+  }
+
+  async fn apply<C>(self, effects: &mut IotaTransactionBlockEffects, client: &C) -> Result<Self::Output, Self::Error>
+  where
+    C: CoreClientReadOnly + OptionalSync,
+  {
+    let mut identity = self.identity.into_inner();
+    let _ = identity
+      .update_did_document(self.did_document, &self.controller_token)
+      .finish(client)
+      .await?
+      .into_inner()
+      .apply(effects, client)
+      .await?;
+    Ok(identity.did_doc)
+  }
+}
+
+/// [IdentityClient::publish_did_update] error.
+#[derive(Debug, thiserror::Error)]
+#[error("failed to prepare transaction to update DID '{}'", did_document.id())]
+#[non_exhaustive]
+pub struct MakeUpdateDidDocTxError {
+  /// The DID document that was being published.
+  pub did_document: IotaDocument,
+  /// Specific type of failure for this error.
+  pub kind: MakeUpdateDidDocTxErrorKind,
+}
+
+/// Types of failure for [MakeUpdateDidDocTxError].
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum MakeUpdateDidDocTxErrorKind {
+  /// Node RPC failure.
+  #[error(transparent)]
+  RpcError(Box<dyn std::error::Error + Send + Sync>),
+  /// Failed to resolve the corresponding [OnChainIdentity].
+  #[error(transparent)]
+  IdentityResolution(#[from] IdentityResolutionError),
+  /// The invoking client is not a controller of the given DID document.
+  #[error(transparent)]
+  NotAController(#[from] NotAController),
+  /// The DID document has been deleted and cannot be updated.
+  #[error("Identity's DID Document is deleted")]
+  DeletedIdentityDocument,
+  /// The invoking client is a controller but doesn't have enough voting power
+  /// to perform the update.
+  #[error(transparent)]
+  InsuffientVotingPower(#[from] InsufficientControllerVotingPower),
 }

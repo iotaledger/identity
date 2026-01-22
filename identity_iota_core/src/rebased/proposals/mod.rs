@@ -184,7 +184,7 @@ pub type ProposalResult<P: ProposalT> = ProposedTxResult<P, P::Output>;
 pub struct CreateProposal<'i, A> {
   identity: &'i mut OnChainIdentity,
   chained_execution: bool,
-  ptb: ProgrammableTransaction,
+  pub(crate) ptb: ProgrammableTransaction,
   _action: PhantomData<A>,
 }
 

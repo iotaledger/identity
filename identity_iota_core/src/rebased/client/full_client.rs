@@ -497,5 +497,5 @@ pub enum MakeUpdateDidDocTxErrorKind {
   /// The invoking client is a controller but doesn't have enough voting power
   /// to perform the update.
   #[error(transparent)]
-  InsuffientVotingPower(#[from] InsufficientControllerVotingPower),
+  InsufficientVotingPower(#[from] InsufficientControllerVotingPower),
 }

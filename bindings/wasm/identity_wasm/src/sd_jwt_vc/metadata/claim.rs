@@ -35,6 +35,7 @@ extern "C" {
 pub struct WasmClaimMetadata {
   pub path: WasmClaimPath,
   pub display: Vec<WasmClaimDisplay>,
+  pub mandatory: Option<bool>,
   pub sd: Option<WasmClaimDisclosability>,
   pub svg_id: Option<String>,
 }
@@ -47,6 +48,7 @@ impl From<WasmClaimMetadata> for ClaimMetadata {
     Self {
       path,
       display,
+      mandatory: value.mandatory,
       sd,
       svg_id: value.svg_id,
     }
@@ -57,7 +59,7 @@ impl From<WasmClaimMetadata> for ClaimMetadata {
 #[wasm_bindgen(js_name = ClaimDisplay, inspectable, getter_with_clone)]
 pub struct WasmClaimDisplay {
   /// A language tag as defined in [RFC5646](https://www.rfc-editor.org/rfc/rfc5646.txt).
-  pub lang: String,
+  pub locale: String,
   /// A human-readable label for the claim.
   pub label: String,
   /// A human-readable description for the claim.
@@ -67,7 +69,7 @@ pub struct WasmClaimDisplay {
 impl From<WasmClaimDisplay> for ClaimDisplay {
   fn from(value: WasmClaimDisplay) -> Self {
     Self {
-      lang: value.lang,
+      locale: value.locale,
       label: value.label,
       description: value.description,
     }

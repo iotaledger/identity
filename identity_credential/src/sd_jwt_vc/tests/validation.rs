@@ -101,12 +101,12 @@ fn vc_metadata() -> TypeMetadata {
       "path": ["name"],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Vor- und Nachname",
           "description": "Der Name des Studenten"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Name",
           "description": "The name of the student"
         }
@@ -117,12 +117,12 @@ fn vc_metadata() -> TypeMetadata {
       "path": ["address"],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Adresse",
           "description": "Adresse zum Zeitpunkt des Abschlusses"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Address",
           "description": "Address at the time of graduation"
         }
@@ -133,11 +133,11 @@ fn vc_metadata() -> TypeMetadata {
       "path": ["address", "street_address"],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Straße"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Street Address"
         }
       ],
@@ -148,12 +148,12 @@ fn vc_metadata() -> TypeMetadata {
       "path": ["degrees", null],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Abschluss",
           "description": "Der Abschluss des Studenten"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Degree",
           "description": "Degree earned by the student"
         }

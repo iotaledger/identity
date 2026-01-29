@@ -26,12 +26,12 @@ const vc_metadata: TypeMetadataHelper = JSON.parse(`{
       "path": ["name"],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Vor- und Nachname",
           "description": "Der Name des Studenten"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Name",
           "description": "The name of the student"
         }
@@ -42,12 +42,12 @@ const vc_metadata: TypeMetadataHelper = JSON.parse(`{
       "path": ["address"],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Adresse",
           "description": "Adresse zum Zeitpunkt des Abschlusses"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Address",
           "description": "Address at the time of graduation"
         }
@@ -58,11 +58,11 @@ const vc_metadata: TypeMetadataHelper = JSON.parse(`{
       "path": ["address", "street_address"],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Straße"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Street Address"
         }
       ],
@@ -73,12 +73,12 @@ const vc_metadata: TypeMetadataHelper = JSON.parse(`{
       "path": ["degrees", null],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Abschluss",
           "description": "Der Abschluss des Studenten"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Degree",
           "description": "Degree earned by the student"
         }

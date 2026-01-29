@@ -140,8 +140,8 @@ where
     })
     .and_then(|pkg_str| pkg_str.parse().context("invalid package id"))?;
 
-  // Passing a package ID to `IdentityClient::from_iota_client` is required because the client is connected to a local and unofficial
-  // iota network. If we were to connect to testnet for instance, no package ID would be required.
+  // Passing a package ID to `IdentityClient::from_iota_client` is required because the client is connected to a local
+  // and unofficial iota network. If we were to connect to testnet for instance, no package ID would be required.
   let identity_client = IdentityClient::from_iota_client(iota_client, package_id)
     .await?
     .set_signer(signer)

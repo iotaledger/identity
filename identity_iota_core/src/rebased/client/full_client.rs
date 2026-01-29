@@ -138,7 +138,7 @@ impl IdentityClient<NoSigner> {
   ///
   /// # Examples
   /// ```
-  /// # use crate::rebased::client::IdentityClient;
+  /// # use identity_iota_core::rebased::client::IdentityClient;
   ///
   /// # #[tokio::main]
   /// # async fn main() -> anyhow::Result<()> {

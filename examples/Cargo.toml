@@ -107,6 +107,10 @@ path = "1_advanced/7_sd_jwt.rs"
 name = "7_sd_jwt"
 
 [[example]]
+path = "1_advanced/7_sd_jwt_v2.rs"
+name = "sd_jwt_v2"
+
+[[example]]
 path = "1_advanced/8_status_list_2021.rs"
 name = "8_status_list_2021"
 
@@ -137,7 +141,3 @@ name = "12_advanced_transactions"
 [[example]]
 path = "1_advanced/13_iota_keytool_integration.rs"
 name = "13_iota_keytool_integration"
-
-[[example]]
-path = "1_advanced/sd_jwt_v2.rs"
-name = "sd_jwt_v2"

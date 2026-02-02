@@ -27,8 +27,10 @@ pub struct ClaimMetadata {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub mandatory: Option<bool>,
   /// A string indicating whether the claim is selectively disclosable.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub sd: Option<ClaimDisclosability>,
   /// A string defining the ID of the claim for reference in the SVG template.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub svg_id: Option<String>,
 }
 

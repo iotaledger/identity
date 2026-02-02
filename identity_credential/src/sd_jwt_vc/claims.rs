@@ -22,12 +22,15 @@ use super::Status;
 #[non_exhaustive]
 pub struct SdJwtVcClaims {
   /// Issuer. Explicitly indicated the issuer of the verifiable credential when not conveyed by other means.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub iss: Option<Url>,
   /// Not before.
   /// See [RFC7519 section 4.1.5](https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.5) for more information.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub nbf: Option<Timestamp>,
   /// Expiration.
   /// See [RFC7519 section 4.1.4](https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4) for more information.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub exp: Option<Timestamp>,
   /// Verifiable credential type.
   /// See [SD-JWT VC specification](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-13.html#name-verifiable-credential-type-)
@@ -36,12 +39,15 @@ pub struct SdJwtVcClaims {
   /// Token's status.
   /// See [OAuth status list specification](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-02)
   /// for more information.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<Status>,
   /// Issued at.
   /// See [RFC7519 section 4.1.6](https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6) for more information.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub iat: Option<Timestamp>,
   /// Subject.
   /// See [RFC7519 section 4.1.2](https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.2) for more information.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub sub: Option<StringOrUrl>,
   #[serde(flatten)]
   pub(crate) sd_jwt_claims: SdJwtClaims,

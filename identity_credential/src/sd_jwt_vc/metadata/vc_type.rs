@@ -21,16 +21,21 @@ use super::IntegrityMetadata;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TypeMetadata {
   /// A human-readable name for the type, intended for developers reading the JSON document.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
   /// A human-readable description for the type, intended for developers reading the JSON document.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
   /// A URI of another type that this type extends.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub extends: Option<Url>,
   /// Integrity metadata for the extended type.
+  #[serde(skip_serializing_if = "Option::is_none")]
   #[serde(rename = "extends#integrity")]
   pub extends_integrity: Option<IntegrityMetadata>,
   /// Either an embedded schema or a reference to one.
   #[serde(flatten)]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub schema: Option<TypeSchema>,
   /// A list containing display information for the type.
   #[serde(skip_serializing_if = "Vec::is_empty", default)]

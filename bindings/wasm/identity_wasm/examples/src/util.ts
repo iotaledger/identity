@@ -19,7 +19,7 @@ import { getFaucetHost, requestIotaFromFaucetV0 } from "@iota/iota-sdk/faucet";
 import { IotaEvent } from "@iota/iota-sdk/src/client/types/generated";
 import { Transaction as SdkTransaction } from "@iota/iota-sdk/transactions";
 
-export const IOTA_IDENTITY_PKG_ID = globalThis?.process?.env?.IOTA_IDENTITY_PKG_ID || "";
+export const IOTA_IDENTITY_PKG_ID = globalThis?.process?.env?.IOTA_IDENTITY_PKG_ID;
 export const NETWORK_NAME_FAUCET = globalThis?.process?.env?.NETWORK_NAME_FAUCET || "localnet";
 export const NETWORK_URL = getFullnodeUrl(NETWORK_NAME_FAUCET);
 
@@ -53,19 +53,7 @@ export async function requestFunds(address: string) {
 
 export async function getFundedClient(storage: Storage): Promise<IdentityClient> {
     const iotaClient = new IotaClient({ url: NETWORK_URL });
-
-    let identityClientReadOnly;
-    if (NETWORK_NAME_FAUCET != "localnet") {
-        identityClientReadOnly = await IdentityClientReadOnly.create(iotaClient);
-    } else {
-        if (!IOTA_IDENTITY_PKG_ID) {
-            throw new Error(`IOTA_IDENTITY_PKG_ID env variable must be provided to run the examples`);
-        }
-        identityClientReadOnly = await IdentityClientReadOnly.createWithPkgId(
-            iotaClient,
-            IOTA_IDENTITY_PKG_ID,
-        );
-    }
+    const identityClientReadOnly = await IdentityClientReadOnly.create(iotaClient, IOTA_IDENTITY_PKG_ID);
 
     // generate new key
     let generate = await storage.keyStorage().generate("Ed25519", JwsAlgorithm.EdDSA);

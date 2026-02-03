@@ -59,12 +59,27 @@ impl WasmIdentityClientReadOnly {
     Err(JsError::new("cannot build an instance of `IdentityClientReadOnly` through its default sync constructor. Use `IdentityClientReadOnly.create` instead."))
   }
 
+  /// Creates a new {@link IdentityClientReadOnly} instance.
+  /// # Warning
+  /// Passing a `custom_package_id` is **only** required when connecting to a custom IOTA network.
+  ///
+  /// Relying on a custom Identity package when connected to an official IOTA network is **highly
+  /// discouraged** and is sure to result in compatibility issues when interacting with other official
+  /// IOTA Trust Framework's products.
   #[wasm_bindgen(js_name = create)]
-  pub async fn new(iota_client: WasmIotaClient) -> Result<WasmIdentityClientReadOnly, JsError> {
-    let inner_client = IdentityClientReadOnly::new(iota_client).await?;
-    Ok(WasmIdentityClientReadOnly(inner_client))
+  pub async fn new(
+    iota_client: WasmIotaClient,
+    custom_package_id: Option<String>,
+  ) -> Result<WasmIdentityClientReadOnly, JsError> {
+    if let Some(custom_package_id) = custom_package_id {
+      Self::new_new_with_pkg_id(iota_client, custom_package_id).await
+    } else {
+      let inner_client = IdentityClientReadOnly::new(iota_client).await?;
+      Ok(WasmIdentityClientReadOnly(inner_client))
+    }
   }
 
+  /// @deprecated Use {@link IdentityClientReadOnly.create} instead.
   #[wasm_bindgen(js_name = createWithPkgId)]
   pub async fn new_new_with_pkg_id(
     iota_client: WasmIotaClient,

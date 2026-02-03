@@ -244,7 +244,7 @@ impl TestClient {
     let signer = KeytoolSigner::builder().build()?;
     let client = IdentityClient::from_iota_client(client, package_id)
       .await?
-      .set_signer(signer)
+      .with_signer(signer)
       .await?;
 
     Ok(TestClient {

@@ -34,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
     let read_only_client = get_read_only_client().await?;
     // If we don't specify the address to use KeytoolSigner will use the current active-address.
     let signer = keytool.signer().with_address(address).build()?;
-    read_only_client.set_signer(signer).await?
+    read_only_client.with_signer(signer).await?
   };
 
   // Let's create a new DID Document, with a verification method

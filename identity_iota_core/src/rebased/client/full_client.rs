@@ -225,7 +225,7 @@ impl<S> IdentityClient<S> {
   }
 
   /// Sets a new signer for this client.
-  pub async fn set_signer<NewS>(self, signer: NewS) -> Result<IdentityClient<NewS>, secret_storage::Error>
+  pub async fn with_signer<NewS>(self, signer: NewS) -> Result<IdentityClient<NewS>, secret_storage::Error>
   where
     NewS: Signer<IotaKeySignature>,
   {

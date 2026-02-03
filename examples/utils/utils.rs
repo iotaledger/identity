@@ -144,7 +144,7 @@ where
   // and unofficial iota network. If we were to connect to testnet for instance, no package ID would be required.
   let identity_client = IdentityClient::from_iota_client(iota_client, package_id)
     .await?
-    .set_signer(signer)
+    .with_signer(signer)
     .await?;
   Ok(identity_client)
 }

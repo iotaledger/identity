@@ -52,6 +52,18 @@ impl JwkMemStore {
   pub async fn count(&self) -> usize {
     self.jwk_store.read().await.keys().count()
   }
+
+  /// Gets the public key corresponding to the given `key_id`.
+  pub async fn get_public_key(&self, key_id: &KeyId) -> KeyStorageResult<Jwk> {
+    self
+      .jwk_store
+      .read()
+      .await
+      .get(key_id)
+      .cloned()
+      .map(|jwk| jwk.to_public().unwrap_or(jwk))
+      .ok_or_else(|| KeyStorageError::new(KeyStorageErrorKind::KeyNotFound))
+  }
 }
 
 // Refer to the `JwkStorage` interface docs for high-level documentation of the individual methods.

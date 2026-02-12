@@ -5,6 +5,7 @@ use identity_iota::core::StringOrUrl;
 use identity_iota::core::Url;
 use identity_iota::credential::sd_jwt_vc::SdJwtVcBuilder;
 use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::JsValue;
 
 use crate::common::WasmTimestamp;
 use crate::credential::WasmCredential;
@@ -12,10 +13,10 @@ use crate::error::Result;
 use crate::error::WasmResult;
 use crate::sd_jwt_vc::WasmSdJwtVc;
 
-use super::sd_jwt_v2::WasmHasher;
-use super::sd_jwt_v2::WasmJwsSigner;
-use super::sd_jwt_v2::WasmRequiredKeyBinding;
 use super::WasmStatus;
+use crate::sd_jwt::WasmHasher;
+use crate::sd_jwt::WasmJwsSigner;
+use crate::sd_jwt::WasmRequiredKeyBinding;
 
 #[wasm_bindgen(js_name = SdJwtVcBuilder)]
 pub struct WasmSdJwtVcBuilder(pub(crate) SdJwtVcBuilder<WasmHasher>);
@@ -47,15 +48,20 @@ impl WasmSdJwtVcBuilder {
     self.0.make_concealable(path).map(Self).wasm_result()
   }
 
+  /// Sets a single JWT header by its key and value.
+  pub fn header(self, key: String, value: JsValue) -> Result<Self> {
+    let json_value: serde_json::Value = serde_wasm_bindgen::from_value(value).wasm_result()?;
+    Ok(Self(self.0.header(key, json_value)))
+  }
+
   /// Sets the JWT header.
   /// ## Notes
   /// - if {@link SdJwtVcBuilder.header} is not called, the default header is used: ```json { "typ": "sd-jwt", "alg":
   ///   "<algorithm used in SdJwtBuilder.finish>" } ```
   /// - `alg` is always replaced with the value passed to {@link SdJwtVcBuilder.finish}.
-  #[wasm_bindgen]
-  pub fn header(self, header: js_sys::Object) -> Self {
-    let header = serde_wasm_bindgen::from_value(header.into()).expect("JS object is a valid JSON object");
-    Self(self.0.header(header))
+  pub fn headers(self, headers: js_sys::Object) -> Self {
+    let header = serde_wasm_bindgen::from_value(headers.into()).expect("JS object is a valid JSON object");
+    Self(self.0.headers(header))
   }
 
   /// Adds a decoy digest to the specified path.

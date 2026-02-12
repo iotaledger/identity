@@ -1,5 +1,23 @@
 # Changelog
 
+## [v1.9.0-beta.1](https://github.com/iotaledger/identity/tree/v1.9.0-beta.1) (2026-02-12)
+
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.0-beta.1...v1.8.0-beta.3)
+
+### Added
+
+- Support for [VC Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/) with
+  SD-JWT and SD-JWT VC [\#1770](https://github.com/iotaledger/identity/pull/1770).
+
+- `IdentityClient::from_iota_client` as the suggested way to construct an `IdentityClient` [\#1765](https://github.com/iotaledger/identity/pull/1765)
+
+- `IdentityClient::publish_did_update` [\#1773](https://github.com/iotaledger/identity/pull/1773).
+
+### Patch
+
+- Bump `iota` dependency to version `v1.15.0` [\#1774](https://github.com/iotaledger/identity/pull/1774)
+
+
 ## [v1.8.0-beta.3](https://github.com/iotaledger/identity/tree/v1.8.0-beta.3) (2026-01-19)
 
 [Full Changelog](https://github.com/iotaledger/identity/compare/v1.8.0-beta.3...v1.8.0-beta.2)

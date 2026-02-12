@@ -1,10 +1,10 @@
-// Copyright 2020-2024 IOTA Stiftung
+// Copyright 2020-2026 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-//! This example shows how to create a selective disclosure verifiable credential and validate it
-//! using the standard [Selective Disclosure for JWTs (SD-JWT)](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-07.html).
+//! This example shows how to create a selective disclosure verifiable credential - that uses data model v2.0 -
+//! according to the [JOSE/COSE standard](https://www.w3.org/TR/vc-jose-cose/#securing-with-sd-jwt) and validate it.
 //!
-//! cargo run --release --example 7_sd_jwt
+//! cargo run --release --example sd_jwt_v2
 
 use examples::create_did_document;
 use examples::get_funded_client;
@@ -16,8 +16,8 @@ use identity_iota::core::Object;
 use identity_iota::core::Timestamp;
 use identity_iota::core::ToJson;
 use identity_iota::core::Url;
-use identity_iota::credential::Credential;
 use identity_iota::credential::CredentialBuilder;
+use identity_iota::credential::CredentialV2;
 use identity_iota::credential::JwtCredentialValidationOptions;
 use identity_iota::credential::KeyBindingJwtValidationOptions;
 use identity_iota::credential::SdJwtCredentialValidator;
@@ -62,12 +62,12 @@ async fn main() -> anyhow::Result<()> {
   }))?;
 
   // Build credential using subject above and issuer.
-  let credential: Credential = CredentialBuilder::default()
+  let credential: CredentialV2 = CredentialBuilder::default()
     .id(Url::parse("https://example.com/credentials/3732")?)
     .issuer(Url::parse(issuer_document.id().as_str())?)
     .type_("AddressCredential")
     .subject(subject)
-    .build()?;
+    .build_v2()?;
 
   println!("Plaintext Credential:\n{}", credential.to_json_pretty()?);
 
@@ -77,15 +77,15 @@ async fn main() -> anyhow::Result<()> {
   // The issuer also requires a Key Binding JWT signed by the holder's key to be
   // presented along with the SD-JWT.
   let issuer_signer =
-    StorageSigner::new_from_vm_fragment(&issuer_storage, issuer_document.as_ref(), &issuer_vm_fragment).await?;
-  let sd_jwt_credential = SdJwtBuilder::new(credential.to_jwt_claims(None)?)?
+    StorageSigner::new_from_vm_fragment(&issuer_storage, &issuer_document, &issuer_vm_fragment).await?;
+  let sd_jwt_credential = SdJwtBuilder::new(credential)?
     // Narrow the type to VC SD-JWT as per the spec.
     .header("typ", "vc+sd-jwt")
     // Set the issuer's verification method as the `kid` so that the verifiers can identify the correct key.
     .header("kid", format!("{}#{}", issuer_document.id(), issuer_vm_fragment))
-    .make_concealable("/vc/credentialSubject/address/locality")?
-    .make_concealable("/vc/credentialSubject/address/postal_code")?
-    .make_concealable("/vc/credentialSubject/address/street_address")?
+    .make_concealable("/credentialSubject/address/locality")?
+    .make_concealable("/credentialSubject/address/postal_code")?
+    .make_concealable("/credentialSubject/address/street_address")?
     .require_key_binding(RequiredKeyBinding::Kid(format!(
       "{}#{}",
       holder_document.id(),
@@ -117,7 +117,7 @@ async fn main() -> anyhow::Result<()> {
   // The holder only wants to present "locality" and "postal_code" but not "street_address".
   let (mut sd_jwt, _concealed_claims) = sd_jwt_credential
     .into_presentation(&Sha256Hasher)?
-    .conceal("/vc/credentialSubject/address/street_address")?
+    .conceal("/credentialSubject/address/street_address")?
     .finish();
 
   // The holder creates a Key Binding JWT and attaches it to the SD-JWT.
@@ -137,7 +137,7 @@ async fn main() -> anyhow::Result<()> {
 
   // Verify the SD-JWT Credential.
   let sd_jwt_validator = SdJwtCredentialValidator::new(EdDSAJwsVerifier::default(), Sha256Hasher);
-  let credential = sd_jwt_validator.validate_credential::<_, Object>(
+  let credential = sd_jwt_validator.validate_credential_v2::<_, Object>(
     &sd_jwt,
     std::slice::from_ref(&issuer_document),
     &JwtCredentialValidationOptions::default(),

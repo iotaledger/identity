@@ -22,9 +22,15 @@ pub struct ClaimMetadata {
   /// Object containing display information for the claim.
   #[serde(skip_serializing_if = "Vec::is_empty", default)]
   pub display: Vec<ClaimDisplay>,
+  /// A boolean indicating that the claim must be present in
+  /// the issued credential.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub mandatory: Option<bool>,
   /// A string indicating whether the claim is selectively disclosable.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub sd: Option<ClaimDisclosability>,
   /// A string defining the ID of the claim for reference in the SVG template.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub svg_id: Option<String>,
 }
 
@@ -158,7 +164,7 @@ pub enum ClaimDisclosability {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClaimDisplay {
   /// A language tag as defined in [RFC5646](https://www.rfc-editor.org/rfc/rfc5646.txt).
-  pub lang: String,
+  pub locale: String,
   /// A human-readable label for the claim.
   pub label: String,
   /// A human-readable description for the claim.

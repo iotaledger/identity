@@ -18,6 +18,7 @@ import { linkedVp } from "./1_advanced/13_linked_verifiable_presentation";
 import { customResolution } from "./1_advanced/4_custom_resolution";
 import { domainLinkage } from "./1_advanced/5_domain_linkage";
 import { sdJwt } from "./1_advanced/6_sd_jwt";
+import { sdJwtV2 } from "./1_advanced/6_sd_jwt_v2";
 import { statusList2021 } from "./1_advanced/7_status_list_2021";
 import { zkp } from "./1_advanced/8_zkp";
 import { zkp_revocation } from "./1_advanced/9_zkp_revocation";
@@ -58,6 +59,8 @@ export async function main(example?: string) {
             return await domainLinkage();
         case "6_sd_jwt":
             return await sdJwt();
+        case "6_sd_jwt_v2":
+            return await sdJwtV2();
         case "7_status_list_2021":
             return await statusList2021();
         case "8_zkp":

@@ -8,9 +8,8 @@ import {
     IssuerMetadata,
     Jwk,
     JwkType,
-    JwsVerificationOptions,
     KeyBindingJwtBuilder,
-    KeyBindingJWTValidationOptions,
+    KeyBindingJwtValidationOptions,
     SdJwtVcBuilder,
     Sha256Hasher,
     Timestamp,
@@ -27,12 +26,12 @@ const vc_metadata: TypeMetadataHelper = JSON.parse(`{
       "path": ["name"],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Vor- und Nachname",
           "description": "Der Name des Studenten"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Name",
           "description": "The name of the student"
         }
@@ -43,12 +42,12 @@ const vc_metadata: TypeMetadataHelper = JSON.parse(`{
       "path": ["address"],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Adresse",
           "description": "Adresse zum Zeitpunkt des Abschlusses"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Address",
           "description": "Address at the time of graduation"
         }
@@ -59,11 +58,11 @@ const vc_metadata: TypeMetadataHelper = JSON.parse(`{
       "path": ["address", "street_address"],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Straße"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Street Address"
         }
       ],
@@ -74,12 +73,12 @@ const vc_metadata: TypeMetadataHelper = JSON.parse(`{
       "path": ["degrees", null],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Abschluss",
           "description": "Der Abschluss des Studenten"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Degree",
           "description": "Degree earned by the student"
         }
@@ -116,7 +115,7 @@ export async function sdJwtVc() {
             if (input == "https://example.com/.well-known/jwt-vc-issuer/") {
                 return new TextEncoder().encode(JSON.stringify(issuer_metadata.toJSON()));
             }
-            if (input == "https://example.com/.well-known/vct/education_credential") {
+            if (input == "https://example.com/education_credential") {
                 return new TextEncoder().encode(JSON.stringify(vc_metadata));
             }
         },
@@ -134,10 +133,10 @@ export async function sdJwtVc() {
         },
         degree: [],
     }, hasher)
-        .header({ kid: "key1" })
         .vct("https://example.com/education_credential")
         .iat(Timestamp.nowUTC())
         .iss(issuer)
+        .header("kid", issuer_public_jwk.kid)
         .requireKeyBinding({ kid: holder_public_jwk.kid })
         .makeConcealable("/address/street_address")
         .makeConcealable("/address")
@@ -148,19 +147,19 @@ export async function sdJwtVc() {
     // Holder receives its SD-JWT VC and attaches its keybinding JWT.
     const kb_jwt = await new KeyBindingJwtBuilder()
         .iat(Timestamp.nowUTC())
-        .header({ kid: holder_public_jwk.kid })
+        .header("kid", holder_public_jwk.kid)
         .nonce("abcdefghi")
         .aud("https://example.com/verify")
         .finish(sd_jwt_vc.asSdJwt(), "ES256", { sign: holder_signer });
-    const { disclosures, sdJwtVc } = sd_jwt_vc.intoPresentation(hasher).attachKeyBindingJwt(kb_jwt).finish();
-    console.log(`presented SD-JWT VC: ${sdJwtVc}`);
+    sd_jwt_vc.attachKeyBindingJwt(kb_jwt);
+    console.log(`presented SD-JWT VC: ${sd_jwt_vc}`);
 
     // Verifier checks the presented sdJwtVc.
-    await sdJwtVc.validate(dummy_resolver, hasher);
-    sdJwtVc.validateKeyBinding(
+    await sd_jwt_vc.validate(dummy_resolver, hasher);
+    sd_jwt_vc.validateKeyBinding(
         new Jwk(holder_public_jwk as IJwkParams),
         hasher,
-        new KeyBindingJWTValidationOptions({ nonce: "abcdefghi", jwsOptions: new JwsVerificationOptions() }),
+        new KeyBindingJwtValidationOptions({ nonce: "abcdefghi" }),
     );
 
     console.log("The presented SdJwtVc is valid!");

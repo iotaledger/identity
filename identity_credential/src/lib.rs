@@ -35,7 +35,4 @@ pub use error::Error;
 pub use error::Result;
 
 #[cfg(feature = "sd-jwt")]
-pub use sd_jwt_payload;
-
-#[cfg(feature = "sd-jwt-vc")]
-pub use sd_jwt_payload_rework as sd_jwt_v2;
+pub use sd_jwt as sd_jwt_payload;

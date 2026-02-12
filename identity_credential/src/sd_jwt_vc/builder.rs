@@ -8,12 +8,12 @@ use identity_core::common::StringOrUrl;
 use identity_core::common::Timestamp;
 use identity_core::common::Url;
 use identity_core::convert::ToJson;
-use sd_jwt_payload_rework::Hasher;
-use sd_jwt_payload_rework::JsonObject;
-use sd_jwt_payload_rework::JwsSigner;
-use sd_jwt_payload_rework::RequiredKeyBinding;
-use sd_jwt_payload_rework::SdJwtBuilder;
-use sd_jwt_payload_rework::Sha256Hasher;
+use sd_jwt::Hasher;
+use sd_jwt::JsonObject;
+use sd_jwt::JwsSigner;
+use sd_jwt::RequiredKeyBinding;
+use sd_jwt::SdJwtBuilder;
+use sd_jwt::Sha256Hasher;
 use serde::Serialize;
 use serde_json::json;
 use serde_json::Value;
@@ -153,13 +153,24 @@ impl<H: Hasher> SdJwtVcBuilder<H> {
     Ok(self)
   }
 
-  /// Sets the JWT header.
+  /// Sets the JWT headers.
   /// ## Notes
-  /// - if [`SdJwtVcBuilder::header`] is not called, the default header is used: ```json { "typ": "sd-jwt", "alg":
-  ///   "<algorithm used in SdJwtBuilder::finish>" } ```
+  /// - if [`SdJwtVcBuilder::headers`] is not called, the default header is used:
+  /// ```json
+  /// {
+  ///   "typ": "sd-jwt",
+  ///   "alg": "<algorithm used in SdJwtBuilder::finish>"
+  /// }
+  /// ```
   /// - `alg` is always replaced with the value passed to [`SdJwtVcBuilder::finish`].
-  pub fn header(mut self, header: JsonObject) -> Self {
+  pub fn headers(mut self, header: JsonObject) -> Self {
     self.header = header;
+    self
+  }
+
+  /// Sets a single JWT header.
+  pub fn header(mut self, key: impl Into<String>, value: impl Into<Value>) -> Self {
+    self.header.insert(key.into(), value.into());
     self
   }
 
@@ -251,7 +262,7 @@ impl<H: Hasher> SdJwtVcBuilder<H> {
       .filter(|typ| typ.contains(SD_JWT_VC_TYP))
       .ok_or_else(|| Error::InvalidJoseType(String::default()))?;
 
-    let builder = inner_builder.header(header);
+    let builder = inner_builder.headers(header);
 
     // Insert SD-JWT VC claims into object.
     let builder = claim_to_key_value_pair![iss, nbf, exp, iat, vct, sub, status]
@@ -300,14 +311,12 @@ mod tests {
     });
 
     let err = SdJwtVcBuilder::new(credential)?
-      .vct("https://bmi.bund.example/credential/pid/1.0".parse::<Url>()?)
       .iat(Timestamp::now_utc())
-      // issuer is missing.
       .make_concealable("/birthdate")?
       .finish(&TestSigner, "HS256")
       .await
       .unwrap_err();
-    assert!(matches!(err, Error::MissingClaim("iss")));
+    assert!(matches!(err, Error::MissingClaim("vct")));
 
     Ok(())
   }
@@ -369,8 +378,8 @@ mod tests {
       .finish(&TestSigner, "HS256")
       .await?;
 
-    assert_eq!(sd_jwt_vc.claims().nbf.as_ref().unwrap(), &credential.issuance_date);
-    assert_eq!(&sd_jwt_vc.claims().iss, credential.issuer.url());
+    assert_eq!(sd_jwt_vc.claims().nbf.as_ref(), Some(&credential.issuance_date));
+    assert_eq!(sd_jwt_vc.claims().iss.as_ref(), Some(credential.issuer.url()));
     assert_eq!(
       sd_jwt_vc.claims().sub.as_ref().unwrap().as_url(),
       credential.credential_subject.first().unwrap().id.as_ref()

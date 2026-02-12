@@ -1,6 +1,6 @@
 [package]
 name = "identity_credential"
-version = "1.8.0-beta.3"
+version = "1.9.0-beta.1"
 authors = ["IOTA Stiftung"]
 edition = "2021"
 homepage.workspace = true
@@ -16,10 +16,10 @@ async-trait = { version = "0.1.64", default-features = false }
 bls12_381_plus = { workspace = true, optional = true }
 flate2 = { version = "1.0.28", default-features = false, features = ["rust_backend"], optional = true }
 futures = { version = "0.3", default-features = false, features = ["alloc"], optional = true }
-identity_core = { version = "=1.8.0-beta.3", path = "../identity_core", default-features = false }
-identity_did = { version = "=1.8.0-beta.3", path = "../identity_did", default-features = false }
-identity_document = { version = "=1.8.0-beta.3", path = "../identity_document", default-features = false }
-identity_verification = { version = "=1.8.0-beta.3", path = "../identity_verification", default-features = false }
+identity_core = { version = "=1.9.0-beta.1", path = "../identity_core", default-features = false }
+identity_did = { version = "=1.9.0-beta.1", path = "../identity_did", default-features = false }
+identity_document = { version = "=1.9.0-beta.1", path = "../identity_document", default-features = false }
+identity_verification = { version = "=1.9.0-beta.1", path = "../identity_verification", default-features = false }
 indexmap = { version = "2.0", default-features = false, features = ["std", "serde"] }
 itertools = { version = "0.11", default-features = false, features = ["use_std"] }
 json-proof-token = { workspace = true, optional = true }
@@ -27,8 +27,7 @@ jsonschema = { version = "0.19", optional = true, default-features = false }
 once_cell = { version = "1.18", default-features = false, features = ["std"] }
 reqwest = { version = "0.12", default-features = false, features = ["default-tls", "json", "stream"], optional = true }
 roaring = { version = "0.10.2", default-features = false, features = ["serde"], optional = true }
-sd-jwt-payload = { version = "0.2.1", default-features = false, features = ["sha"], optional = true }
-sd-jwt-payload-rework = { package = "sd-jwt-payload", version = "0.4", features = ["sha"], optional = true }
+sd-jwt = { package = "sd-jwt-payload", version = "0.5.1", default-features = false, features = ["sha"], optional = true }
 serde.workspace = true
 serde-aux = { version = "4.3.1", default-features = false }
 serde_json.workspace = true
@@ -69,8 +68,8 @@ status-list-2021 = ["revocation-bitmap"]
 validator = ["dep:serde_repr", "credential", "presentation"]
 domain-linkage = ["validator"]
 domain-linkage-fetch = ["domain-linkage", "dep:reqwest", "dep:futures"]
-sd-jwt = ["credential", "validator", "dep:sd-jwt-payload"]
-sd-jwt-vc = ["sd-jwt", "dep:sd-jwt-payload-rework", "dep:jsonschema", "dep:futures"]
+sd-jwt = ["credential", "validator", "dep:sd-jwt"]
+sd-jwt-vc = ["sd-jwt", "dep:jsonschema", "dep:futures"]
 jpt-bbs-plus = [
   "credential",
   "validator",

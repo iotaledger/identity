@@ -2,27 +2,24 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::options::WasmJwtCredentialValidationOptions;
-use super::WasmKeyBindingJWTValidationOptions;
+use super::WasmKeyBindingJwtValidationOptions;
 use crate::common::ImportedDocumentLock;
 use crate::common::ImportedDocumentReadGuard;
-use crate::credential::WasmDecodedJwtCredential;
-use crate::credential::WasmFailFast;
+use crate::credential::WasmCredential;
+use crate::credential::WasmCredentialV2;
 use crate::did::ArrayIToCoreDocument;
 use crate::did::IToCoreDocument;
 use crate::did::WasmJwsVerificationOptions;
 use crate::error::Result;
-use crate::error::WasmResult;
-use crate::sd_jwt::WasmKeyBindingJwtClaims;
+use crate::sd_jwt::WasmHasher;
 use crate::sd_jwt::WasmSdJwt;
 use crate::verification::IJwsVerifier;
 use crate::verification::WasmJwsVerifier;
 use identity_iota::credential::SdJwtCredentialValidator;
-use identity_iota::sd_jwt_payload::KeyBindingJwtClaims;
-use identity_iota::sd_jwt_payload::SdObjectDecoder;
 
 use wasm_bindgen::prelude::*;
 
-/// A type for decoding and validating {@link Credential}.
+/// A type for decoding and validating SD-JWT credentials.
 #[wasm_bindgen(js_name = SdJwtCredentialValidator)]
 pub struct WasmSdJwtCredentialValidator(SdJwtCredentialValidator<WasmJwsVerifier>);
 
@@ -33,17 +30,14 @@ impl WasmSdJwtCredentialValidator {
   /// algorithms will be used.
   #[wasm_bindgen(constructor)]
   #[allow(non_snake_case)]
-  pub fn new(signatureVerifier: Option<IJwsVerifier>) -> WasmSdJwtCredentialValidator {
+  pub fn new(hasher: WasmHasher, signatureVerifier: Option<IJwsVerifier>) -> WasmSdJwtCredentialValidator {
     let signature_verifier = WasmJwsVerifier::new(signatureVerifier);
-    WasmSdJwtCredentialValidator(SdJwtCredentialValidator::with_signature_verifier(
-      signature_verifier,
-      SdObjectDecoder::new_with_sha256(),
-    ))
+    WasmSdJwtCredentialValidator(SdJwtCredentialValidator::new(signature_verifier, hasher))
   }
 
-  /// Decodes and validates a `Credential` issued as an SD-JWT. A `DecodedJwtCredential` is returned upon success.
+  /// Decodes and validates a [Credential] issued as an SD-JWT.
   /// The credential is constructed by replacing disclosures following the
-  /// [`Selective Disclosure for JWTs (SD-JWT)`](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-07.html) standard.
+  /// [Selective Disclosure for JWTs (SD-JWT)](https://www.rfc-editor.org/rfc/rfc9901.html) standard.
   ///
   /// The following properties are validated according to `options`:
   /// - the issuer's signature on the JWS,
@@ -52,11 +46,11 @@ impl WasmSdJwtCredentialValidator {
   /// - the semantic structure.
   ///
   /// # Warning
-  /// * The key binding JWT is not validated. If needed, it must be validated separately using
-  /// `SdJwtValidator::validate_key_binding_jwt`.
+  /// * The key binding JWT is not validated. If needed, it must be validated separately using {@link
+  ///   SdJwtCredentialValidator.validateKeyBindingJwt}.
   /// * The lack of an error returned from this method is in of itself not enough to conclude that the credential can be
-  /// trusted. This section contains more information on additional checks that should be carried out before and after
-  /// calling this method.
+  ///   trusted. This section contains more information on additional checks that should be carried out before and after
+  ///   calling this method.
   ///
   /// ## The state of the issuer's DID Document
   /// The caller must ensure that `issuer` represents an up-to-date DID Document.
@@ -74,34 +68,77 @@ impl WasmSdJwtCredentialValidator {
     sd_jwt: &WasmSdJwt,
     issuer: &IToCoreDocument,
     options: &WasmJwtCredentialValidationOptions,
-    fail_fast: WasmFailFast,
-  ) -> Result<WasmDecodedJwtCredential> {
+  ) -> std::result::Result<WasmCredential, JsError> {
     let issuer_lock = ImportedDocumentLock::from(issuer);
-    let issuer_guard = issuer_lock.try_read()?;
+    let issuer_guard = issuer_lock
+      .try_read()
+      .map_err(|_| JsError::new("failed to lock DidDocument for reading"))?;
 
-    self
-      .0
-      .validate_credential(&sd_jwt.0, &issuer_guard, &options.0, fail_fast.into())
-      .wasm_result()
-      .map(WasmDecodedJwtCredential)
+    Ok(
+      self
+        .0
+        .validate_credential(&sd_jwt.0, std::slice::from_ref(&issuer_guard), &options.0)
+        .map(WasmCredential)?,
+    )
   }
 
-  /// Decode and verify the JWS signature of a `Credential` issued as an SD-JWT using the DID Document of a trusted
-  /// issuer and replaces the disclosures.
+  /// Decodes and validates a {@link CredentialV2} issued as an SD-JWT.
+  /// The credential is constructed by replacing disclosures following the
+  /// [Selective Disclosure for JWTs (SD-JWT)](https://www.rfc-editor.org/rfc/rfc9901.html) standard.
   ///
-  /// A `DecodedJwtCredential` is returned upon success.
+  /// The following properties are validated according to `options`:
+  /// - the issuer's signature on the JWS,
+  /// - the expiration date,
+  /// - the issuance date,
+  /// - the semantic structure.
+  ///
+  /// # Warning
+  /// * The key binding JWT is not validated. If needed, it must be validated separately using {@link
+  ///   SdJwtCredentialValidator.validate_key_binding_jwt}.
+  /// * The lack of an error returned from this method is in of itself not enough to conclude that the credential can be
+  ///   trusted. This section contains more information on additional checks that should be carried out before and after
+  ///   calling this method.
+  ///
+  /// ## The state of the issuer's DID Document
+  /// The caller must ensure that `issuer` represents an up-to-date DID Document.
+  ///
+  /// ## Properties that are not validated
+  /// There are many properties defined in [The Verifiable Credentials Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/)
+  /// that are **not** validated, such as:
+  /// `proof`, `credentialStatus`, `type`, `credentialSchema`, `refreshService` **and more**.
+  /// These should be manually checked after validation, according to your requirements.
+  ///
+  /// # Errors
+  /// An error is returned whenever a validated condition is not satisfied.
+  #[wasm_bindgen(js_name = validateCredentialV2)]
+  pub fn validate_credential_v2(
+    &self,
+    sd_jwt: &WasmSdJwt,
+    issuer: &IToCoreDocument,
+    options: &WasmJwtCredentialValidationOptions,
+  ) -> std::result::Result<WasmCredentialV2, JsError> {
+    let issuer_lock = ImportedDocumentLock::from(issuer);
+    let issuer_guard = issuer_lock
+      .try_read()
+      .map_err(|_| JsError::new("failed to lock DidDocument for reading"))?;
+
+    Ok(
+      self
+        .0
+        .validate_credential_v2(&sd_jwt.0, std::slice::from_ref(&issuer_guard), &options.0)
+        .map(WasmCredentialV2)?,
+    )
+  }
+
+  /// Decode and verify the JWS signature of an SD-JWT using the DID Document of a trusted issuer.
   ///
   /// # Warning
   /// The caller must ensure that the DID Documents of the trusted issuers are up-to-date.
   ///
-  /// ## Proofs
-  ///  Only the JWS signature is verified. If the `Credential` contains a `proof` property this will not be verified
-  /// by this method.
-  ///
   /// # Errors
-  /// * If the issuer' URL cannot be parsed.
-  /// * If Signature verification fails.
-  /// * If SD decoding fails.
+  /// An error is returned whenever:
+  /// - The JWS signature is invalid;
+  /// - The issuer's public key could not be determined or is not found within the trusted issuers' documents;
   #[wasm_bindgen(js_name = verifySignature)]
   #[allow(non_snake_case)]
   pub fn verify_signature(
@@ -109,41 +146,41 @@ impl WasmSdJwtCredentialValidator {
     credential: &WasmSdJwt,
     trustedIssuers: &ArrayIToCoreDocument,
     options: &WasmJwsVerificationOptions,
-  ) -> Result<WasmDecodedJwtCredential> {
+  ) -> std::result::Result<(), JsError> {
     let issuer_locks: Vec<ImportedDocumentLock> = trustedIssuers.into();
     let trusted_issuers: Vec<ImportedDocumentReadGuard<'_>> = issuer_locks
       .iter()
       .map(ImportedDocumentLock::try_read)
-      .collect::<Result<Vec<ImportedDocumentReadGuard<'_>>>>(
-    )?;
+      .collect::<Result<Vec<ImportedDocumentReadGuard<'_>>>>()
+      .map_err(|_| JsError::new("failed to lock DidDocument for reading"))?;
 
-    self
-      .0
-      .verify_signature(&credential.0, &trusted_issuers, &options.0)
-      .wasm_result()
-      .map(WasmDecodedJwtCredential)
+    self.0.verify_signature(&credential.0, &trusted_issuers, &options.0)?;
+
+    Ok(())
   }
 
-  /// Validates a Key Binding JWT (KB-JWT) according to `https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-07.html#name-key-binding-jwt`.
+  /// Validates a [Key Binding JWT (KB-JWT)](https://www.rfc-editor.org/rfc/rfc9901.html#name-key-binding-jwt)
+  /// according to [RFC9901](https://www.rfc-editor.org/rfc/rfc9901.html#key_binding_security).
+  ///
   /// The Validation process includes:
-  ///   * Signature validation using public key materials defined in the `holder` document.
-  ///   * `typ` value in KB-JWT header.
-  ///   * `sd_hash` claim value in the KB-JWT claim.
-  ///   * Optional `nonce`, `aud` and issuance date validation.
+  ///   - Signature validation using public key materials defined in the `holder` document.
+  ///   - `sd_hash` claim value in the KB-JWT claim.
+  ///   - Optional `nonce`, `aud`, and validity period validation.
+  ///
+  /// ## Notes
+  /// If a KB-JWT is not required by the SD-JWT, this method returns successfully early.
   #[wasm_bindgen(js_name = validateKeyBindingJwt)]
-  #[allow(non_snake_case)]
   pub fn validate_key_binding_jwt(
     &self,
-    sdJwt: &WasmSdJwt,
+    sd_jwt: &WasmSdJwt,
     holder: &IToCoreDocument,
-    options: &WasmKeyBindingJWTValidationOptions,
-  ) -> Result<WasmKeyBindingJwtClaims> {
+    options: &WasmKeyBindingJwtValidationOptions,
+  ) -> std::result::Result<(), JsError> {
     let holder_lock = ImportedDocumentLock::from(holder);
-    let holder_guard = holder_lock.try_read()?;
-    let claims: KeyBindingJwtClaims = self
-      .0
-      .validate_key_binding_jwt(&sdJwt.0, &holder_guard, &options.0)
-      .wasm_result()?;
-    Ok(WasmKeyBindingJwtClaims(claims))
+    let holder_guard = holder_lock
+      .try_read()
+      .map_err(|_| JsError::new("failed to lock DidDocument for reading"))?;
+
+    Ok(self.0.validate_key_binding_jwt(&sd_jwt.0, &holder_guard, &options.0)?)
   }
 }

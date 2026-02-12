@@ -9,12 +9,14 @@ use serde_json::Value;
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct DisplayMetadata {
   /// Language tag as defined in [RFC5646](https://www.rfc-editor.org/rfc/rfc5646.txt).
-  pub lang: String,
+  pub locale: String,
   /// VC type's human-readable name.
   pub name: String,
   /// VC type's human-readable description.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
   /// Optional rendering information.
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub rendering: Option<RenderingMetadata>,
 }
 

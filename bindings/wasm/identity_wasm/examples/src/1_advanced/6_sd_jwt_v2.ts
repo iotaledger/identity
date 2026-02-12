@@ -1,8 +1,8 @@
-// Copyright 2020-2024 IOTA Stiftung
+// Copyright 2020-2026 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-    Credential,
+    CredentialV2,
     EdDSAJwsVerifier,
     JwtCredentialValidationOptions,
     KeyBindingJwtBuilder,
@@ -21,7 +21,7 @@ import { createDocumentForNetwork, getFundedClient, getMemstorage, NETWORK_URL }
 /**
  * Demonstrates how to create a selective disclosure verifiable credential and validate it * using the [Selective Disclosure for JWTs (SD-JWT)](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-07.html) specification.
  */
-export async function sdJwt() {
+export async function sdJwtV2() {
     // ===========================================================================
     // Step 1: Create identities for the issuer and the holder.
     // ===========================================================================
@@ -71,7 +71,7 @@ export async function sdJwt() {
     };
 
     // Build credential using subject above and issuer.
-    const credential = new Credential({
+    const credential = new CredentialV2({
         id: "https://example.com/credentials/3732",
         type: "AddressCredential",
         issuer: issuerDocument.id(),
@@ -86,13 +86,13 @@ export async function sdJwt() {
     // presented along with the SD-JWT.
     const issuedSdJwt = await new SdJwtBuilder(credential.toJwtClaims(), new Sha256Hasher())
         .header("kid", `${issuerDocument.id()}#${issuerFragment}`)
-        .makeConcealable("/vc/credentialSubject/address/locality")
-        .makeConcealable("/vc/credentialSubject/address/postal_code")
-        .makeConcealable("/vc/credentialSubject/address/street_address")
-        .makeConcealable("/vc/credentialSubject/nationalities/1")
-        .addDecoys("/vc/credentialSubject/nationalities", 3)
-        .addDecoys("/vc", 4)
-        .addDecoys("/vc/credentialSubject/address", 2)
+        .makeConcealable("/credentialSubject/address/locality")
+        .makeConcealable("/credentialSubject/address/postal_code")
+        .makeConcealable("/credentialSubject/address/street_address")
+        .makeConcealable("/credentialSubject/nationalities/1")
+        .addDecoys("/credentialSubject/nationalities", 3)
+        .addDecoys("", 4)
+        .addDecoys("/credentialSubject/address", 2)
         .requireKeyBinding({ kid: `${aliceDocument.id()}#${aliceFragment}` })
         .finish(issuerVmSigner.asJwsSigner(), "EdDSA");
 
@@ -119,8 +119,8 @@ export async function sdJwt() {
     // The holder only wants to present "locality" and "postal_code" but not "street_address" or the "US" nationality.
     let sdJwtToPresent = new SdJwtPresentationBuilder(sdJwtReceived, new Sha256Hasher())
         .conceal_all()
-        .disclose("/vc/credentialSubject/address/locality")
-        .disclose("/vc/credentialSubject/address/postal_code")
+        .disclose("/credentialSubject/address/locality")
+        .disclose("/credentialSubject/address/postal_code")
         .finish()
         .sdJwt;
 
@@ -147,7 +147,7 @@ export async function sdJwt() {
 
     // Verify the JWT.
     let validator = new SdJwtCredentialValidator(new Sha256Hasher(), new EdDSAJwsVerifier());
-    let decodedCredential: Credential = validator.validateCredential(
+    let decodedCredential: CredentialV2 = validator.validateCredentialV2(
         sdJwtToVerify,
         issuerDocument,
         new JwtCredentialValidationOptions(),

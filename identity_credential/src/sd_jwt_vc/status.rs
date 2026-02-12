@@ -7,7 +7,7 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 /// SD-JWT VC's `status` claim value. Used to retrieve the status of the token.
-pub struct Status(StatusMechanism);
+pub struct Status(pub StatusMechanism);
 
 /// Mechanism used for representing the status of an SD-JWT VC token.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

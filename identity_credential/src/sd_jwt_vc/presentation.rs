@@ -6,10 +6,9 @@ use super::Result;
 use super::SdJwtVc;
 use super::SdJwtVcClaims;
 
-use sd_jwt_payload_rework::Disclosure;
-use sd_jwt_payload_rework::Hasher;
-use sd_jwt_payload_rework::KeyBindingJwt;
-use sd_jwt_payload_rework::SdJwtPresentationBuilder;
+use sd_jwt::Disclosure;
+use sd_jwt::Hasher;
+use sd_jwt::SdJwtPresentationBuilder;
 
 /// Builder structure to create an SD-JWT VC presentation.
 /// It allows users to conceal claims and attach a key binding JWT.
@@ -64,18 +63,12 @@ impl SdJwtVcPresentationBuilder {
     Ok(self)
   }
 
-  /// Adds a [`KeyBindingJwt`] to this [`SdJwtVc`]'s presentation.
-  pub fn attach_key_binding_jwt(mut self, kb_jwt: KeyBindingJwt) -> Self {
-    self.builder = self.builder.attach_key_binding_jwt(kb_jwt);
-    self
-  }
-
   /// Returns the resulting [`SdJwtVc`] together with all removed disclosures.
-  pub fn finish(mut self) -> Result<(SdJwtVc, Vec<Disclosure>)> {
-    let (mut sd_jwt, disclosures) = self.builder.finish()?;
+  pub fn finish(mut self) -> (SdJwtVc, Vec<Disclosure>) {
+    let (mut sd_jwt, disclosures) = self.builder.finish();
     // Move the token's claim back into parsed VC claims.
     std::mem::swap(sd_jwt.claims_mut(), &mut self.vc_claims.sd_jwt_claims);
 
-    Ok((SdJwtVc::new(sd_jwt, self.vc_claims), disclosures))
+    (SdJwtVc::new(sd_jwt, self.vc_claims), disclosures)
   }
 }

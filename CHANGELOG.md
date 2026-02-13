@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.9.0-beta.1](https://github.com/iotaledger/identity/tree/v1.9.1-beta.1) (2026-02-13)
+
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.1-beta.1...v1.9.0-beta.1)
+
+### Patch
+
+- Bump `iota` dependency to version `v1.16.2` [\#1781](https://github.com/iotaledger/identity/pull/1781).
+
 ## [v1.9.0-beta.1](https://github.com/iotaledger/identity/tree/v1.9.0-beta.1) (2026-02-12)
 
 [Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.0-beta.1...v1.8.0-beta.3)

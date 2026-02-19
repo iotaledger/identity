@@ -178,6 +178,26 @@ module iota_identity::controller {
         } = token;
         object::delete(id);
     }
+
+    #[test_only]
+    /// Create a DelegationToken for testing purposes - links to a given Identity ID
+    public fun create_delegation_token_for_testing(
+        controller_of: ID,
+        ctx: &mut TxContext,
+    ): DelegationToken {
+        new_delegation_token(
+            object::id_from_address(@0xFACE),
+            controller_of,
+            permissions::all(),
+            ctx,
+        )
+    }
+
+    #[test_only]
+    /// Destroy a DelegationToken in tests
+    public fun destroy_delegation_token_for_testing(token: DelegationToken) {
+        delete_delegation_token(token);
+    }
 }
 
 #[test_only]

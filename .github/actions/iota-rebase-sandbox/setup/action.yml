@@ -22,6 +22,16 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Install postgres (MacOS arm64)
+      if: ${{ inputs.platform == 'macos' }}
+      shell: bash
+      env:
+        PQ_LIB_DIR: "$(brew --prefix libpq)/lib"
+        LIBRARY_PATH: "/opt/homebrew/lib:$LIBRARY_PATH"
+        PKG_CONFIG_PATH: "/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH"
+        PATH: "/opt/homebrew/bin:$PATH"
+      run: |
+        brew install postgresql
     - name: Set up IOTA Node
       shell: bash
       run: |

@@ -53,8 +53,7 @@ runs:
           PLATFORM_TRIPLET="linux-x86_64"
         elif [ "$PLATFORM" = "macos" ]; then
           PLATFORM_TRIPLET="macos-arm64"
-          brew install postgresql
-          brew reinstall libpq
+          brew install postgresql@14
         else
           echo "not binaries for platform: $PLATFORM"
           exit 1

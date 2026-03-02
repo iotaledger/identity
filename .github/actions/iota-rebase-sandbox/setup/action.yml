@@ -31,7 +31,7 @@ runs:
         PKG_CONFIG_PATH: "/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH"
         PATH: "/opt/homebrew/bin:$PATH"
       run: |
-        brew install postgresql
+        brew install postgresql@14
     - name: Set up IOTA Node
       shell: bash
       run: |

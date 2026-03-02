@@ -42,7 +42,7 @@ static IOTA_IDENTITY_PACKAGE_REGISTRY: LazyLock<RwLock<PackageRegistry>> = LazyL
       ],
     );
     registry.insert_env(
-      Env::new_with_alias("e678123a", "devnet"),
+      Env::new_with_alias("daf90477", "devnet"),
       vec![object_id!(
         "0x8896ab04fe24c044c54925df3f8a7c383a8d1d6f6bbb95d1c57cfa94c75e520d"
       )],

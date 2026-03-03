@@ -1,6 +1,15 @@
 # Changelog
 
-## [v1.9.0-beta.1](https://github.com/iotaledger/identity/tree/v1.9.1-beta.1) (2026-02-13)
+## [v1.9.2-beta.1](https://github.com/iotaledger/identity/tree/v1.9.2-beta.1) (2026-02-13)
+
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.2-beta.1...v1.9.1-beta.1)
+
+### Patch
+
+- Bump `iota` dependency to version `v1.17.2` [\#1785](https://github.com/iotaledger/identity/pull/1785).
+- Redeploy IOTA Identity Move package on IOTA Devnet [\#1790](https://github.com/iotaledger/identity/pull/1790)
+
+## [v1.9.1-beta.1](https://github.com/iotaledger/identity/tree/v1.9.1-beta.1) (2026-02-13)
 
 [Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.1-beta.1...v1.9.0-beta.1)
 

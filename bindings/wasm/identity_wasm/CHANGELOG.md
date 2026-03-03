@@ -1,5 +1,14 @@
 # Changelog
 
+## [wasm-v1.9.2-beta.1](https://github.com/iotaledger/identity/tree/wasm-v1.9.2-beta.1) (2026-03-03)
+
+[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.9.2-beta.1...wasm-v1.9.1-beta.1)
+
+### Patch
+
+- Bump `iota` dependency to version `v1.17.2` [\#1785](https://github.com/iotaledger/identity/pull/1785).
+- Redeploy IOTA Identity Move package on IOTA Devnet [\#1790](https://github.com/iotaledger/identity/pull/1790)
+
 ## [wasm-v1.9.0-beta.1](https://github.com/iotaledger/identity/tree/wasm-v1.9.0-beta.1) (2026-02-12)
 
 [Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.9.0-beta.1...v1.8.0-beta.3)

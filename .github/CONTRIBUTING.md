@@ -134,7 +134,7 @@ The following is a typical workflow for submitting a new pull request:
 2. Create a new branch based on your fork. For example, `git checkout -b fix/my-fix` or ` git checkout -b feat/my-feature`.
 3. Run the `rustfmt` command to make sure your code is well formatted
 4. Commit changes and push them to your fork
-5. Target your pull request to be merged with `master`
+5. Target your pull request to be merged with `main`
 
 If all [status checks](https://help.github.com/articles/about-status-checks/) pass, and the maintainer approves the PR, it will be merged.
 

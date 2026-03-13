@@ -146,7 +146,8 @@ where
       .vc
       .issuer
       .as_ref()
-      .map(|value| value == issuer_from_claims)
+      // See https://www.w3.org/TR/vc-jose-cose/#iss
+      .map(|value| value.url() == issuer_from_claims.url())
       .unwrap_or(true)
     {
       return Err(Error::InconsistentCredentialJwtClaims("inconsistent issuer"));

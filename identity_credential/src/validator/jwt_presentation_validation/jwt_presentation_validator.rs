@@ -83,7 +83,14 @@ where
       })?;
 
     // Try V2 first.
-    if let Ok(JwtPresentationV2Claims { vp, aud, iat, exp }) = serde_json::from_slice(&decoded_jws.claims) {
+    if let Ok(JwtPresentationV2Claims {
+      vp,
+      aud,
+      iat,
+      exp,
+      custom: custom_claims,
+    }) = serde_json::from_slice(&decoded_jws.claims)
+    {
       check_holder(vp.holder.as_str(), holder.as_ref())?;
 
       return Ok(DecodedJwtPresentation {
@@ -92,7 +99,7 @@ where
         expiration_date: convert_and_check_exp(exp, options.earliest_expiry_date)?,
         issuance_date: convert_and_check_iat(iat, options.latest_issuance_date)?,
         aud,
-        custom_claims: None,
+        custom_claims,
       });
     }
 

@@ -215,6 +215,8 @@ pub(crate) struct JwtPresentationV2Claims<C, T> {
   pub(crate) aud: Option<StringOrUrl>,
   #[serde(flatten)]
   pub(crate) vp: Presentation<C, T>,
+  #[serde(flatten, skip_serializing_if = "Option::is_none")]
+  pub(crate) custom: Option<Object>,
 }
 
 impl<C, T> JwtPresentationV2Claims<C, T> {
@@ -224,6 +226,7 @@ impl<C, T> JwtPresentationV2Claims<C, T> {
       iat: options.issuance_date.map(|ts| ts.to_unix()),
       exp: options.expiration_date.map(|ts| ts.to_unix()),
       aud: options.audience.clone(),
+      custom: options.custom_claims.clone(),
     }
   }
 }

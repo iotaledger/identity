@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use identity_core::common::Object;
+use identity_core::common::StringOrUrl;
 use identity_core::common::Timestamp;
-use identity_core::common::Url;
 use identity_verification::jws::JwsHeader;
 
 use crate::presentation::Presentation;
@@ -15,7 +15,7 @@ use crate::presentation::Presentation;
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct DecodedJwtPresentation<CRED, T = Object> {
-  /// The decoded presentation parsed to the [Verifiable Credentials Data model](https://www.w3.org/TR/vc-data-model/).
+  /// The decoded presentation parsed to the [Verifiable Credentials Data Model v1.1](https://www.w3.org/TR/vc-data-model-1.1/).
   pub presentation: Presentation<CRED, T>,
   /// The protected header parsed from the JWS.
   pub header: Box<JwsHeader>,
@@ -24,7 +24,7 @@ pub struct DecodedJwtPresentation<CRED, T = Object> {
   /// The issuance date parsed from the JWT claims.
   pub issuance_date: Option<Timestamp>,
   /// The `aud` property parsed from the JWT claims.
-  pub aud: Option<Url>,
+  pub aud: Option<StringOrUrl>,
   /// The custom claims parsed from the JWT.
   pub custom_claims: Option<Object>,
 }

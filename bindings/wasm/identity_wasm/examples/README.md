@@ -26,7 +26,7 @@ be set to the name of the chosen network - e.g. `testnet` or `devnet` - and `IOT
 Summarizing the last point, you'll need one or more of the following environment variables:
 
 | Name                 | Required for local node | Required for official IOTA node |       Comment        |
-| -------------------- | :---------------------: | :-----------------------------: |                      |
+| -------------------- | :---------------------: | :-----------------------------: | :------------------: |
 | IOTA_IDENTITY_PKG_ID |            x            |                                 |                      |
 | NETWORK_NAME_FAUCET  |                         |          x                      | see assumption above |
 

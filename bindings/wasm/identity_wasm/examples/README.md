@@ -9,7 +9,6 @@ The examples are written in TypeScript and can be run with Node.js.
 ### Prerequisites
 
 Examples can be run against
-
 - a local IOTA node
 - or an existing network, e.g. IOTA testnet
 

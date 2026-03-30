@@ -1,8 +1,19 @@
 # Changelog
 
+## [wasm-v1.9.4-beta.1](https://github.com/iotaledger/identity/tree/wasm-v1.9.4-beta.1) (2026-03-30)
+
+[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.9.2-beta.1...wasm-v1.9.4-beta.1)
+
+### Patch
+
+- Use `StringOrUrl` for the `aud` claim [\#1798](https://github.com/iotaledger/identity/pull/1798)
+- Add `custom_claims` claim to `JwtPresentationV2Claims` [\#1799](https://github.com/iotaledger/identity/pull/1799)
+- Update issuer comparison to use URL [\#1800](https://github.com/iotaledger/identity/pull/1800)
+- Bump `iota` dependency to version `v1.19.1` [\#1802](https://github.com/iotaledger/identity/pull/1802).
+
 ## [wasm-v1.9.2-beta.1](https://github.com/iotaledger/identity/tree/wasm-v1.9.2-beta.1) (2026-03-03)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.9.2-beta.1...wasm-v1.9.1-beta.1)
+[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.9.0-beta.1...wasm-v1.9.2-beta.1)
 
 ### Patch
 
@@ -11,7 +22,7 @@
 
 ## [wasm-v1.9.0-beta.1](https://github.com/iotaledger/identity/tree/wasm-v1.9.0-beta.1) (2026-02-12)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.9.0-beta.1...v1.8.0-beta.3)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.8.0-beta.3...wasm-v1.9.0-beta.1)
 
 ### Added
 
@@ -26,7 +37,7 @@
 
 ## [v1.8.0-beta.3](https://github.com/iotaledger/identity/tree/v1.8.0-beta.3) (2026-01-19)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.8.0-beta.3...v1.8.0-beta.2)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.8.0-beta.2..v1.8.0-beta.3)
 
 ### Patch
 
@@ -34,7 +45,7 @@
 
 ## [wasm-v1.8.0-beta.2](https://github.com/iotaledger/identity/tree/wasm-v1.8.0-beta.2) (2025-12-18)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.7.0-beta.1...wasm-v1.6.0-beta.10)
+[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.6.0-beta.10...wasm-v1.7.0-beta.1)
 
 ### Patch
 
@@ -51,11 +62,11 @@
 
 - Fix `IotaDID.toObjectId` and `IotaDID.fromObjectId` [\#1747](https://github.com/iotaledger/identity/pull/1747)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.8.0-beta.1...v1.7.0-beta.1)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.7.0-beta.1...wasm-v1.8.0-beta.1)
 
 ## [wasm-v1.7.0-beta.1](https://github.com/iotaledger/identity/tree/wasm-v1.7.0-beta.1) (2025-10-14)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.7.0-beta.1...wasm-v1.6.0-beta.10)
+[Full Changelog](https://github.com/iotaledger/identity/compare/wasm-v1.6.0-beta.10...wasm-v1.7.0-beta.1)
 
 ### Added
 

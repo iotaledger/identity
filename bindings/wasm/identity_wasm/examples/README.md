@@ -9,6 +9,7 @@ The examples are written in TypeScript and can be run with Node.js.
 ### Prerequisites
 
 Examples can be run against
+
 - a local IOTA node
 - or an existing network, e.g. IOTA testnet
 
@@ -18,17 +19,17 @@ You'll also need to provide an environment variable `IOTA_IDENTITY_PKG_ID` set t
 identity package, to be able to run the examples against the local node.
 
 Instead, when running the examples against an official IOTA network, the environmental variable `NETWORK_NAME_FAUCET` **must**
-be set to the name of the chosen network - e.g. `testnet` or `devnet` - and `IOTA_IDENTITY_PKG_ID` environmental variable 
+be set to the name of the chosen network - e.g. `testnet` or `devnet` - and `IOTA_IDENTITY_PKG_ID` environmental variable
 **must** not be set; the official IOTA Identity package ID for the chosen network will be used automatically.
 
 ### Environment variables
 
 Summarizing the last point, you'll need one or more of the following environment variables:
 
-| Name                 | Required for local node | Required for official IOTA node |       Comment        |
-| -------------------- | :---------------------: | :-----------------------------: |                      |
+| Name                 | Required for local node | Required for official IOTA node | Comment              |
+| -------------------- | :---------------------: | :-----------------------------: | -------------------- |
 | IOTA_IDENTITY_PKG_ID |            x            |                                 |                      |
-| NETWORK_NAME_FAUCET  |                         |          x                      | see assumption above |
+| NETWORK_NAME_FAUCET  |                         |                x                | see assumption above |
 
 ### Node.js
 

@@ -1,8 +1,19 @@
 # Changelog
 
+## [v1.9.4-beta.1](https://github.com/iotaledger/identity/tree/v1.9.4-beta.1) (2026-03-30)
+
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.3-beta.1...v1.9.4-beta.1)
+
+### Patch
+
+- Use `StringOrUrl` for the `aud` claim [\#1798](https://github.com/iotaledger/identity/pull/1798)
+- Add `custom_claims` claim to `JwtPresentationV2Claims` [\#1799](https://github.com/iotaledger/identity/pull/1799)
+- Update issuer comparison to use URL [\#1800](https://github.com/iotaledger/identity/pull/1800)
+- Bump `iota` dependency to version `v1.19.1` [\#1802](https://github.com/iotaledger/identity/pull/1802).
+
 ## [v1.9.3-beta.1](https://github.com/iotaledger/identity/tree/v1.9.3-beta.1) (2026-03-12)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.3-beta.1...v1.9.2-beta.1)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.2-beta.1...v1.9.3-beta.1)
 
 ### Patch
 
@@ -10,7 +21,8 @@
 
 ## [v1.9.2-beta.1](https://github.com/iotaledger/identity/tree/v1.9.2-beta.1) (2026-02-13)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.2-beta.1...v1.9.1-beta.1)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.1-beta.1...v1.9.2-beta.1)
+****
 
 ### Patch
 
@@ -19,7 +31,7 @@
 
 ## [v1.9.1-beta.1](https://github.com/iotaledger/identity/tree/v1.9.1-beta.1) (2026-02-13)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.1-beta.1...v1.9.0-beta.1)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.0-beta.1...v1.9.1-beta.1)
 
 ### Patch
 
@@ -27,7 +39,7 @@
 
 ## [v1.9.0-beta.1](https://github.com/iotaledger/identity/tree/v1.9.0-beta.1) (2026-02-12)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.0-beta.1...v1.8.0-beta.3)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.8.0-beta.3...v1.9.0-beta.1)
 
 ### Added
 
@@ -42,10 +54,9 @@
 
 - Bump `iota` dependency to version `v1.15.0` [\#1774](https://github.com/iotaledger/identity/pull/1774)
 
-
 ## [v1.8.0-beta.3](https://github.com/iotaledger/identity/tree/v1.8.0-beta.3) (2026-01-19)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.8.0-beta.3...v1.8.0-beta.2)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.8.0-beta.2...v1.8.0-beta.3)
 
 ### Patch
 
@@ -53,7 +64,7 @@
 
 ## [v1.8.0-beta.2](https://github.com/iotaledger/identity/tree/v1.8.0-beta.2) (2025-12-18)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.8.0-beta.2...v1.8.0-beta.1)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.8.0-beta.1...v1.8.0-beta.2)
 
 ### Patch
 
@@ -61,16 +72,16 @@
 
 ## [v1.8.0-beta.1](https://github.com/iotaledger/identity/tree/v1.8.0-beta.1) (2025-12-07)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.8.0-beta.1...v1.7.0-beta.5)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.7.0-beta.5...v1.8.0-beta.1)
 
 ### Added
 
-- Support for [VC Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/) and JWT encoding 
+- Support for [VC Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/) and JWT encoding
   [\#1738](https://github.com/iotaledger/identity/pull/1738)
 
 ## [v1.7.0-beta.5](https://github.com/iotaledger/identity/tree/v1.7.0-beta.5) (2025-12-05)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.7.0-beta.5...v1.7.0-beta.4)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.7.0-beta.4...v1.7.0-beta.5)
 
 ### Patch
 
@@ -78,7 +89,7 @@
 
 ## [v1.7.0-beta.4](https://github.com/iotaledger/identity/tree/v1.7.0-beta.4) (2025-11-26)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.7.0-beta.4...v1.7.0-beta.3)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.7.0-beta.3...v1.7.0-beta.4)
 
 ### Patch
 
@@ -86,11 +97,11 @@
 
 ## [v1.7.0-beta.3](https://github.com/iotaledger/identity/tree/v1.7.0-beta.3) (2025-10-30)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.7.0-beta.3...v1.7.0-beta.2)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.7.0-beta.2...v1.7.0-beta.3)
 
 ## [v1.7.0-beta.2](https://github.com/iotaledger/identity/tree/v1.7.0-beta.2) (2025-10-14)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.7.0-beta.2...v1.7.0-beta.1)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.7.0-beta.1...v1.7.0-beta.2)
 
 ### Patch
 
@@ -98,7 +109,7 @@
 
 ## [v1.7.0-beta.1](https://github.com/iotaledger/identity/tree/v1.7.0-beta.1) (2025-10-14)
 
-[Full Changelog](https://github.com/iotaledger/identity/compare/v1.7.0-beta.1...v1.6.0-beta.8)
+[Full Changelog](https://github.com/iotaledger/identity/compare/v1.6.0-beta.8...v1.7.0-beta.1)
 
 ### Added
 
@@ -317,14 +328,12 @@ Identities created on IOTA Stardust networks can be migrated via the [Stardust p
 ## [v0.6.0](https://github.com/iotaledger/identity/tree/v0.6.0) (2022-06-15)
 
 [Full Changelog](https://github.com/iotaledger/identity/compare/v0.5.0...v0.6.0)
- 
-The main feature of this release is the addition of the `RevocationBitmap2022` specification, offering efficient credential revocation on-Tangle. This is the replacement for the `MerkleKeyCollection` removed in v0.5.0, which offered similar functionality but fundamentally failed to scale beyond a few thousand revocations. 
 
- Other changes include encryption support using Elliptic Curve Diffie-Hellman (ECDH) and quality of life improvements for verifiable credential and presentation types in the Wasm bindings. 
+The main feature of this release is the addition of the `RevocationBitmap2022` specification, offering efficient credential revocation on-Tangle. This is the replacement for the `MerkleKeyCollection` removed in v0.5.0, which offered similar functionality but fundamentally failed to scale beyond a few thousand revocations.
 
- DID Documents created with v0.5.0 remain compatible with v0.6.0. This will be the last major release prior to changes for the Stardust update. 
+ Other changes include encryption support using Elliptic Curve Diffie-Hellman (ECDH) and quality of life improvements for verifiable credential and presentation types in the Wasm bindings.
 
-
+ DID Documents created with v0.5.0 remain compatible with v0.6.0. This will be the last major release prior to changes for the Stardust update.
 
 ### Changed
 
@@ -353,12 +362,12 @@ The main feature of this release is the addition of the `RevocationBitmap2022` s
 ## [v0.5.0](https://github.com/iotaledger/identity/tree/v0.5.0) (2022-03-31)
 
 [Full Changelog](https://github.com/iotaledger/identity/compare/v0.4.0...v0.5.0)
- 
-This release introduces multiple breaking changes to the structure of IOTA DID Documents and their Tangle messages, rendering any identity created with a prior version incompatible and unresolvable. A versioning system has been introduced so any new identities should hopefully be forward compatible with any future breaking changes to the message structure. 
 
- The main feature of this release is the introduction of WebAssembly (Wasm) bindings for the high-level `Account` API for Javascript/Typescript in both Node.js and the browser. This includes preliminary Stronghold storage bindings but only for Node.js, as it was determined that compiling Stronghold to Wasm for the browser would not be sufficiently secure. Stronghold offers best-effort secure software storage for cryptographic keys, written in Rust. To use the Stronghold storage package install `@iota/identity-stronghold-nodejs` and follow the instructions of the package [README](https://github.com/iotaledger/identity/tree/dev/bindings/stronghold-nodejs). 
+This release introduces multiple breaking changes to the structure of IOTA DID Documents and their Tangle messages, rendering any identity created with a prior version incompatible and unresolvable. A versioning system has been introduced so any new identities should hopefully be forward compatible with any future breaking changes to the message structure.
 
- Note that all features related to diff chain updates are now marked as deprecated. Diff chains are a useful optimisation when publishing many updates to a DID Document. However, their design may be incompatible with upcoming changes to the IOTA network and should be considered unstable. 
+ The main feature of this release is the introduction of WebAssembly (Wasm) bindings for the high-level `Account` API for Javascript/Typescript in both Node.js and the browser. This includes preliminary Stronghold storage bindings but only for Node.js, as it was determined that compiling Stronghold to Wasm for the browser would not be sufficiently secure. Stronghold offers best-effort secure software storage for cryptographic keys, written in Rust. To use the Stronghold storage package install `@iota/identity-stronghold-nodejs` and follow the instructions of the package [README](https://github.com/iotaledger/identity/tree/dev/bindings/stronghold-nodejs).
+
+ Note that all features related to diff chain updates are now marked as deprecated. Diff chains are a useful optimisation when publishing many updates to a DID Document. However, their design may be incompatible with upcoming changes to the IOTA network and should be considered unstable.
 
  Another major change is the removal of the `MerkleKeyCollection` verification method type, which provided a compact representation for issuing and revoking Verifiable Credentials with multiple cryptographic keys. The `MerkleKeyCollection` suffered from disadvantages which limited scalability when managing more than a few thousand keys. While these disadvantages could be mitigated somewhat, the decision was made to replace it with one or more alternatives not affected by its fundamental limitations, upcoming in the next major release.
 
@@ -448,7 +457,7 @@ This release introduces multiple breaking changes to the structure of IOTA DID D
 ## [v0.3.0](https://github.com/iotaledger/identity/tree/v0.3.0) (2021-05-10)
 
 [Full Changelog](https://github.com/iotaledger/identity/compare/v0.2.0...v0.3.0)
- 
+
 This release introduces the high-level `Account` API for creating and managing IOTA identities.
 
 ## [v0.2.0](https://github.com/iotaledger/identity/tree/v0.2.0) (2021-02-18)
@@ -458,7 +467,5 @@ This release introduces the high-level `Account` API for creating and managing I
 ## [v0.1.0](https://github.com/iotaledger/identity/tree/v0.1.0) (2020-11-12)
 
 [Full Changelog](https://github.com/iotaledger/identity/compare/360bf5ce64a7f418249cdeadccb22b9aea7daeb6...v0.1.0)
-
-
 
 \* *This Changelog was automatically generated by [github_changelog_generator](https://github.com/github-changelog-generator/github-changelog-generator)*

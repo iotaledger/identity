@@ -22,7 +22,6 @@
 ## [v1.9.2-beta.1](https://github.com/iotaledger/identity/tree/v1.9.2-beta.1) (2026-02-13)
 
 [Full Changelog](https://github.com/iotaledger/identity/compare/v1.9.1-beta.1...v1.9.2-beta.1)
-****
 
 ### Patch
 

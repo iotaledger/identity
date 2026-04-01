@@ -26,13 +26,22 @@ on:
     - cron:  '5 0 * * *' # everyday, 00:05, used for testnet scheduled test
     - cron:  '10 0 * * *' # everyday, 00:10 used for devnet scheduled test
 
+  workflow_dispatch:
+    inputs:
+      iota_version:
+        type: choice
+        description: 'IOTA network to use.'
+        options:
+          - testnet
+          - devnet
+
 env:
   RUST_BACKTRACE: full
   CARGO_INCREMENTAL: 0 # disabled to reduce target cache size and improve sccache (https://github.com/mozilla/sccache#known-caveats)
   SCCACHE_CACHE_SIZE: 2G
   SCCACHE_IDLE_TIMEOUT: 0
   # SCCACHE_RECACHE: 1 # uncomment to clear sccache cache, then re-comment
-  IOTA_VERSION: ${{github.event.schedule && (github.event.schedule == '5 0 * * *' && 'testnet' || 'devnet')}}
+  IOTA_VERSION: ${{ inputs.iota_version || (github.event.schedule && (github.event.schedule == '5 0 * * *' && 'testnet' || 'devnet')) }}
 
 jobs:
   check-for-run-condition:
@@ -217,7 +226,7 @@ jobs:
           npm run test:readme:rust
 
       - name: Archive server logs
-        if: ${{ env.IOTA_SERVER_LOGFILE }}
+        if: ${{ always() && env.IOTA_SERVER_LOGFILE }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.IOTA_SERVER_LOGFILE }}

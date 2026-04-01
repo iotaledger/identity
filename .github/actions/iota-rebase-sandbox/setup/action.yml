@@ -97,7 +97,7 @@ runs:
         echo "Starting server with log file: $LOGFILE"
 
         # Start the network
-        iota start --with-faucet ${{ inputs.logfile && format('> {0} 2>&1', inputs.logfile) || '' }} &
+        iota-localnet start --with-faucet ${{ inputs.logfile && format('> {0} 2>&1', inputs.logfile) || '' }} &
     - name: Setup TOML CLI utils
       shell: bash
       run: |

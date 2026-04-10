@@ -10,7 +10,7 @@ use identity_did::DIDUrl;
 use identity_document::verifiable::JwsVerificationOptions;
 use identity_verification::jose::jws::DecodedJws;
 use identity_verification::jose::jws::JwsVerifier;
-use product_common::network_name::NetworkName;
+use product_core::network::Network;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -94,7 +94,7 @@ impl IotaDocument {
   /// Constructs an empty DID Document with a [`IotaDID::placeholder`] identifier
   /// for the given `network`.
   // TODO: always take Option<NetworkName> or `new_with_options` for a particular network?
-  pub fn new(network: &NetworkName) -> Self {
+  pub fn new(network: Network) -> Self {
     Self::new_with_id(IotaDID::placeholder(network))
   }
 
@@ -398,10 +398,6 @@ impl IotaDocument {
 mod client_document {
   use identity_core::common::Timestamp;
   use identity_did::DID;
-  use iota_interaction::rpc_types::IotaObjectData;
-
-  use crate::rebased::migration::unpack_identity_data;
-  use crate::rebased::migration::IdentityData;
 
   use super::*;
 
@@ -409,46 +405,6 @@ mod client_document {
     // ===========================================================================
     // Unpacking
     // ===========================================================================
-
-    /// Deserializes the document from an `IotaObjectData` instance.
-    ///
-    /// If `allow_empty` is true, this will return an empty DID document marked as `deactivated`
-    /// if `state_metadata` is empty.
-    ///
-    /// NOTE: `did` is required since it is omitted from the serialized DID Document and
-    /// cannot be inferred from the state metadata. It also indicates the network, which is not
-    /// encoded in the object id alone.
-    pub fn unpack_from_iota_object_data(
-      did: &IotaDID,
-      data: &IotaObjectData,
-      allow_empty: bool,
-    ) -> Result<IotaDocument> {
-      let IdentityData {
-        multicontroller,
-        legacy_id,
-        created,
-        updated,
-        ..
-      } = unpack_identity_data(data.clone()).map_err(|_| {
-        Error::InvalidDoc(identity_document::Error::InvalidDocument(
-          "could not unpack identity data from IotaObjectData",
-          None,
-        ))
-      })?;
-      let did_network = did
-        .network_str()
-        .to_string()
-        .try_into()
-        .expect("did's network is a valid NetworkName");
-      let legacy_did = legacy_id.map(|id| IotaDID::new(&id.into_bytes(), &did_network));
-      let did_doc_bytes = multicontroller
-        .controlled_value()
-        .as_deref()
-        .ok_or_else(|| Error::DIDResolutionError("requested DID Document doesn't exist".to_string()))?;
-      let did_doc = Self::from_iota_document_data(did_doc_bytes, allow_empty, did, legacy_did, created, updated)?;
-
-      Ok(did_doc)
-    }
 
     /// Parse given Bytes into a `IotaDocument`.
     ///
@@ -610,9 +566,9 @@ mod tests {
   #[test]
   fn test_new() {
     // VALID new().
-    let network: NetworkName = NetworkName::try_from("test").unwrap();
-    let placeholder: IotaDID = IotaDID::placeholder(&network);
-    let doc1: IotaDocument = IotaDocument::new(&network);
+    let network = Network::Testnet;
+    let placeholder: IotaDID = IotaDID::placeholder(network);
+    let doc1: IotaDocument = IotaDocument::new(network);
     assert_eq!(doc1.id().network_str(), network.as_ref());
     assert_eq!(doc1.id().tag_str(), placeholder.tag_str());
     assert_eq!(doc1.id(), &placeholder);

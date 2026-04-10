@@ -8,19 +8,23 @@ use std::error::Error as StdError;
 use crate::rebased::iota::move_calls;
 
 use crate::rebased::iota::package::identity_package_id;
+use crate::rebased::iota::package::identity_package_id_blocking;
 use crate::rebased::proposals::AccessSubIdentityBuilder;
-use iota_interaction::types::error::IotaObjectResponseError;
-use iota_interaction::types::transaction::ProgrammableTransaction;
-use iota_interaction::IotaKeySignature;
-use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;
-use iota_interaction::OptionalSync;
-use product_common::core_client::CoreClient;
-use product_common::core_client::CoreClientReadOnly;
-use product_common::network_name::NetworkName;
-use product_common::transaction::transaction_builder::Transaction;
-use product_common::transaction::transaction_builder::TransactionBuilder;
+use iota_sdk::graphql_client::Client;
+use iota_sdk::transaction_builder::TransactionBuilder;
+use iota_sdk::types::Address;
+use iota_sdk::types::ObjectId;
+use iota_sdk::types::Owner;
+use iota_sdk::types::TransactionEffects;
+use iota_sdk::types::TypeTag;
+use product_core::move_repr::Uid;
+use product_core::move_type::MoveType;
+use product_core::move_type::UnknownTypeForNetwork;
+use product_core::network::Network;
+use product_core::operation::Operation;
+use product_core::operation::OperationBuilder;
+use product_core::product_client::ProductClient;
 use secret_storage::Signer;
-use tokio::sync::OnceCell;
 
 use crate::rebased::iota::types::Number;
 use crate::rebased::proposals::Upgrade;
@@ -29,38 +33,17 @@ use crate::IotaDocument;
 
 use crate::StateMetadataDocument;
 use crate::StateMetadataEncoding;
-use async_trait::async_trait;
 use identity_core::common::Timestamp;
-use iota_interaction::ident_str;
-use iota_interaction::move_types::language_storage::StructTag;
-use iota_interaction::rpc_types::IotaExecutionStatus;
-use iota_interaction::rpc_types::IotaObjectData;
-use iota_interaction::rpc_types::IotaObjectDataOptions;
-use iota_interaction::rpc_types::IotaParsedData;
-use iota_interaction::rpc_types::IotaParsedMoveObject;
-use iota_interaction::rpc_types::IotaPastObjectResponse;
-use iota_interaction::rpc_types::IotaTransactionBlockEffects;
-use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
-use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::id::UID;
-use iota_interaction::types::object::Owner;
-use iota_interaction::types::TypeTag;
-use serde;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::rebased::client::IdentityClientReadOnly;
 use crate::rebased::proposals::BorrowAction;
 use crate::rebased::proposals::ConfigChange;
 use crate::rebased::proposals::ControllerExecution;
 use crate::rebased::proposals::ProposalBuilder;
 use crate::rebased::proposals::SendAction;
 use crate::rebased::proposals::UpdateDidDocument;
-use crate::rebased::rebased_err;
 use crate::rebased::Error;
-use iota_interaction::IotaClientTrait;
-use iota_interaction::MoveType;
 
 use super::ControllerCap;
 use super::ControllerToken;
@@ -76,9 +59,9 @@ const HISTORY_DEFAULT_PAGE_SIZE: usize = 10;
 
 /// The data stored in an on-chain identity.
 pub(crate) struct IdentityData {
-  pub(crate) id: UID,
+  pub(crate) id: Uid,
   pub(crate) multicontroller: Multicontroller<Option<Vec<u8>>>,
-  pub(crate) legacy_id: Option<ObjectID>,
+  pub(crate) legacy_id: Option<ObjectId>,
   pub(crate) created: Timestamp,
   pub(crate) updated: Timestamp,
   pub(crate) version: u64,
@@ -97,7 +80,7 @@ pub enum Identity {
 
 impl Identity {
   /// Returns the [`IotaDocument`] DID Document stored inside this [`Identity`].
-  pub fn did_document(&self, network: &NetworkName) -> Result<IotaDocument, Error> {
+  pub fn did_document(&self, network: Network) -> Result<IotaDocument, Error> {
     match self {
       Self::FullFledged(onchain_identity) => Ok(onchain_identity.did_doc.clone()),
       Self::Legacy(alias) => {
@@ -116,7 +99,7 @@ impl Identity {
 /// An on-chain entity that wraps an optional DID Document.
 #[derive(Debug, Clone, Serialize)]
 pub struct OnChainIdentity {
-  id: UID,
+  id: Uid,
   multi_controller: Multicontroller<Option<Vec<u8>>>,
   pub(crate) did_doc: IotaDocument,
   version: u64,
@@ -125,8 +108,8 @@ pub struct OnChainIdentity {
 }
 
 impl OnChainIdentity {
-  /// Returns the [`ObjectID`] of this [`OnChainIdentity`].
-  pub fn id(&self) -> ObjectID {
+  /// Returns the [`ObjectId`] of this [`OnChainIdentity`].
+  pub fn id(&self) -> ObjectId {
     *self.id.object_id()
   }
 
@@ -154,12 +137,12 @@ impl OnChainIdentity {
   }
 
   /// Returns this [`OnChainIdentity`]'s list of active proposals.
-  pub fn proposals(&self) -> &HashSet<ObjectID> {
+  pub fn proposals(&self) -> &HashSet<ObjectId> {
     self.multi_controller.proposals()
   }
 
   /// Returns this [`OnChainIdentity`]'s controllers as the map: `controller_id -> controller_voting_power`.
-  pub fn controllers(&self) -> &HashMap<ObjectID, u64> {
+  pub fn controllers(&self) -> &HashMap<ObjectId, u64> {
     self.multi_controller.controllers()
   }
 
@@ -169,7 +152,7 @@ impl OnChainIdentity {
   }
 
   /// Returns the voting power of controller with ID `controller_id`, if any.
-  pub fn controller_voting_power(&self, controller_id: ObjectID) -> Option<u64> {
+  pub fn controller_voting_power(&self, controller_id: ObjectId) -> Option<u64> {
     self.multi_controller.controller_voting_power(controller_id)
   }
 
@@ -178,8 +161,8 @@ impl OnChainIdentity {
   /// [None] is returned if `address` doesn't own a valid [ControllerToken].
   pub async fn get_controller_token_for_address(
     &self,
-    address: IotaAddress,
-    client: &(impl CoreClientReadOnly + OptionalSync),
+    address: Address,
+    client: &impl ProductClient,
   ) -> Result<Option<ControllerToken>, Error> {
     let maybe_controller_cap = client
       .find_object_for_address::<ControllerCap, _>(address, |token| token.controller_of() == self.id())
@@ -199,13 +182,12 @@ impl OnChainIdentity {
   /// Returns a [ControllerToken], owned by `client`'s sender address, that grants access to this Identity.
   /// ## Notes
   /// [None] is returned if `client`'s sender address doesn't own a valid [ControllerToken].
-  pub async fn get_controller_token<S: Signer<IotaKeySignature> + OptionalSync>(
+  pub async fn get_controller_token(
     &self,
-    client: &(impl CoreClient<S> + OptionalSync),
+    address: Address,
+    client: &impl ProductClient,
   ) -> Result<Option<ControllerToken>, Error> {
-    self
-      .get_controller_token_for_address(client.sender_address(), client)
-      .await
+    self.get_controller_token_for_address(address, client).await
   }
 
   pub(crate) fn multicontroller(&self) -> &Multicontroller<Option<Vec<u8>>> {
@@ -275,7 +257,7 @@ impl OnChainIdentity {
   #[deprecated = "use `OnChainIdentity::access_sub_identity` instead."]
   pub fn controller_execution<'i, 'c>(
     &'i mut self,
-    controller_cap: ObjectID,
+    controller_cap: ObjectId,
     controller_token: &'c ControllerToken,
   ) -> ProposalBuilder<'i, 'c, ControllerExecution> {
     let action = ControllerExecution::new(controller_cap, self);
@@ -292,51 +274,51 @@ impl OnChainIdentity {
   }
 
   /// Returns historical data for this [`OnChainIdentity`].
-  pub async fn get_history(
-    &self,
-    client: &IdentityClientReadOnly,
-    last_version: Option<&IotaObjectData>,
-    page_size: Option<usize>,
-  ) -> Result<Vec<IotaObjectData>, Error> {
-    let identity_ref = client
-      .get_object_ref_by_id(self.id())
-      .await?
-      .ok_or_else(|| Error::InvalidIdentityHistory("no reference to identity loaded".to_string()))?;
-    let object_id = identity_ref.object_id();
+  // pub async fn get_history(
+  //   &self,
+  //   client: &IdentityClientReadOnly,
+  //   last_version: Option<&IotaObjectData>,
+  //   page_size: Option<usize>,
+  // ) -> Result<Vec<IotaObjectData>, Error> {
+  //   let identity_ref = client
+  //     .get_object_ref_by_id(self.id())
+  //     .await?
+  //     .ok_or_else(|| Error::InvalidIdentityHistory("no reference to identity loaded".to_string()))?;
+  //   let object_id = identity_ref.object_id();
 
-    let mut history: Vec<IotaObjectData> = vec![];
-    let mut current_version = if let Some(last_version_value) = last_version {
-      // starting version given, this will be skipped in paging
-      last_version_value.clone()
-    } else {
-      // no version given, this version will be included in history
-      let version = identity_ref.version();
-      let response = client.get_past_object(object_id, version).await.map_err(rebased_err)?;
-      let latest_version = if let IotaPastObjectResponse::VersionFound(response_value) = response {
-        response_value
-      } else {
-        return Err(Error::InvalidIdentityHistory(format!(
-          "could not find current version {version} of object {object_id}, response {response:?}"
-        )));
-      };
-      history.push(latest_version.clone()); // include current version in history if we start from now
-      latest_version
-    };
+  //   let mut history: Vec<IotaObjectData> = vec![];
+  //   let mut current_version = if let Some(last_version_value) = last_version {
+  //     // starting version given, this will be skipped in paging
+  //     last_version_value.clone()
+  //   } else {
+  //     // no version given, this version will be included in history
+  //     let version = identity_ref.version();
+  //     let response = client.get_past_object(object_id, version).await.map_err(rebased_err)?;
+  //     let latest_version = if let IotaPastObjectResponse::VersionFound(response_value) = response {
+  //       response_value
+  //     } else {
+  //       return Err(Error::InvalidIdentityHistory(format!(
+  //         "could not find current version {version} of object {object_id}, response {response:?}"
+  //       )));
+  //     };
+  //     history.push(latest_version.clone()); // include current version in history if we start from now
+  //     latest_version
+  //   };
 
-    // limit lookup count to prevent locking on large histories
-    let page_size = page_size.unwrap_or(HISTORY_DEFAULT_PAGE_SIZE);
-    while history.len() < page_size {
-      let lookup = get_previous_version(client, current_version).await?;
-      if let Some(value) = lookup {
-        current_version = value;
-        history.push(current_version.clone());
-      } else {
-        break;
-      }
-    }
+  //   // limit lookup count to prevent locking on large histories
+  //   let page_size = page_size.unwrap_or(HISTORY_DEFAULT_PAGE_SIZE);
+  //   while history.len() < page_size {
+  //     let lookup = get_previous_version(client, current_version).await?;
+  //     if let Some(value) = lookup {
+  //       current_version = value;
+  //       history.push(current_version.clone());
+  //     } else {
+  //       break;
+  //     }
+  //   }
 
-    Ok(history)
-  }
+  //   Ok(history)
+  // }
 
   /// Returns a [Transaction] to revoke a [DelegationToken].
   pub fn revoke_delegation_token(
@@ -365,29 +347,8 @@ impl OnChainIdentity {
   }
 }
 
-/// Returns the previous version of the given `history_item`.
-pub fn has_previous_version(history_item: &IotaObjectData) -> Result<bool, Error> {
-  if let Some(Owner::Shared { initial_shared_version }) = history_item.owner {
-    Ok(history_item.version != initial_shared_version)
-  } else {
-    Err(Error::InvalidIdentityHistory(format!(
-      "provided history item does not seem to be a valid identity; {history_item}"
-    )))
-  }
-}
-
-async fn get_previous_version(
-  client: &IdentityClientReadOnly,
-  iod: IotaObjectData,
-) -> Result<Option<IotaObjectData>, Error> {
-  client.get_previous_version(iod).await.map_err(rebased_err)
-}
-
 /// Returns the [`OnChainIdentity`] having ID `object_id`, if it exists.
-pub async fn get_identity(
-  client: &impl CoreClientReadOnly,
-  object_id: ObjectID,
-) -> Result<Option<OnChainIdentity>, Error> {
+pub async fn get_identity(client: &impl ProductClient, object_id: ObjectId) -> Result<Option<OnChainIdentity>, Error> {
   use IdentityResolutionErrorKind::NotFound;
 
   match get_identity_impl(client, object_id).await {
@@ -402,69 +363,60 @@ pub async fn get_identity(
 }
 
 pub(crate) async fn get_identity_impl(
-  client: &impl CoreClientReadOnly,
-  object_id: ObjectID,
+  client: &impl ProductClient,
+  object_id: ObjectId,
 ) -> Result<OnChainIdentity, IdentityResolutionError> {
-  let response = client
-    .client_adapter()
-    .read_api()
-    .get_object_with_options(object_id, IotaObjectDataOptions::new().with_content())
+  use IdentityResolutionErrorKind as ErrorKind;
+  let resolution_error = |kind| IdentityResolutionError {
+    resolving: object_id,
+    kind,
+  };
+
+  let json_object = client
+    .move_object_contents(object_id, None)
     .await
-    .map_err(|e| IdentityResolutionError {
-      kind: IdentityResolutionErrorKind::RpcError(e.into()),
-      resolving: object_id,
-    })?;
+    .map_err(|e| resolution_error(ErrorKind::RpcError(e.into())))?
+    .ok_or_else(|| resolution_error(ErrorKind::NotFound))?;
 
-  if let Some(response_error) = response.error {
-    match response_error {
-      IotaObjectResponseError::NotExists { .. } | IotaObjectResponseError::Deleted { .. } => {
-        return Err(IdentityResolutionError {
-          resolving: object_id,
-          kind: IdentityResolutionErrorKind::NotFound,
-        })
-      }
-      _ => unreachable!(),
-    }
-  }
+  let identity_data = unpack_identity_json_value(json_object, object_id)?;
+  let did = IotaDID::from_object_id(object_id, client.network());
+  let legacy_did = identity_data
+    .legacy_id
+    .map(|id| IotaDID::from_object_id(id, client.network()));
 
-  let data = response.data.expect("already handled errors in response");
-  let network = client.network_name();
-  let did = IotaDID::from_object_id(object_id, network);
-  let IdentityData {
-    id,
-    multicontroller,
-    legacy_id,
-    created,
-    updated,
-    version,
-    deleted,
-    deleted_did,
-  } = unpack_identity_data(data)?;
-  let legacy_did = legacy_id.map(|legacy_id| IotaDID::from_object_id(legacy_id, client.network_name()));
-
-  let did_doc = multicontroller
+  let did_doc = identity_data
+    .multicontroller
     .controlled_value()
     .as_deref()
-    .map(|did_doc_bytes| IotaDocument::from_iota_document_data(did_doc_bytes, true, &did, legacy_did, created, updated))
+    .map(|did_doc_bytes| {
+      IotaDocument::from_iota_document_data(
+        did_doc_bytes,
+        true,
+        &did,
+        legacy_did,
+        identity_data.created,
+        identity_data.updated,
+      )
+    })
     .transpose()
     .map_err(|e| IdentityResolutionError {
       resolving: object_id,
       kind: IdentityResolutionErrorKind::InvalidDidDocument(e.into()),
     })?
     .unwrap_or_else(|| {
-      let mut empty_did_doc = IotaDocument::new(network);
+      let mut empty_did_doc = IotaDocument::new(client.network());
       empty_did_doc.metadata.deactivated = Some(true);
 
       empty_did_doc
     });
 
   Ok(OnChainIdentity {
-    id,
-    multi_controller: multicontroller,
+    id: identity_data.id,
+    multi_controller: identity_data.multicontroller,
     did_doc,
-    version,
-    deleted,
-    deleted_did,
+    version: identity_data.version,
+    deleted: identity_data.deleted,
+    deleted_did: identity_data.deleted_did,
   })
 }
 
@@ -495,16 +447,10 @@ pub enum IdentityResolutionErrorKind {
 #[non_exhaustive]
 pub struct IdentityResolutionError {
   /// The Identity's ID.
-  pub resolving: ObjectID,
+  pub resolving: ObjectId,
   /// Specific type of failure for this error.
   #[source]
   pub kind: IdentityResolutionErrorKind,
-}
-
-fn is_identity(value: &IotaParsedMoveObject) -> bool {
-  // if available we might also check if object stems from expected module
-  // but how would this act upon package updates?
-  value.type_.module.as_ident_str().as_str() == MODULE && value.type_.name.as_ident_str().as_str() == NAME
 }
 
 /// Unpack identity data from given `IotaObjectData`
@@ -512,31 +458,15 @@ fn is_identity(value: &IotaParsedMoveObject) -> bool {
 /// # Errors:
 /// * in case given data for DID is not an object
 /// * parsing identity data from object fails
-pub(crate) fn unpack_identity_data(data: IotaObjectData) -> Result<IdentityData, IdentityResolutionError> {
-  let content = data.content.ok_or_else(|| IdentityResolutionError {
-    resolving: data.object_id,
-    kind: IdentityResolutionErrorKind::RpcError("no content in RPC response".into()),
-  })?;
-
-  let IotaParsedData::MoveObject(value) = content else {
-    return Err(IdentityResolutionError {
-      resolving: data.object_id,
-      kind: IdentityResolutionErrorKind::InvalidType("Move Package".to_owned()),
-    });
-  };
-
-  if !is_identity(&value) {
-    return Err(IdentityResolutionError {
-      resolving: data.object_id,
-      kind: IdentityResolutionErrorKind::InvalidType(value.type_.to_canonical_string(true)),
-    });
-  }
-
+pub(crate) fn unpack_identity_json_value(
+  value: serde_json::Value,
+  resolving: ObjectId,
+) -> Result<IdentityData, IdentityResolutionError> {
   #[derive(Deserialize)]
   struct TempOnChainIdentity {
-    id: UID,
+    id: Uid,
     did_doc: Multicontroller<Option<Vec<u8>>>,
-    legacy_id: Option<ObjectID>,
+    legacy_id: Option<ObjectId>,
     created: Number<u64>,
     updated: Number<u64>,
     version: Number<u64>,
@@ -555,7 +485,7 @@ pub(crate) fn unpack_identity_data(data: IotaObjectData) -> Result<IdentityData,
     deleted_did,
   } = serde_json::from_value::<TempOnChainIdentity>(value.fields.to_json_value()).map_err(|err| {
     IdentityResolutionError {
-      resolving: data.object_id,
+      resolving,
       kind: IdentityResolutionErrorKind::Malformed(err.into()),
     }
   })?;
@@ -596,7 +526,7 @@ impl From<OnChainIdentity> for IotaDocument {
 pub struct IdentityBuilder {
   did_doc: IotaDocument,
   threshold: Option<u64>,
-  controllers: HashMap<IotaAddress, (u64, bool)>,
+  controllers: HashMap<Address, (u64, bool)>,
 }
 
 impl IdentityBuilder {
@@ -613,14 +543,14 @@ impl IdentityBuilder {
   }
 
   /// Gives `address` the capability to act as a controller with voting power `voting_power`.
-  pub fn controller(mut self, address: IotaAddress, voting_power: u64) -> Self {
+  pub fn controller(mut self, address: Address, voting_power: u64) -> Self {
     self.controllers.insert(address, (voting_power, false));
     self
   }
 
   /// Gives `address` the capability to act as a controller with voting power `voting_power` and
   /// the ability to delegate its access to third parties.
-  pub fn controller_with_delegation(mut self, address: IotaAddress, voting_power: u64) -> Self {
+  pub fn controller_with_delegation(mut self, address: Address, voting_power: u64) -> Self {
     self.controllers.insert(address, (voting_power, true));
     self
   }
@@ -634,7 +564,7 @@ impl IdentityBuilder {
   /// Sets multiple controllers in a single step. See [`IdentityBuilder::controller`].
   pub fn controllers<I>(self, controllers: I) -> Self
   where
-    I: IntoIterator<Item = (IotaAddress, u64)>,
+    I: IntoIterator<Item = (Address, u64)>,
   {
     controllers
       .into_iter()
@@ -647,7 +577,7 @@ impl IdentityBuilder {
   /// A `true` value as the tuple's third value means the controller *CAN* delegate its access.
   pub fn controllers_with_delegation<I>(self, controllers: I) -> Self
   where
-    I: IntoIterator<Item = (IotaAddress, u64, bool)>,
+    I: IntoIterator<Item = (Address, u64, bool)>,
   {
     controllers.into_iter().fold(self, |builder, (addr, vp, can_delegate)| {
       if can_delegate {
@@ -658,51 +588,62 @@ impl IdentityBuilder {
     })
   }
 
-  /// Turns this builder into a [`Transaction`], ready to be executed.
-  pub fn finish(self) -> TransactionBuilder<CreateIdentity> {
-    TransactionBuilder::new(CreateIdentity::new(self))
+  /// Turns this builder into an [`Operation`], ready to be executed.
+  pub fn finish(self) -> OperationBuilder<CreateIdentity> {
+    OperationBuilder::new(CreateIdentity::new(self))
   }
 }
 
 impl MoveType for OnChainIdentity {
-  fn move_type(package: ObjectID) -> TypeTag {
-    TypeTag::Struct(Box::new(StructTag {
-      address: package.into(),
-      module: ident_str!("identity").into(),
-      name: ident_str!("Identity").into(),
-      type_params: vec![],
-    }))
+  fn move_type(network: Network) -> Result<TypeTag, UnknownTypeForNetwork> {
+    let package = match network {
+      Network::Mainnet => "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08",
+      Network::Testnet => "0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555",
+      Network::Devnet => "0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103",
+      _ => identity_package_id_blocking(network)
+        .map_err(|_| UnknownTypeForNetwork::new("Identity", network))?
+        .to_string()
+        .as_str(),
+    };
+
+    format!("{package}::identity::Identity").parse().expect("valid TypeTag")
   }
 }
 
-/// A [`Transaction`] for creating a new [`OnChainIdentity`] from an [`IdentityBuilder`].
+/// An [`Operation`] for creating a new [`OnChainIdentity`] from an [`IdentityBuilder`].
 #[derive(Debug)]
 pub struct CreateIdentity {
   builder: IdentityBuilder,
-  cached_ptb: OnceCell<ProgrammableTransaction>,
 }
 
 impl CreateIdentity {
   /// Returns a new [CreateIdentity] [Transaction] from an [IdentityBuilder]
   pub fn new(builder: IdentityBuilder) -> CreateIdentity {
-    Self {
-      builder,
-      cached_ptb: OnceCell::new(),
-    }
+    Self { builder }
   }
+}
 
-  async fn make_ptb(&self, client: &impl CoreClientReadOnly) -> Result<ProgrammableTransaction, Error> {
+impl Operation for CreateIdentity {
+  type Output = OnChainIdentity;
+  type Error = Error;
+
+  async fn to_transaction(
+    &self,
+    client: &impl ProductClient,
+    ptb: TransactionBuilder<Client>,
+  ) -> Result<TransactionBuilder<Client>, Self::Error> {
     let IdentityBuilder {
       did_doc,
       threshold,
       controllers,
     } = &self.builder;
-    let package = identity_package_id(client).await?;
+    let package = identity_package_id(client.network()).await?;
     let did_doc = StateMetadataDocument::from(did_doc.clone())
       .pack(StateMetadataEncoding::default())
       .map_err(|e| Error::DidDocSerialization(e.to_string()))?;
-    let pt_bcs = if controllers.is_empty() {
-      move_calls::identity::new_identity(Some(&did_doc), package).await?
+    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client((*client).clone());
+    if controllers.is_empty() {
+      move_calls::identity::new_identity(&mut ptb, Some(&did_doc), package);
     } else {
       let threshold = match threshold {
         Some(t) => t,
@@ -722,46 +663,22 @@ impl CreateIdentity {
       let controllers = controllers
         .iter()
         .map(|(addr, (vp, can_delegate))| (*addr, *vp, *can_delegate));
-      move_calls::identity::new_with_controllers(Some(&did_doc), controllers, *threshold, package).await?
+      move_calls::identity::new_with_controllers(&mut ptb, Some(&did_doc), controllers, *threshold, package);
     };
 
-    Ok(bcs::from_bytes(&pt_bcs)?)
-  }
-}
-
-#[cfg_attr(not(feature = "send-sync"), async_trait(?Send))]
-#[cfg_attr(feature = "send-sync", async_trait)]
-impl Transaction for CreateIdentity {
-  type Output = OnChainIdentity;
-  type Error = Error;
-
-  async fn build_programmable_transaction<C>(&self, client: &C) -> Result<ProgrammableTransaction, Self::Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
-    self.cached_ptb.get_or_try_init(|| self.make_ptb(client)).await.cloned()
+    Ok(ptb)
   }
 
-  async fn apply<C>(
-    mut self,
-    effects: &mut IotaTransactionBlockEffects,
-    client: &C,
-  ) -> Result<Self::Output, Self::Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
-    if let IotaExecutionStatus::Failure { error } = effects.status() {
-      return Err(Error::TransactionUnexpectedResponse(error.clone()));
+  async fn apply_effects(
+    self,
+    client: &impl ProductClient,
+    tx_effects: &mut TransactionEffects,
+  ) -> Result<Self::Output, Self::Error> {
+    if let Some(tx_error) = tx_effects.status().error() {
+      return Err(tx_error.into());
     }
 
-    let created_objects = effects
-      .created()
-      .iter()
-      .enumerate()
-      .filter(|(_, elem)| matches!(elem.owner, Owner::Shared { .. }))
-      .map(|(i, obj)| (i, obj.object_id()));
-
-    let target_did_bytes = StateMetadataDocument::from(self.builder.did_doc)
+    let target_did_bytes = StateMetadataDocument::from(self.did_document)
       .pack(StateMetadataEncoding::Json)
       .map_err(|e| Error::DidDocSerialization(e.to_string()))?;
 
@@ -771,30 +688,37 @@ impl Transaction for CreateIdentity {
         .controlled_value()
         .as_deref()
         .unwrap_or_default();
-      target_did_bytes == did_bytes && self.builder.threshold.unwrap_or(1) == identity.threshold()
+      target_did_bytes == did_bytes && identity.threshold() == 1
     };
 
-    let mut target_identity_pos = None;
+    let create_identity_candidates = tx_effects
+      .as_v1()
+      .changed_objects
+      .iter()
+      .filter(|obj| obj.id_operation.is_created() && obj.output_state.object_owner_opt().is_some_and(Owner::is_shared))
+      .map(|obj| obj.object_id);
+
     let mut target_identity = None;
-    for (i, obj_id) in created_objects {
-      match get_identity(client, obj_id).await {
-        Ok(Some(identity)) if is_target_identity(&identity) => {
-          target_identity_pos = Some(i);
-          target_identity = Some(identity);
-          break;
-        }
-        _ => continue,
+    for id in create_identity_candidates {
+      let Some(identity) = get_identity(client, id).await? else {
+        continue;
+      };
+
+      if is_target_identity(&identity) {
+        target_identity = Some(identity);
       }
     }
 
-    let (Some(i), Some(identity)) = (target_identity_pos, target_identity) else {
-      return Err(Error::TransactionUnexpectedResponse(
+    if let Some(identity) = target_identity {
+      tx_effects
+        .as_mut_v1()
+        .changed_objects
+        .retain(|obj| obj.object_id != identity.id().to_object_id());
+      Ok(identity.did_doc)
+    } else {
+      Err(Error::TransactionUnexpectedResponse(
         "failed to find the correct identity in this transaction's effects".to_owned(),
-      ));
-    };
-
-    effects.created_mut().swap_remove(i);
-
-    Ok(identity)
+      ))
+    }
   }
 }

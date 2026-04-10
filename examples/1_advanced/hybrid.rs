@@ -30,7 +30,7 @@ use identity_iota::credential::SubjectHolderRelationship;
 use identity_iota::did::CoreDID;
 use identity_iota::did::DID;
 use identity_iota::document::verifiable::JwsVerificationOptions;
-use identity_iota::iota::rebased::client::IdentityClient;
+use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use identity_iota::iota::IotaDocument;
 use identity_iota::iota_interaction::IotaKeySignature;
 use identity_iota::resolver::Resolver;
@@ -45,7 +45,7 @@ use serde_json::json;
 use std::collections::HashMap;
 
 async fn create_did_document<S>(
-  client: &IdentityClient<S>,
+  client: &IdentityClientReadOnly<S>,
   storage: &MemStorage,
   alg_id: CompositeAlgId,
 ) -> anyhow::Result<(IotaDocument, String)>

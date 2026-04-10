@@ -3,24 +3,26 @@
 
 use std::marker::PhantomData;
 
-use iota_interaction::rpc_types::IotaTransactionBlockEffects;
-use product_common::core_client::CoreClientReadOnly;
-use product_common::transaction::transaction_builder::TransactionBuilder;
-
 use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
+use crate::rebased::iota::package::identity_package_id_blocking;
 use crate::rebased::migration::ControllerToken;
 use async_trait::async_trait;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::TypeTag;
+use iota_sdk::transaction_builder::TransactionBuilder;
+use iota_sdk::types::Address;
+use iota_sdk::types::TransactionEffects;
+use iota_sdk::types::TypeTag;
+use product_core::move_type::MoveType;
+use product_core::move_type::UnknownTypeForNetwork;
+use product_core::network::Network;
+use product_core::operation::OperationBuilder;
+use product_core::product_client::ProductClient;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::rebased::migration::OnChainIdentity;
 use crate::rebased::migration::Proposal;
 use crate::rebased::Error;
-use iota_interaction::MoveType;
-use iota_interaction::OptionalSync;
 
 use super::CreateProposal;
 use super::ExecuteProposal;
@@ -38,10 +40,22 @@ impl Upgrade {
 }
 
 impl MoveType for Upgrade {
-  fn move_type(package: ObjectID) -> TypeTag {
-    format!("{package}::upgrade_proposal::Upgrade")
-      .parse()
-      .expect("valid utf8")
+  fn move_type(network: Network) -> Result<TypeTag, UnknownTypeForNetwork> {
+    let package = match network {
+      Network::Mainnet => "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08",
+      Network::Testnet => "0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555",
+      Network::Devnet => "0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103",
+      _ => identity_package_id_blocking(network)
+        .map_err(|_| UnknownTypeForNetwork::new("Upgrade", network))?
+        .to_string()
+        .as_str(),
+    };
+
+    Ok(
+      format!("{package}::upgrade_proposal::Upgrade")
+        .parse()
+        .expect("valid TypeTag"),
+    )
   }
 }
 
@@ -51,16 +65,13 @@ impl ProposalT for Proposal<Upgrade> {
   type Action = Upgrade;
   type Output = ();
 
-  async fn create<'i, C>(
+  async fn create<'i>(
     _action: Self::Action,
     expiration: Option<u64>,
     identity: &'i mut OnChainIdentity,
     controller_token: &ControllerToken,
-    client: &C,
-  ) -> Result<TransactionBuilder<CreateProposal<'i, Self::Action>>, Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
+    client: &impl ProductClient,
+  ) -> Result<OperationBuilder<CreateProposal<'i, Self::Action>>, Error> {
     if identity.id() != controller_token.controller_of() {
       return Err(Error::Identity(format!(
         "token {} doesn't grant access to identity {}",
@@ -69,37 +80,29 @@ impl ProposalT for Proposal<Upgrade> {
       )));
     }
 
-    let identity_ref = client
-      .get_object_ref_by_id(identity.id())
-      .await?
-      .expect("identity exists on-chain");
-    let controller_cap_ref = controller_token.controller_ref(client).await?;
     let sender_vp = identity
       .controller_voting_power(controller_token.controller_id())
       .expect("controller exists");
     let chained_execution = sender_vp >= identity.threshold();
-    let package = identity_package_id(client).await?;
+    let package = identity_package_id(client.network()).await?;
+    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client((*client).clone());
 
-    let tx = move_calls::identity::propose_upgrade(identity_ref, controller_cap_ref, expiration, package)
-      .map_err(|e| Error::TransactionBuildingFailed(e.to_string()))?;
+    move_calls::identity::propose_upgrade(&mut ptb, identity.id(), controller_token, expiration, package);
 
-    Ok(TransactionBuilder::new(CreateProposal {
+    Ok(OperationBuilder::new(CreateProposal {
       identity,
-      ptb: bcs::from_bytes(&tx)?,
+      tx: ptb,
       chained_execution,
       _action: PhantomData,
     }))
   }
 
-  async fn into_tx<'i, C>(
+  async fn into_tx<'i>(
     self,
     identity: &'i mut OnChainIdentity,
     controller_token: &ControllerToken,
-    client: &C,
-  ) -> Result<TransactionBuilder<ExecuteProposal<'i, Self::Action>>, Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
+    client: &impl ProductClient,
+  ) -> Result<OperationBuilder<ExecuteProposal<'i, Self::Action>>, Error> {
     if identity.id() != controller_token.controller_of() {
       return Err(Error::Identity(format!(
         "token {} doesn't grant access to identity {}",
@@ -109,24 +112,19 @@ impl ProposalT for Proposal<Upgrade> {
     }
 
     let proposal_id = self.id();
-    let identity_ref = client
-      .get_object_ref_by_id(identity.id())
-      .await?
-      .expect("identity exists on-chain");
-    let controller_cap_ref = controller_token.controller_ref(client).await?;
-    let package = identity_package_id(client).await?;
+    let package = identity_package_id(client.network()).await?;
+    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client((*client).clone());
 
-    let tx = move_calls::identity::execute_upgrade(identity_ref, controller_cap_ref, proposal_id, package)
-      .map_err(|e| Error::TransactionBuildingFailed(e.to_string()))?;
+    move_calls::identity::execute_upgrade(&mut ptb, identity.id(), controller_token, proposal_id, package);
 
-    Ok(TransactionBuilder::new(ExecuteProposal {
+    Ok(OperationBuilder::new(ExecuteProposal {
       identity,
-      ptb: bcs::from_bytes(&tx)?,
+      tx: ptb,
       _action: PhantomData,
     }))
   }
 
-  fn parse_tx_effects(_effects: &IotaTransactionBlockEffects) -> Result<Self::Output, Error> {
+  fn parse_tx_effects(_effects: &TransactionEffects) -> Result<Self::Output, Error> {
     Ok(())
   }
 }

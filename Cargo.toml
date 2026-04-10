@@ -53,3 +53,9 @@ opt-level = 's'
 #       If not, remove the next line
 #       If yes, describe the helping effect in the comment above
 # debug = true
+
+[patch."https://github.com/iotaledger/product-core.git"]
+product-core = { path = "../product-core/product-core" }
+
+[patch."https://github.com/iotaledger/iota-rust-sdk.git"]
+iota-sdk = { path = "../iota-rust-sdk/crates/iota-sdk"}

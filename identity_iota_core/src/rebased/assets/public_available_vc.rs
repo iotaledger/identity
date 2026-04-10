@@ -9,7 +9,7 @@ use identity_credential::credential::Jwt;
 use identity_credential::credential::JwtCredential;
 use identity_jose::jwt::JwtHeader;
 use identity_jose::jwu;
-use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::ObjectId;
 use iota_interaction::IotaKeySignature;
 use iota_interaction::IotaVerifiableCredential;
 use iota_interaction::OptionalSync;
@@ -17,7 +17,6 @@ use itertools::Itertools;
 use product_common::core_client::CoreClientReadOnly;
 use secret_storage::Signer;
 
-use crate::rebased::client::IdentityClient;
 use crate::rebased::client::IdentityClientReadOnly;
 
 use super::AuthenticatedAsset;
@@ -39,7 +38,7 @@ impl Deref for PublicAvailableVC {
 
 impl PublicAvailableVC {
   /// Get the ID of the asset.
-  pub fn object_id(&self) -> ObjectID {
+  pub fn object_id(&self) -> ObjectId {
     self.asset.id()
   }
 
@@ -54,7 +53,11 @@ impl PublicAvailableVC {
   ///
   /// # Returns
   /// A new `PublicAvailableVC`.
-  pub async fn new<S>(jwt: Jwt, gas_budget: Option<u64>, client: &IdentityClient<S>) -> Result<Self, anyhow::Error>
+  pub async fn new<S>(
+    jwt: Jwt,
+    gas_budget: Option<u64>,
+    client: &IdentityClientReadOnly<S>,
+  ) -> Result<Self, anyhow::Error>
   where
     S: Signer<IotaKeySignature> + OptionalSync,
   {
@@ -78,7 +81,7 @@ impl PublicAvailableVC {
   }
 
   /// Get a publicly available VC by its ID.
-  pub async fn get_by_id(id: ObjectID, client: &IdentityClientReadOnly) -> Result<Self, crate::rebased::Error> {
+  pub async fn get_by_id(id: ObjectId, client: &IdentityClientReadOnly) -> Result<Self, crate::rebased::Error> {
     let asset = client
       .get_object_by_id::<AuthenticatedAsset<IotaVerifiableCredential>>(id)
       .await?;

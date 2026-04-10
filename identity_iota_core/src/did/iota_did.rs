@@ -12,8 +12,8 @@ use identity_did::BaseDIDUrl;
 use identity_did::CoreDID;
 use identity_did::Error as DIDError;
 use identity_did::DID;
-use iota_interaction::types::base_types::ObjectID;
-use product_common::network_name::NetworkName;
+use iota_sdk::types::ObjectId;
+use product_core::network::Network;
 use ref_cast::ref_cast_custom;
 use ref_cast::RefCastCustom;
 use serde::Deserialize;
@@ -74,24 +74,24 @@ impl IotaDID {
   ///
   /// ```
   /// # use identity_did::DID;
-  /// # use product_common::network_name::NetworkName;
+  /// # use product_core::network::Network;
   /// # use identity_iota_core::IotaDID;
   /// #
-  /// let did = IotaDID::new(&[1;32], &NetworkName::try_from("smr").unwrap());
-  /// assert_eq!(did.as_str(), "did:iota:smr:0x0101010101010101010101010101010101010101010101010101010101010101");
-  pub fn new(bytes: &[u8; Self::TAG_BYTES_LEN], network_name: &NetworkName) -> Self {
-    Self::from_object_id(ObjectID::new(*bytes), network_name)
+  /// let did = IotaDID::new(&[1;32], &Network::parse("testnet").unwrap());
+  /// assert_eq!(did.as_str(), "did:iota:testnet:0x0101010101010101010101010101010101010101010101010101010101010101");
+  pub fn new(bytes: &[u8; Self::TAG_BYTES_LEN], network: Network) -> Self {
+    Self::from_object_id(ObjectId::new(*bytes), network)
   }
 
-  /// Constructs a new [`IotaDID`] from an identity's object id and the given `network_name`.
-  pub fn from_object_id(object_id: ObjectID, network_name: &NetworkName) -> Self {
+  /// Constructs a new [`IotaDID`] from an identity's [`ObjectId`] and the given [`Network`].
+  pub fn from_object_id(object_id: ObjectId, network_name: Network) -> Self {
     Self::parse(format!("did:iota:{network_name}:{object_id}")).expect("valid IOTA DID")
   }
 
-  /// Converts this [IotaDID] into an [ObjectID].
-  pub fn to_object_id(&self) -> ObjectID {
+  /// Converts this [IotaDID] into an [ObjectId].
+  pub fn to_object_id(&self) -> ObjectId {
     let object_id_hex = self.as_str().rsplit_once(':').expect("valid IOTA DID").1;
-    ObjectID::from_hex_literal(object_id_hex).expect("valid object ID")
+    ObjectId::from_hex_literal(object_id_hex).expect("valid object ID")
   }
 
   /// Creates a new placeholder [`IotaDID`] with the given network name.
@@ -100,14 +100,14 @@ impl IotaDID {
   ///
   /// ```
   /// # use identity_did::DID;
-  /// # use product_common::network_name::NetworkName;
+  /// # use product_core::network::Network;
   /// # use identity_iota_core::IotaDID;
   /// #
-  /// let placeholder = IotaDID::placeholder(&NetworkName::try_from("smr").unwrap());
-  /// assert_eq!(placeholder.as_str(), "did:iota:smr:0x0000000000000000000000000000000000000000000000000000000000000000");
+  /// let placeholder = IotaDID::placeholder(Network::parse("testnet").unwrap());
+  /// assert_eq!(placeholder.as_str(), "did:iota:testnet:0x0000000000000000000000000000000000000000000000000000000000000000");
   /// assert!(placeholder.is_placeholder());
-  pub fn placeholder(network_name: &NetworkName) -> Self {
-    Self::new(&[0; 32], network_name)
+  pub fn placeholder(network: Network) -> Self {
+    Self::new(&[0; 32], network)
   }
 
   /// Returns whether this is the placeholder DID.
@@ -152,6 +152,16 @@ impl IotaDID {
   /// Returns the IOTA `network` name of the `DID`.
   pub fn network_str(&self) -> &str {
     Self::denormalized_components(self.method_id()).0
+  }
+
+  /// Returns the IOTA [Network] this DID references.
+  pub fn network(&self) -> Network {
+    let network_str = self.network_str();
+    if network_str == Self::DEFAULT_NETWORK {
+      Network::Mainnet
+    } else {
+      Network::parse(network_str).expect("valid network string")
+    }
   }
 
   /// Returns the tag of the `DID`, which is an identity's object id.
@@ -209,16 +219,6 @@ impl IotaDID {
     prefix_hex::decode::<[u8; Self::TAG_BYTES_LEN]>(tag)
       .map_err(|_| DIDError::InvalidMethodId)
       .map(|_| ())
-  }
-
-  /// Checks if the given `DID` has a valid [`IotaDID`] network name.
-  ///
-  /// # Errors
-  ///
-  /// Returns `Err` if the input is not a valid network name according to the [`IotaDID`] method specification.
-  fn check_network<D: DID>(did: &D) -> Result<()> {
-    let (network_name, _) = Self::denormalized_components(did.method_id());
-    NetworkName::validate_network_name(network_name).map_err(|_| DIDError::Other("invalid network name"))
   }
 
   /// Normalizes the DID `method_id` by removing the default network segment if present.
@@ -518,7 +518,7 @@ mod tests {
   #[test]
   fn placeholder_produces_a_did_with_expected_string_representation() {
     assert_eq!(
-      IotaDID::placeholder(&NetworkName::try_from(IotaDID::DEFAULT_NETWORK).unwrap()).as_str(),
+      IotaDID::placeholder(Network::parse(IotaDID::DEFAULT_NETWORK).unwrap()).as_str(),
       format!("did:{}:{}", IotaDID::METHOD, IotaDID::PLACEHOLDER_TAG)
     );
 
@@ -526,8 +526,8 @@ mod tests {
       .iter()
       .filter(|name| *name != &IotaDID::DEFAULT_NETWORK)
     {
-      let network_name: NetworkName = NetworkName::try_from(*name).unwrap();
-      let did: IotaDID = IotaDID::placeholder(&network_name);
+      let network: Network = Network::parse(*name).unwrap();
+      let did: IotaDID = IotaDID::placeholder(network);
       assert_eq!(
         did.as_str(),
         format!("did:{}:{}:{}", IotaDID::METHOD, name, IotaDID::PLACEHOLDER_TAG)
@@ -609,9 +609,9 @@ mod tests {
   proptest! {
     #[test]
     fn property_based_new(bytes in proptest::prelude::any::<[u8;32]>()) {
-      for network_name in VALID_NETWORK_NAMES.iter().map(|name| NetworkName::try_from(*name).unwrap()) {
+      for network_name in VALID_NETWORK_NAMES.iter().map(|name| Network::parse(*name).unwrap()) {
         // check that this does not panic
-        IotaDID::new(&bytes, &network_name);
+        IotaDID::new(&bytes, network_name);
       }
     }
   }

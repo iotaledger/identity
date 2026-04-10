@@ -6,7 +6,7 @@ use std::collections::HashSet;
 
 use crate::rebased::iota::types::Bag;
 use crate::rebased::iota::types::Number;
-use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::ObjectId;
 use iota_interaction::types::collection_types::Entry;
 use iota_interaction::types::collection_types::VecMap;
 use iota_interaction::types::collection_types::VecSet;
@@ -25,13 +25,13 @@ pub struct Proposal<T> {
   id: UID,
   expiration_epoch: Option<u64>,
   votes: u64,
-  voters: HashSet<ObjectID>,
+  voters: HashSet<ObjectId>,
   pub(crate) action: T,
 }
 
 impl<T> Proposal<T> {
   /// Returns this [Proposal]'s ID.
-  pub fn id(&self) -> ObjectID {
+  pub fn id(&self) -> ObjectId {
     *self.id.object_id()
   }
 
@@ -55,7 +55,7 @@ impl<T> Proposal<T> {
   }
 
   /// Returns the set of voters' IDs.
-  pub fn voters(&self) -> &HashSet<ObjectID> {
+  pub fn voters(&self) -> &HashSet<ObjectId> {
     &self.voters
   }
 
@@ -70,7 +70,7 @@ struct IotaProposal<T> {
   id: UID,
   expiration_epoch: Option<Number<u64>>,
   votes: Number<u64>,
-  voters: VecSet<ObjectID>,
+  voters: VecSet<ObjectId>,
   action: T,
 }
 
@@ -123,9 +123,9 @@ impl<T> From<Proposal<T>> for IotaProposal<T> {
 #[serde(try_from = "IotaMulticontroller::<T>")]
 pub struct Multicontroller<T> {
   controlled_value: T,
-  controllers: HashMap<ObjectID, u64>,
+  controllers: HashMap<ObjectId, u64>,
   threshold: u64,
-  active_proposals: HashSet<ObjectID>,
+  active_proposals: HashSet<ObjectId>,
   proposals: Bag,
 }
 
@@ -141,16 +141,16 @@ impl<T> Multicontroller<T> {
   }
 
   /// Returns the lists of active [`Proposal`]s for this [`Multicontroller`].
-  pub fn proposals(&self) -> &HashSet<ObjectID> {
+  pub fn proposals(&self) -> &HashSet<ObjectId> {
     &self.active_proposals
   }
 
-  pub(crate) fn proposals_bag_id(&self) -> ObjectID {
+  pub(crate) fn proposals_bag_id(&self) -> ObjectId {
     *self.proposals.id.object_id()
   }
 
   /// Returns the voting power for controller with ID `controller_cap_id`, if any.
-  pub fn controller_voting_power(&self, controller_cap_id: ObjectID) -> Option<u64> {
+  pub fn controller_voting_power(&self, controller_cap_id: ObjectId) -> Option<u64> {
     self.controllers.get(&controller_cap_id).copied()
   }
 
@@ -159,12 +159,12 @@ impl<T> Multicontroller<T> {
     self.controlled_value
   }
 
-  pub(crate) fn controllers(&self) -> &HashMap<ObjectID, u64> {
+  pub(crate) fn controllers(&self) -> &HashMap<ObjectId, u64> {
     &self.controllers
   }
 
   /// Returns `true` if `cap_id` is among this [`Multicontroller`]'s controllers' IDs.
-  pub fn has_member(&self, cap_id: ObjectID) -> bool {
+  pub fn has_member(&self, cap_id: ObjectId) -> bool {
     self.controllers.contains_key(&cap_id)
   }
 }
@@ -198,8 +198,8 @@ impl<T> TryFrom<IotaMulticontroller<T>> for Multicontroller<T> {
 #[derive(Debug, Serialize, Deserialize)]
 struct IotaMulticontroller<T> {
   controlled_value: T,
-  controllers: VecMap<ObjectID, Number<u64>>,
+  controllers: VecMap<ObjectId, Number<u64>>,
   threshold: Number<u64>,
-  active_proposals: HashSet<ObjectID>,
+  active_proposals: HashSet<ObjectId>,
   proposals: Bag,
 }

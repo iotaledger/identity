@@ -3,32 +3,31 @@
 
 use super::OnChainIdentity;
 
-use crate::rebased::iota::move_calls;
 use crate::IotaDID;
 
-use crate::rebased::iota::move_calls::ControllerTokenRef;
 use crate::rebased::iota::package::identity_package_id;
+use crate::rebased::iota::package::identity_package_id_blocking;
 use crate::rebased::Error;
-use async_trait::async_trait;
-use iota_interaction::move_types::language_storage::TypeTag;
-use iota_interaction::rpc_types::IotaExecutionStatus;
-use iota_interaction::rpc_types::IotaTransactionBlockEffects;
-use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI;
-use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::id::UID;
-use iota_interaction::types::object::Owner;
-use iota_interaction::types::transaction::ProgrammableTransaction;
-use iota_interaction::IotaTransactionBlockEffectsMutAPI;
-use iota_interaction::MoveType;
-use iota_interaction::OptionalSync;
+use futures::Stream;
+use futures::StreamExt;
+use iota_sdk::graphql_client::Client as IotaClient;
+use iota_sdk::transaction_builder::TransactionBuilder;
+use iota_sdk::types::Address;
+use iota_sdk::types::ObjectId;
+use iota_sdk::types::TransactionEffects;
+use iota_sdk::types::TypeTag;
 use itertools::Itertools as _;
-use product_common::core_client::CoreClientReadOnly;
-use product_common::transaction::transaction_builder::Transaction;
-use product_common::transaction::transaction_builder::TransactionBuilder;
+use product_core::move_repr::deserialize_object_id_from_uid;
+use product_core::move_type::MoveType;
+use product_core::move_type::UnknownTypeForNetwork;
+use product_core::network::Network;
+use product_core::operation::Operation;
+use product_core::operation::OperationBuilder;
+use product_core::product_client::ProductClient;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
+
 use std::fmt::Display;
 use std::ops::BitAnd;
 use std::ops::BitAndAssign;
@@ -50,7 +49,7 @@ pub enum ControllerToken {
 
 impl ControllerToken {
   /// Returns the ID of this [ControllerToken].
-  pub fn id(&self) -> ObjectID {
+  pub fn id(&self) -> ObjectId {
     match self {
       Self::Controller(controller) => controller.id,
       Self::Delegate(delegate) => delegate.id,
@@ -60,7 +59,7 @@ impl ControllerToken {
   /// Returns the ID of the this token's controller.
   /// For [ControllerToken::Controller] this is the same as its ID, but
   /// for [ControllerToken::Delegate] this is [DelegationToken::controller].
-  pub fn controller_id(&self) -> ObjectID {
+  pub fn controller_id(&self) -> ObjectId {
     match self {
       Self::Controller(controller) => controller.id,
       Self::Delegate(delegate) => delegate.controller,
@@ -68,7 +67,7 @@ impl ControllerToken {
   }
 
   /// Returns the ID of the object this token controls.
-  pub fn controller_of(&self) -> ObjectID {
+  pub fn controller_of(&self) -> ObjectId {
     match self {
       Self::Controller(controller) => controller.controller_of,
       Self::Delegate(delegate) => delegate.controller_of,
@@ -108,28 +107,11 @@ impl ControllerToken {
   }
 
   /// Returns the Move type of this token.
-  pub fn move_type(&self, package: ObjectID) -> TypeTag {
+  pub fn move_type(&self, network: Network) -> Result<TypeTag, UnknownTypeForNetwork> {
     match self {
-      Self::Controller(_) => ControllerCap::move_type(package),
-      Self::Delegate(_) => DelegationToken::move_type(package),
+      Self::Controller(_) => ControllerCap::move_type(network),
+      Self::Delegate(_) => DelegationToken::move_type(network),
     }
-  }
-
-  pub(crate) async fn controller_ref<C>(&self, client: &C) -> Result<ControllerTokenRef, Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
-    let obj_ref = client
-      .get_object_ref_by_id(self.id())
-      .await?
-      .expect("token exists on-chain")
-      .reference
-      .to_object_ref();
-
-    Ok(match self {
-      Self::Controller(_) => ControllerTokenRef::Controller(obj_ref),
-      Self::Delegate(_) => ControllerTokenRef::Delegate(obj_ref),
-    })
   }
 
   #[inline(always)]
@@ -143,36 +125,39 @@ impl ControllerToken {
 
 /// A token that authenticates its bearer as a controller of a specific shared object.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(from = "IotaControllerCap")]
 pub struct ControllerCap {
-  id: ObjectID,
-  controller_of: ObjectID,
+  #[serde(deserialize_with = "deserialize_object_id_from_uid")]
+  id: ObjectId,
+  controller_of: ObjectId,
   can_delegate: bool,
 }
 
-fn deserialize_from_uid<'de, D>(deserializer: D) -> Result<ObjectID, D::Error>
-where
-  D: Deserializer<'de>,
-{
-  UID::deserialize(deserializer).map(|uid| *uid.object_id())
-}
-
 impl MoveType for ControllerCap {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(network: Network) -> Result<TypeTag, UnknownTypeForNetwork> {
+    let package = match network {
+      Network::Mainnet => "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08",
+      Network::Testnet => "0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555",
+      Network::Devnet => "0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103",
+      _ => identity_package_id_blocking(network)
+        .map_err(|_| UnknownTypeForNetwork::new("ControllerCap", network))?
+        .to_string()
+        .as_str(),
+    };
+
     format!("{package}::controller::ControllerCap")
       .parse()
-      .expect("valid Move type")
+      .expect("valid TypeTag")
   }
 }
 
 impl ControllerCap {
   /// Returns the ID of this [ControllerCap].
-  pub fn id(&self) -> ObjectID {
+  pub fn id(&self) -> ObjectId {
     self.id
   }
 
   /// Returns the ID of the object this token controls.
-  pub fn controller_of(&self) -> ObjectID {
+  pub fn controller_of(&self) -> ObjectId {
     self.controller_of
   }
 
@@ -187,9 +172,9 @@ impl ControllerCap {
   /// and send it to `recipient`.
   pub fn delegate(
     &self,
-    recipient: IotaAddress,
+    recipient: Address,
     permissions: Option<DelegatePermissions>,
-  ) -> Option<TransactionBuilder<DelegateToken>> {
+  ) -> Option<OperationBuilder<DelegateToken>> {
     if !self.can_delegate {
       return None;
     }
@@ -199,7 +184,7 @@ impl ControllerCap {
       DelegateToken::new_with_permissions(self, recipient, permissions)
     };
 
-    Some(TransactionBuilder::new(tx))
+    Some(OperationBuilder::new(tx))
   }
 }
 
@@ -209,57 +194,31 @@ impl From<ControllerCap> for ControllerToken {
   }
 }
 
-#[derive(Debug, Deserialize)]
-struct IotaControllerCap {
-  id: UID,
-  controller_of: ObjectID,
-  can_delegate: bool,
-  #[allow(unused)]
-  access_token: Referent<DelegationToken>,
-}
-
-impl From<IotaControllerCap> for ControllerCap {
-  fn from(value: IotaControllerCap) -> Self {
-    Self {
-      id: *value.id.object_id(),
-      controller_of: value.controller_of,
-      can_delegate: value.can_delegate,
-    }
-  }
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(unused)]
-struct Referent<T> {
-  id: IotaAddress,
-  value: Option<T>,
-}
-
 /// A token minted by a controller that allows another entity to act in
 /// its stead - with full or reduced permissions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DelegationToken {
-  #[serde(deserialize_with = "deserialize_from_uid")]
-  id: ObjectID,
+  #[serde(deserialize_with = "deserialize_object_id_from_uid")]
+  id: ObjectId,
   permissions: DelegatePermissions,
-  controller: ObjectID,
-  controller_of: ObjectID,
+  controller: ObjectId,
+  controller_of: ObjectId,
 }
 
 impl DelegationToken {
   /// Returns the ID of this [DelegationToken].
-  pub fn id(&self) -> ObjectID {
+  pub fn id(&self) -> ObjectId {
     self.id
   }
 
   /// Returns the ID of the [ControllerCap] that minted
   /// this [DelegationToken].
-  pub fn controller(&self) -> ObjectID {
+  pub fn controller(&self) -> ObjectId {
     self.controller
   }
 
   /// Returns the ID of the object this token controls.
-  pub fn controller_of(&self) -> ObjectID {
+  pub fn controller_of(&self) -> ObjectId {
     self.controller_of
   }
 
@@ -276,10 +235,20 @@ impl From<DelegationToken> for ControllerToken {
 }
 
 impl MoveType for DelegationToken {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(network: Network) -> Result<TypeTag, UnknownTypeForNetwork> {
+    let package = match network {
+      Network::Mainnet => "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08",
+      Network::Testnet => "0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555",
+      Network::Devnet => "0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103",
+      _ => identity_package_id_blocking(network)
+        .map_err(|_| UnknownTypeForNetwork::new("DelegationToken", network))?
+        .to_string()
+        .as_str(),
+    };
+
     format!("{package}::controller::DelegationToken")
       .parse()
-      .expect("valid Move type")
+      .expect("valid TypeTag")
   }
 }
 
@@ -385,26 +354,25 @@ impl BitXorAssign for DelegatePermissions {
   }
 }
 
-/// A [Transaction] that creates a new [DelegationToken]
-/// for a given [ControllerCap].
+/// An [Operation] that creates a new [DelegationToken] for a given [ControllerCap].
 #[derive(Debug, Clone)]
 pub struct DelegateToken {
-  cap_id: ObjectID,
+  cap_id: ObjectId,
   permissions: DelegatePermissions,
-  recipient: IotaAddress,
+  recipient: Address,
 }
 
 impl DelegateToken {
   /// Creates a new [DelegateToken] transaction that will create a new [DelegationToken] with all permissions
   /// for `controller_cap` and send it to `recipient`.
-  pub fn new(controller_cap: &ControllerCap, recipient: IotaAddress) -> Self {
+  pub fn new(controller_cap: &ControllerCap, recipient: Address) -> Self {
     Self::new_with_permissions(controller_cap, recipient, DelegatePermissions::default())
   }
 
   /// Same as [DelegateToken::new] but permissions for the new token can be specified.
   pub fn new_with_permissions(
     controller_cap: &ControllerCap,
-    recipient: IotaAddress,
+    recipient: Address,
     permissions: DelegatePermissions,
   ) -> Self {
     Self {
@@ -415,78 +383,72 @@ impl DelegateToken {
   }
 }
 
-#[cfg_attr(feature = "send-sync", async_trait)]
-#[cfg_attr(not(feature = "send-sync"), async_trait(?Send))]
-impl Transaction for DelegateToken {
+impl Operation for DelegateToken {
   type Output = DelegationToken;
   type Error = Error;
-  async fn build_programmable_transaction<C>(&self, client: &C) -> Result<ProgrammableTransaction, Self::Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
-    let package = identity_package_id(client).await?;
-    let controller_cap_ref = client
-      .get_object_ref_by_id(self.cap_id)
-      .await?
-      .expect("ControllerCap exists on-chain")
-      .reference
-      .to_object_ref();
 
-    let ptb_bcs =
-      move_calls::identity::delegate_controller_cap(controller_cap_ref, self.recipient, self.permissions.0, package)
-        .await?;
-    Ok(bcs::from_bytes(&ptb_bcs)?)
+  async fn to_transaction(
+    &self,
+    client: &impl ProductClient,
+    mut ptb: TransactionBuilder<IotaClient>,
+  ) -> Result<TransactionBuilder<IotaClient>, Self::Error> {
+    let package = identity_package_id(client.network()).await?;
+
+    let cap = ptb.apply_argument(self.cap_id);
+    let permissions = ptb.pure(self.permissions.into());
+    let delegation_token = ptb
+      .move_call(package, "controller", "delegate_with_permissions")
+      .arguments([cap, permissions])
+      .arg();
+    ptb.transfer_objects(self.recipient, [delegation_token]);
+
+    Ok(ptb)
   }
 
-  async fn apply<C>(self, effects: &mut IotaTransactionBlockEffects, client: &C) -> Result<Self::Output, Self::Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
-    if let IotaExecutionStatus::Failure { error } = effects.status() {
-      return Err(Error::TransactionUnexpectedResponse(error.clone()));
+  async fn apply_effects(
+    self,
+    client: &impl ProductClient,
+    tx_effects: &mut TransactionEffects,
+  ) -> Result<Self::Output, Self::Error> {
+    if let Some(tx_error) = tx_effects.status().error() {
+      return Err(tx_error.into());
     }
 
-    let created_objects = effects
-      .created()
+    // Find the objects that were created in this transaction and are owned by the recipient.
+    let possibly_valid_objects = tx_effects
+      .as_v1()
+      .changed_objects
       .iter()
-      .enumerate()
-      .filter(|(_, elem)| matches!(elem.owner, Owner::AddressOwner(addr) if addr == self.recipient))
-      .map(|(i, obj)| (i, obj.object_id()));
+      .filter_map(|obj| {
+        (obj.id_operation.is_created() && obj.output_state.object_owner_opt() == Some(self.recipient.into()))
+          .then_some(obj.object_id)
+      })
+      .collect();
 
-    let is_target_token = |delegation_token: &DelegationToken| -> bool {
-      delegation_token.controller == self.cap_id && delegation_token.permissions == self.permissions
-    };
-    let mut target_token_pos = None;
-    let mut target_token = None;
-    for (i, obj_id) in created_objects {
-      match client.get_object_by_id(obj_id).await {
-        Ok(token) if is_target_token(&token) => {
-          target_token_pos = Some(i);
-          target_token = Some(token);
-          break;
-        }
-        _ => continue,
-      }
-    }
+    // Find the correct delegation token among the created objects.
+    let delegation_token = client
+      .objects_for_address(self.recipient, Some(&possibly_valid_objects))
+      .next()
+      .await
+      .transpose()?
+      .ok_or_else(|| Error::TransactionUnexpectedResponse("no DelegationToken was found".into()))?;
 
-    let (Some(i), Some(token)) = (target_token_pos, target_token) else {
-      return Err(Error::TransactionUnexpectedResponse(
-        "failed to find the correct identity in this transaction's effects".to_owned(),
-      ));
-    };
+    // Remove the delegation token from the changed objects so it is not processed again later.
+    let _ = tx_effects
+      .as_mut_v1()
+      .changed_objects
+      .retain(|obj| obj.object_id != delegation_token.id());
 
-    effects.created_mut().swap_remove(i);
-
-    Ok(token)
+    Ok(delegation_token)
   }
 }
 
 /// [Transaction] for revoking / unrevoking a [DelegationToken].
 #[derive(Debug, Clone)]
 pub struct DelegationTokenRevocation {
-  identity_id: ObjectID,
-  controller_cap_id: ObjectID,
-  delegation_token_id: ObjectID,
+  identity_id: ObjectId,
+  controller_cap_id: ObjectId,
+  delegation_token_id: ObjectId,
   // `true` revokes the token, `false` un-revokes it.
   revoke: bool,
 }
@@ -537,64 +499,57 @@ impl DelegationTokenRevocation {
   }
 
   /// Return the ID of the [DelegationToken] handled by this transaction.
-  pub fn token_id(&self) -> ObjectID {
+  pub fn token_id(&self) -> ObjectId {
     self.delegation_token_id
   }
 }
 
-#[cfg_attr(feature = "send-sync", async_trait)]
-#[cfg_attr(not(feature = "send-sync"), async_trait(?Send))]
-impl Transaction for DelegationTokenRevocation {
+impl Operation for DelegationTokenRevocation {
   type Output = ();
   type Error = Error;
 
-  async fn build_programmable_transaction<C>(&self, client: &C) -> Result<ProgrammableTransaction, Self::Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
-    let package = identity_package_id(client).await?;
-    let identity_ref = client
-      .get_object_ref_by_id(self.identity_id)
-      .await?
-      .expect("identity exists on-chain");
-    let controller_cap_ref = client
-      .get_object_ref_by_id(self.controller_cap_id)
-      .await?
-      .expect("controller_cap exists on-chain")
-      .reference
-      .to_object_ref();
+  async fn to_transaction(
+    &self,
+    client: &impl ProductClient,
+    mut ptb: TransactionBuilder<IotaClient>,
+  ) -> Result<TransactionBuilder<IotaClient>, Self::Error> {
+    let package = identity_package_id(client.network()).await?;
 
-    let tx_bytes = if self.is_revocation() {
-      move_calls::identity::revoke_delegation_token(identity_ref, controller_cap_ref, self.delegation_token_id, package)
+    let cap = ptb.apply_argument(self.cap_id);
+    let identity = ptb.apply_argument(self.identity_id);
+    let delegation_token_id = ptb.pure(self.delegation_token_id);
+
+    let fn_name = if self.is_revocation() {
+      "revoke_token"
     } else {
-      move_calls::identity::unrevoke_delegation_token(
-        identity_ref,
-        controller_cap_ref,
-        self.delegation_token_id,
-        package,
-      )
-    }?;
+      "unrevoke_token"
+    };
 
-    Ok(bcs::from_bytes(&tx_bytes)?)
+    ptb
+      .move_call(package, "identity", fn_name)
+      .arguments([identity, cap, delegation_token_id]);
+
+    Ok(ptb)
   }
 
-  async fn apply<C>(self, effects: &mut IotaTransactionBlockEffects, _client: &C) -> Result<Self::Output, Self::Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
-    if let IotaExecutionStatus::Failure { error } = effects.status() {
-      return Err(Error::TransactionUnexpectedResponse(error.clone()));
+  async fn apply_effects(
+    self,
+    client: &impl ProductClient,
+    tx_effects: &mut TransactionEffects,
+  ) -> Result<Self::Output, Self::Error> {
+    if let Some(tx_error) = tx_effects.status().error() {
+      Err(tx_error.into())
+    } else {
+      Ok(())
     }
-
-    Ok(())
   }
 }
 
 /// [Transaction] for deleting a given [DelegationToken].
 #[derive(Debug, Clone)]
 pub struct DeleteDelegationToken {
-  identity_id: ObjectID,
-  delegation_token_id: ObjectID,
+  identity_id: ObjectId,
+  delegation_token_id: ObjectId,
 }
 
 impl DeleteDelegationToken {
@@ -615,66 +570,55 @@ impl DeleteDelegationToken {
   }
 
   /// Returns the ID of the [DelegationToken] to be deleted.
-  pub fn token_id(&self) -> ObjectID {
+  pub fn token_id(&self) -> ObjectId {
     self.delegation_token_id
   }
 }
 
-#[cfg_attr(feature = "send-sync", async_trait)]
-#[cfg_attr(not(feature = "send-sync"), async_trait(?Send))]
-impl Transaction for DeleteDelegationToken {
+impl Operation for DeleteDelegationToken {
   type Output = ();
   type Error = Error;
 
-  async fn build_programmable_transaction<C>(&self, client: &C) -> Result<ProgrammableTransaction, Self::Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
-    let package = identity_package_id(client).await?;
-    let identity_ref = client
-      .get_object_ref_by_id(self.identity_id)
-      .await?
-      .ok_or_else(|| Error::ObjectLookup(format!("Identity {} doesn't exist on-chain", self.identity_id)))?;
-    let delegation_token_ref = client
-      .get_object_ref_by_id(self.delegation_token_id)
-      .await?
-      .ok_or_else(|| {
-        Error::ObjectLookup(format!(
-          "DelegationToken {} doesn't exist on-chain",
-          self.delegation_token_id,
-        ))
-      })?
-      .reference
-      .to_object_ref();
+  async fn to_transaction(
+    &self,
+    client: &impl ProductClient,
+    mut ptb: TransactionBuilder<IotaClient>,
+  ) -> Result<TransactionBuilder<IotaClient>, Self::Error> {
+    let package = identity_package_id(client.network()).await?;
 
-    let tx_bytes = move_calls::identity::destroy_delegation_token(identity_ref, delegation_token_ref, package).await?;
+    let identity = ptb.apply_argument(self.identity_id);
+    let delegation_token = ptb.apply_argument(self.delegation_token_id);
 
-    Ok(bcs::from_bytes(&tx_bytes)?)
+    ptb
+      .move_call(package, "identity", "destroy_delegation_token")
+      .arguments([identity, delegation_token]);
+
+    Ok(ptb)
   }
 
-  async fn apply<C>(self, effects: &mut IotaTransactionBlockEffects, _client: &C) -> Result<Self::Output, Self::Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
-    if let IotaExecutionStatus::Failure { error } = effects.status() {
-      return Err(Error::TransactionUnexpectedResponse(error.clone()));
+  async fn apply_effects(
+    self,
+    client: &impl ProductClient,
+    tx_effects: &mut TransactionEffects,
+  ) -> Result<Self::Output, Self::Error> {
+    if let Some(tx_error) = tx_effects.status().error() {
+      return Err(tx_error.into());
     }
 
-    let Some(deleted_token_pos) = effects
-      .deleted()
+    if let Some((idx, _)) = tx_effects
+      .as_v1()
+      .changed_objects
       .iter()
-      .find_position(|obj_ref| obj_ref.object_id == self.delegation_token_id)
-      .map(|(pos, _)| pos)
-    else {
-      return Err(Error::TransactionUnexpectedResponse(format!(
+      .find_position(|obj| obj.id_operation.is_deleted() && obj.object_id == self.delegation_token_id)
+    {
+      tx_effects.as_mut_v1().changed_objects.swap_remove(idx);
+      Ok(())
+    } else {
+      Err(Error::TransactionUnexpectedResponse(format!(
         "DelegationToken {} wasn't deleted in this transaction",
         self.delegation_token_id,
-      )));
-    };
-
-    effects.deleted_mut().swap_remove(deleted_token_pos);
-
-    Ok(())
+      )))
+    }
   }
 }
 
@@ -685,7 +629,7 @@ impl Transaction for DeleteDelegationToken {
 #[non_exhaustive]
 pub struct NotAController {
   /// The address that attempted to access an Identity.
-  pub address: IotaAddress,
+  pub address: Address,
   /// The identity that tried to be accessed.
   pub identity: IotaDID,
 }
@@ -698,7 +642,7 @@ pub struct NotAController {
 #[non_exhaustive]
 pub struct InsufficientControllerVotingPower {
   /// ID of the controller token.
-  pub controller_token_id: ObjectID,
+  pub controller_token_id: ObjectId,
   /// Voting power of the controller.
   pub controller_voting_power: u64,
   /// Required voting power.
@@ -711,7 +655,7 @@ pub struct InsufficientControllerVotingPower {
 #[non_exhaustive]
 pub struct InvalidControllerTokenForIdentity {
   /// The ID of the [OnChainIdentity] this operation attempted to access.
-  pub identity: ObjectID,
+  pub identity: ObjectId,
   /// The presented controller token.
   pub controller_token: ControllerToken,
 }

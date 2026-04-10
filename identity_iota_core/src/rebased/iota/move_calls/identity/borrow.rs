@@ -3,157 +3,128 @@
 
 use std::collections::HashMap;
 
-use iota_interaction::ident_str;
-use iota_interaction::rpc_types::IotaObjectData;
-use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::ObjectType;
-use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::Argument;
-use iota_interaction::types::transaction::ObjectArg;
-use iota_interaction::MoveType as _;
-use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk::graphql_client::Client;
+use iota_sdk::transaction_builder::unresolved::Argument;
+use iota_sdk::transaction_builder::Receiving;
+use iota_sdk::transaction_builder::SharedMut;
+use iota_sdk::transaction_builder::TransactionBuilder;
+use iota_sdk::types::Object;
+use iota_sdk::types::ObjectId;
 use itertools::Itertools as _;
+use product_core::move_type::MoveType;
+use product_core::network::Network;
 
-use crate::rebased::iota::move_calls::utils;
-use crate::rebased::iota::move_calls::ControllerTokenRef;
+use crate::rebased::migration::ControllerToken;
 use crate::rebased::proposals::BorrowAction;
-use crate::rebased::Error;
 
 use super::ControllerTokenArg;
 use super::ProposalContext;
 
-fn borrow_proposal_impl(
-  identity: OwnedObjectRef,
-  capability: ControllerTokenRef,
-  objects: Vec<ObjectID>,
+fn borrow_proposal_impl<'a>(
+  ptb: &'a mut TransactionBuilder<Client>,
+  identity: ObjectId,
+  capability: &ControllerToken,
+  objects: Vec<ObjectId>,
   expiration: Option<u64>,
-  package_id: ObjectID,
-) -> anyhow::Result<ProposalContext> {
-  let mut ptb = Ptb::new();
-  let capability = ControllerTokenArg::from_ref(capability, &mut ptb, package_id)?;
-  let identity_arg = utils::owned_ref_to_shared_object_arg(identity, &mut ptb, true)?;
-  let exp_arg = utils::option_to_move(expiration, &mut ptb, package_id)?;
-  let objects_arg = ptb.pure(objects)?;
+  package_id: ObjectId,
+) -> ProposalContext<'a> {
+  let capability = ControllerTokenArg::from_token(capability, ptb, package_id);
+  let identity_arg = ptb.apply_argument(SharedMut(identity));
+  let exp_arg = ptb.pure(expiration);
+  let objects_arg = ptb.pure(objects);
 
-  let proposal_id = ptb.programmable_move_call(
-    package_id,
-    ident_str!("identity").into(),
-    ident_str!("propose_borrow").into(),
-    vec![],
-    vec![identity_arg, capability.arg(), exp_arg, objects_arg],
-  );
+  let proposal_id = ptb
+    .move_call(package_id, "identity", "propose_borrow")
+    .arguments([identity_arg, capability.arg(), exp_arg, objects_arg])
+    .arg();
 
-  Ok(ProposalContext {
+  ProposalContext {
     ptb,
     identity: identity_arg,
     capability,
     proposal_id,
-  })
+  }
 }
 
 pub(crate) fn execute_borrow_impl<F>(
-  ptb: &mut Ptb,
+  ptb: &mut TransactionBuilder<Client>,
   identity: Argument,
   delegation_token: Argument,
   proposal_id: Argument,
-  objects: Vec<IotaObjectData>,
+  objects: Vec<Object>,
   intent_fn: F,
-  package: ObjectID,
-) -> anyhow::Result<()>
-where
-  F: FnOnce(&mut Ptb, &HashMap<ObjectID, (Argument, IotaObjectData)>),
+  package: ObjectId,
+  network: Network,
+) where
+  F: FnOnce(&mut TransactionBuilder<Client>, &HashMap<ObjectId, (Argument, Object)>),
 {
   // Get the proposal's action as argument.
-  let borrow_action = ptb.programmable_move_call(
-    package,
-    ident_str!("identity").into(),
-    ident_str!("execute_proposal").into(),
-    vec![BorrowAction::move_type(package)],
-    vec![identity, delegation_token, proposal_id],
-  );
+  let borrow_action = ptb
+    .move_call(package, "identity", "execute_proposal")
+    .type_tags(BorrowAction::move_type(network))
+    .arguments([identity, delegation_token, proposal_id])
+    .arg();
 
   // Borrow all the objects specified in the action.
-  let obj_arg_map = objects
-    .into_iter()
-    .map(|obj_data| {
-      let obj_ref = obj_data.object_ref();
-      let ObjectType::Struct(obj_type) = obj_data.object_type()? else {
-        unreachable!("move packages cannot be borrowed to begin with");
-      };
-      let recv_obj = ptb.obj(ObjectArg::Receiving(obj_ref))?;
+  let mut obj_arg_map = HashMap::new();
+  for obj in objects {
+    let type_ = obj.object_type().into_struct();
+    let recv_obj = ptb.apply_argument(Receiving(obj.object_id()));
+    let obj_arg = ptb
+      .move_call(package, "identity", "execute_borrow")
+      .type_tags(type_.into())
+      .arguments([identity, borrow_action, recv_obj])
+      .arg();
 
-      let obj_arg = ptb.programmable_move_call(
-        package,
-        ident_str!("identity").into(),
-        ident_str!("execute_borrow").into(),
-        vec![obj_type.into()],
-        vec![identity, borrow_action, recv_obj],
-      );
-
-      Ok((obj_ref.0, (obj_arg, obj_data)))
-    })
-    .collect::<anyhow::Result<_>>()?;
+    obj_arg_map.insert(obj.object_id(), (obj_arg, obj));
+  }
 
   // Apply the user-defined operation.
   intent_fn(ptb, &obj_arg_map);
 
   // Put back all the objects.
-  obj_arg_map.into_values().for_each(|(obj_arg, obj_data)| {
-    let ObjectType::Struct(obj_type) = obj_data.object_type().expect("checked above") else {
-      unreachable!("move packages cannot be borrowed to begin with");
-    };
-    ptb.programmable_move_call(
-      package,
-      ident_str!("borrow_proposal").into(),
-      ident_str!("put_back").into(),
-      vec![obj_type.into()],
-      vec![borrow_action, obj_arg],
-    );
-  });
+  for (obj_arg, obj_data) in obj_arg_map.into_values() {
+    let obj_type = obj_data.object_type().into_struct();
+    ptb
+      .move_call(package, "identity", "put_back")
+      .type_tags(obj_type.into())
+      .arguments([borrow_action, obj_arg]);
+  }
 
   // Consume the now empty borrow_action
-  ptb.programmable_move_call(
-    package,
-    ident_str!("borrow_proposal").into(),
-    ident_str!("conclude_borrow").into(),
-    vec![],
-    vec![borrow_action],
-  );
-
-  Ok(())
+  ptb
+    .move_call(package, "borrow_proposal", "conclude_borrow")
+    .arguments([borrow_action]);
 }
 
 pub(crate) fn propose_borrow(
-  identity: OwnedObjectRef,
-  capability: ControllerTokenRef,
-  objects: Vec<ObjectID>,
+  ptb: &mut TransactionBuilder<Client>,
+  identity: ObjectId,
+  capability: &ControllerToken,
+  objects: Vec<ObjectId>,
   expiration: Option<u64>,
-  package_id: ObjectID,
-) -> Result<ProgrammableTransactionBcs, Error> {
-  let ProposalContext {
-    mut ptb, capability, ..
-  } = borrow_proposal_impl(identity, capability, objects, expiration, package_id)?;
+  package_id: ObjectId,
+) {
+  let ProposalContext { ptb, capability, .. } =
+    borrow_proposal_impl(ptb, identity, capability, objects, expiration, package_id)?;
 
-  capability.put_back(&mut ptb, package_id);
-
-  Ok(bcs::to_bytes(&ptb.finish())?)
+  capability.put_back(ptb, package_id);
 }
 
 pub(crate) fn execute_borrow<F>(
-  identity: OwnedObjectRef,
-  capability: ControllerTokenRef,
-  proposal_id: ObjectID,
-  objects: Vec<IotaObjectData>,
+  ptb: &mut TransactionBuilder<Client>,
+  identity: ObjectId,
+  capability: &ControllerToken,
+  proposal_id: ObjectId,
+  objects: Vec<Object>,
   intent_fn: F,
-  package: ObjectID,
-) -> Result<ProgrammableTransactionBcs, Error>
-where
-  F: FnOnce(&mut Ptb, &HashMap<ObjectID, (Argument, IotaObjectData)>),
+  package: ObjectId,
+  network: Network,
+) where
+  F: FnOnce(&mut TransactionBuilder<Client>, &HashMap<ObjectId, (Argument, Object)>),
 {
-  let mut ptb = Ptb::new();
-  let identity = utils::owned_ref_to_shared_object_arg(identity, &mut ptb, true)?;
-  let capability = ControllerTokenArg::from_ref(capability, &mut ptb, package)?;
+  let identity = ptb.apply_argument(SharedMut(identity));
+  let capability = ControllerTokenArg::from_token(capability, ptb, package)?;
   let proposal_id = ptb.pure(proposal_id)?;
 
   execute_borrow_impl(
@@ -164,23 +135,23 @@ where
     objects,
     intent_fn,
     package,
-  )?;
+    network,
+  );
 
-  capability.put_back(&mut ptb, package);
-
-  Ok(bcs::to_bytes(&ptb.finish())?)
+  capability.put_back(ptb, package);
 }
 
 pub(crate) fn create_and_execute_borrow<F>(
-  identity: OwnedObjectRef,
-  capability: ControllerTokenRef,
-  objects: Vec<IotaObjectData>,
+  ptb: &mut TransactionBuilder<Client>,
+  identity: ObjectId,
+  capability: &ControllerToken,
+  objects: Vec<Object>,
   intent_fn: F,
   expiration: Option<u64>,
-  package_id: ObjectID,
-) -> anyhow::Result<ProgrammableTransactionBcs, Error>
-where
-  F: FnOnce(&mut Ptb, &HashMap<ObjectID, (Argument, IotaObjectData)>),
+  package_id: ObjectId,
+  network: Network,
+) where
+  F: FnOnce(&mut TransactionBuilder<Client>, &HashMap<ObjectId, (Argument, Object)>),
 {
   let ProposalContext {
     mut ptb,
@@ -188,6 +159,7 @@ where
     identity,
     proposal_id,
   } = borrow_proposal_impl(
+    ptb,
     identity,
     capability,
     objects.iter().map(|obj_data| obj_data.object_id).collect_vec(),
@@ -203,9 +175,8 @@ where
     objects,
     intent_fn,
     package_id,
-  )?;
+    network,
+  );
 
   capability.put_back(&mut ptb, package_id);
-
-  Ok(bcs::to_bytes(&ptb.finish())?)
 }

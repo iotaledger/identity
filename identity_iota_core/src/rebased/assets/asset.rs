@@ -18,8 +18,8 @@ use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
-use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::Address;
+use iota_interaction::types::base_types::ObjectId;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::base_types::SequenceNumber;
 use iota_interaction::types::id::UID;
@@ -48,8 +48,8 @@ pub struct AuthenticatedAsset<T> {
     bound(deserialize = "T: for<'a> Deserialize<'a>")
   )]
   inner: T,
-  owner: IotaAddress,
-  origin: IotaAddress,
+  owner: Address,
+  origin: Address,
   mutable: bool,
   transferable: bool,
   deletable: bool,
@@ -75,7 +75,7 @@ where
   T: DeserializeOwned,
 {
   /// Resolves an [`AuthenticatedAsset`] by its ID `id`.
-  pub async fn get_by_id(id: ObjectID, client: &impl CoreClientReadOnly) -> Result<Self, Error> {
+  pub async fn get_by_id(id: ObjectId, client: &impl CoreClientReadOnly) -> Result<Self, Error> {
     let res = client
       .client_adapter()
       .read_api()
@@ -107,7 +107,7 @@ impl<T: MoveType + Send + Sync> AuthenticatedAsset<T> {
   }
 
   /// Returns this [`AuthenticatedAsset`]'s ID.
-  pub fn id(&self) -> ObjectID {
+  pub fn id(&self) -> ObjectId {
     *self.id.object_id()
   }
 
@@ -124,7 +124,7 @@ impl<T: MoveType + Send + Sync> AuthenticatedAsset<T> {
   /// * Returns an [`Error::InvalidConfig`] if this asset is not transferable.
   pub fn transfer(
     self,
-    recipient: IotaAddress,
+    recipient: Address,
     client: &IdentityClientReadOnly,
   ) -> Result<TransactionBuilder<TransferAsset<T>>, Error> {
     if !self.transferable {
@@ -185,7 +185,7 @@ pub struct AuthenticatedAssetBuilder<T> {
 }
 
 impl<T: MoveType> MoveType for AuthenticatedAsset<T> {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     TypeTag::Struct(Box::new(StructTag {
       address: package.into(),
       module: ident_str!("asset").into(),
@@ -239,7 +239,7 @@ where
   }
 }
 
-/// Proposal for the transfer of an [`AuthenticatedAsset`]'s ownership from one [`IotaAddress`] to another.
+/// Proposal for the transfer of an [`AuthenticatedAsset`]'s ownership from one [`Address`] to another.
 ///
 /// # Detailed Workflow
 /// A [`TransferProposal`] is a **shared** _Move_ object that represents a request to transfer ownership
@@ -254,16 +254,16 @@ where
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransferProposal {
   id: UID,
-  asset_id: ObjectID,
-  sender_cap_id: ObjectID,
-  sender_address: IotaAddress,
-  recipient_cap_id: ObjectID,
-  recipient_address: IotaAddress,
+  asset_id: ObjectId,
+  sender_cap_id: ObjectId,
+  sender_address: Address,
+  recipient_cap_id: ObjectId,
+  recipient_address: Address,
   done: bool,
 }
 
 impl MoveType for TransferProposal {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     TypeTag::Struct(Box::new(StructTag {
       address: package.into(),
       module: ident_str!("asset").into(),
@@ -275,7 +275,7 @@ impl MoveType for TransferProposal {
 
 impl TransferProposal {
   /// Resolves a [`TransferProposal`] by its ID `id`.
-  pub async fn get_by_id(id: ObjectID, client: &impl CoreClientReadOnly) -> Result<Self, Error> {
+  pub async fn get_by_id(id: ObjectId, client: &impl CoreClientReadOnly) -> Result<Self, Error> {
     let res = client
       .client_adapter()
       .read_api()
@@ -375,17 +375,17 @@ impl TransferProposal {
   }
 
   /// Returns this [`TransferProposal`]'s ID.
-  pub fn id(&self) -> ObjectID {
+  pub fn id(&self) -> ObjectId {
     *self.id.object_id()
   }
 
   /// Returns this [`TransferProposal`]'s `sender`'s address.
-  pub fn sender(&self) -> IotaAddress {
+  pub fn sender(&self) -> Address {
     self.sender_address
   }
 
   /// Returns this [`TransferProposal`]'s `recipient`'s address.
-  pub fn recipient(&self) -> IotaAddress {
+  pub fn recipient(&self) -> Address {
     self.recipient_address
   }
 
@@ -401,7 +401,7 @@ pub struct UpdateContent<'a, T> {
   asset: &'a mut AuthenticatedAsset<T>,
   new_content: T,
   cached_ptb: OnceCell<ProgrammableTransaction>,
-  package: ObjectID,
+  package: ObjectId,
 }
 
 impl<'a, T: MoveType + Send + Sync> UpdateContent<'a, T> {
@@ -465,7 +465,7 @@ where
 pub struct DeleteAsset<T> {
   asset: AuthenticatedAsset<T>,
   cached_ptb: OnceCell<ProgrammableTransaction>,
-  package: ObjectID,
+  package: ObjectId,
 }
 
 impl<T: MoveType + Send + Sync> DeleteAsset<T> {
@@ -530,7 +530,7 @@ where
 pub struct CreateAsset<T> {
   builder: AuthenticatedAssetBuilder<T>,
   cached_ptb: OnceCell<ProgrammableTransaction>,
-  package: ObjectID,
+  package: ObjectId,
 }
 
 impl<T: MoveType> CreateAsset<T> {
@@ -622,14 +622,14 @@ where
 #[derive(Debug)]
 pub struct TransferAsset<T> {
   asset: AuthenticatedAsset<T>,
-  recipient: IotaAddress,
+  recipient: Address,
   cached_ptb: OnceCell<ProgrammableTransaction>,
-  package: ObjectID,
+  package: ObjectId,
 }
 
 impl<T: MoveType + Send + Sync> TransferAsset<T> {
   /// Returns a [Transaction] to transfer `asset` to `recipient`.
-  pub fn new(asset: AuthenticatedAsset<T>, recipient: IotaAddress, client: &IdentityClientReadOnly) -> Self {
+  pub fn new(asset: AuthenticatedAsset<T>, recipient: Address, client: &IdentityClientReadOnly) -> Self {
     Self {
       asset,
       recipient,
@@ -709,7 +709,7 @@ where
 pub struct AcceptTransfer {
   proposal: TransferProposal,
   cached_ptb: OnceCell<ProgrammableTransaction>,
-  package: ObjectID,
+  package: ObjectId,
 }
 
 impl AcceptTransfer {
@@ -800,7 +800,7 @@ impl Transaction for AcceptTransfer {
 pub struct ConcludeTransfer {
   proposal: TransferProposal,
   cached_ptb: OnceCell<ProgrammableTransaction>,
-  package: ObjectID,
+  package: ObjectId,
 }
 
 impl ConcludeTransfer {

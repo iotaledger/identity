@@ -13,7 +13,7 @@ use identity_iota::storage::Storage;
 use identity_iota::verification::jws::JwsAlgorithm;
 use identity_iota::verification::MethodScope;
 
-use identity_iota::iota::rebased::client::IdentityClient;
+use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use identity_iota::iota::rebased::client::IotaKeySignature;
 use identity_iota::iota::rebased::utils::request_funds;
 use identity_storage::JwkStorage;
@@ -41,7 +41,7 @@ pub const TEST_GAS_BUDGET: u64 = 50_000_000;
 pub type MemStorage = Storage<JwkMemStore, KeyIdMemstore>;
 
 pub async fn create_did_document<K, I, S>(
-  identity_client: &IdentityClient<S>,
+  identity_client: &IdentityClientReadOnly<S>,
   storage: &Storage<K, I>,
 ) -> anyhow::Result<(IotaDocument, String)>
 where
@@ -96,7 +96,7 @@ pub async fn get_iota_client() -> anyhow::Result<IotaClient> {
     .map_err(|err| anyhow::anyhow!(format!("failed to connect to network; {}", err)))
 }
 
-pub async fn get_read_only_client() -> anyhow::Result<IdentityClient> {
+pub async fn get_read_only_client() -> anyhow::Result<IdentityClientReadOnly> {
   let iota_client = get_iota_client().await?;
   let package_id = if is_unofficial_node() {
     let Ok(pkg_id_str) = std::env::var("IOTA_IDENTITY_PKG_ID") else {
@@ -112,12 +112,12 @@ pub async fn get_read_only_client() -> anyhow::Result<IdentityClient> {
     None
   };
 
-  Ok(IdentityClient::from_iota_client(iota_client, package_id).await?)
+  Ok(IdentityClientReadOnly::from_iota_client(iota_client, package_id).await?)
 }
 
 pub async fn get_funded_client<K, I>(
   storage: &Storage<K, I>,
-) -> Result<IdentityClient<StorageSigner<'_, K, I>>, anyhow::Error>
+) -> Result<IdentityClientReadOnly<StorageSigner<'_, K, I>>, anyhow::Error>
 where
   K: JwkStorage,
   I: KeyIdStorage,
@@ -142,7 +142,7 @@ where
 
   // Passing a package ID to `IdentityClient::from_iota_client` is required because the client is connected to a local
   // and unofficial iota network. If we were to connect to testnet for instance, no package ID would be required.
-  let identity_client = IdentityClient::from_iota_client(iota_client, package_id)
+  let identity_client = IdentityClientReadOnly::from_iota_client(iota_client, package_id)
     .await?
     .with_signer(signer)
     .await?;

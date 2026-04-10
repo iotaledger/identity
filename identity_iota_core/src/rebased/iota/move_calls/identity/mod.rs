@@ -4,7 +4,6 @@
 mod borrow;
 mod config_change;
 mod create;
-mod delegation;
 mod exec;
 mod send;
 pub(crate) mod sub_identity;
@@ -14,28 +13,21 @@ mod upgrade;
 pub(crate) use borrow::*;
 pub(crate) use config_change::*;
 pub(crate) use create::*;
-pub(crate) use delegation::*;
 pub(crate) use exec::*;
+use iota_sdk::graphql_client::Client;
+use iota_sdk::transaction_builder::unresolved::Argument;
+use iota_sdk::transaction_builder::SharedMut;
+use iota_sdk::transaction_builder::TransactionBuilder;
+use iota_sdk::types::ObjectId;
+use product_core::move_type::MoveType;
+use product_core::network::Network;
 pub(crate) use send::*;
 pub(crate) use update::*;
 pub(crate) use upgrade::*;
 
-use iota_interaction::ident_str;
-use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::Argument;
-use iota_interaction::types::transaction::ObjectArg;
-use iota_interaction::MoveType;
-use iota_interaction::ProgrammableTransactionBcs;
+use crate::rebased::migration::ControllerToken;
 
-use crate::rebased::rebased_err;
-use crate::rebased::Error;
-
-use super::utils;
-use super::ControllerTokenRef;
-
-enum ControllerTokenArg {
+pub(crate) enum ControllerTokenArg {
   Controller {
     cap: Argument,
     token: Argument,
@@ -45,65 +37,84 @@ enum ControllerTokenArg {
 }
 
 impl ControllerTokenArg {
-  fn from_ref(controller_ref: ControllerTokenRef, ptb: &mut Ptb, package: ObjectID) -> Result<Self, Error> {
-    let token_arg = ptb
-      .obj(ObjectArg::ImmOrOwnedObject(controller_ref.object_ref()))
-      .map_err(rebased_err)?;
-    match controller_ref {
-      ControllerTokenRef::Delegate(_) => Ok(ControllerTokenArg::Delegate(token_arg)),
-      ControllerTokenRef::Controller(_) => {
+  pub(crate) fn from_token(token: &ControllerToken, ptb: &mut TransactionBuilder<Client>, package: ObjectId) -> Self {
+    let token_arg = ptb.apply_argument(token.id());
+    match token {
+      ControllerToken::Delegate(_) => ControllerTokenArg::Delegate(token_arg),
+      ControllerToken::Controller(_) => {
         let cap = token_arg;
-        let (token, borrow) = utils::get_controller_delegation(ptb, cap, package);
+        let (token, borrow) = get_controller_delegation(ptb, cap, package);
 
-        Ok(Self::Controller { cap, token, borrow })
+        Self::Controller { cap, token, borrow }
       }
     }
   }
 
-  fn arg(&self) -> Argument {
+  pub(crate) fn arg(&self) -> Argument {
     match self {
       Self::Controller { token, .. } => *token,
       Self::Delegate(token) => *token,
     }
   }
 
-  fn put_back(self, ptb: &mut Ptb, package_id: ObjectID) {
+  pub(crate) fn put_back(self, ptb: &mut TransactionBuilder<Client>, package_id: ObjectId) {
     if let Self::Controller { cap, token, borrow } = self {
-      utils::put_back_delegation_token(ptb, cap, token, borrow, package_id);
+      put_back_delegation_token(ptb, cap, token, borrow, package_id);
     }
   }
 }
 
-struct ProposalContext {
-  ptb: Ptb,
+pub(crate) fn get_controller_delegation(
+  ptb: &mut TransactionBuilder<Client>,
+  controller_cap: Argument,
+  package: ObjectId,
+) -> (Argument, Argument) {
+  let Argument::Result(idx) = ptb
+    .move_call(package, "controller", "borrow")
+    .arguments([controller_cap])
+    .arg()
+  else {
+    unreachable!()
+  };
+
+  (Argument::NestedResult(idx, 0), Argument::NestedResult(idx, 1))
+}
+
+pub(crate) fn put_back_delegation_token(
+  ptb: &mut TransactionBuilder<Client>,
+  controller_cap: Argument,
+  delegation_token: Argument,
+  borrow: Argument,
+  package: ObjectId,
+) {
+  ptb
+    .move_call(package, "controller", "put_back")
+    .arguments([controller_cap, delegation_token, borrow]);
+}
+
+struct ProposalContext<'a> {
+  ptb: &'a mut TransactionBuilder<Client>,
   capability: ControllerTokenArg,
   identity: Argument,
   proposal_id: Argument,
 }
 
 pub(crate) fn approve_proposal<T: MoveType>(
-  identity: OwnedObjectRef,
-  controller_cap: ControllerTokenRef,
-  proposal_id: ObjectID,
-  package: ObjectID,
-) -> Result<ProgrammableTransactionBcs, Error> {
-  let mut ptb = Ptb::new();
-  let identity = utils::owned_ref_to_shared_object_arg(identity, &mut ptb, true)
-    .map_err(|e| Error::TransactionBuildingFailed(e.to_string()))?;
-  let capability = ControllerTokenArg::from_ref(controller_cap, &mut ptb, package)?;
-  let proposal_id = ptb
-    .pure(proposal_id)
-    .map_err(|e| Error::InvalidArgument(e.to_string()))?;
+  ptb: &mut TransactionBuilder<Client>,
+  identity: ObjectId,
+  controller_cap: &ControllerToken,
+  proposal_id: ObjectId,
+  package: ObjectId,
+  network: Network,
+) {
+  let identity = ptb.apply_argument(SharedMut(identity));
+  let capability = ControllerTokenArg::from_token(controller_cap, ptb, package);
+  let proposal_id = ptb.pure(proposal_id);
 
-  ptb.programmable_move_call(
-    package,
-    ident_str!("identity").into(),
-    ident_str!("approve_proposal").into(),
-    vec![T::move_type(package)],
-    vec![identity, capability.arg(), proposal_id],
-  );
+  ptb
+    .move_call(package, "identity", "approve_proposal")
+    .arguments([identity, capability.arg(), proposal_id])
+    .type_tags(T::move_type(network));
 
-  capability.put_back(&mut ptb, package);
-
-  Ok(bcs::to_bytes(&ptb.finish())?)
+  capability.put_back(ptb, package);
 }

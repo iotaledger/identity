@@ -8,25 +8,26 @@ pub(crate) mod types;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
-use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::Argument;
-use iota_interaction::types::transaction::CallArg;
-use iota_interaction::types::transaction::Command;
-use iota_interaction::types::transaction::ProgrammableTransaction;
+use iota_sdk::graphql_client::Client;
+use iota_sdk::transaction_builder::unresolved::Argument;
+use iota_sdk::transaction_builder::unresolved::Command;
+use iota_sdk::transaction_builder::unresolved::Input;
+use iota_sdk::transaction_builder::TransactionBuilder;
+use iota_sdk::types::ProgrammableTransaction;
 
 pub(crate) fn ptb_merge_tx_with_inputs_replacement(
-  ptb: &mut Ptb,
+  ptb: &mut TransactionBuilder<Client>,
   other: ProgrammableTransaction,
-  replacements: Vec<(CallArg, Argument)>,
+  replacements: Vec<(Input, Argument)>,
 ) {
-  let mut commands = VecDeque::from(other.commands);
+  let mut commands: VecDeque<Command> = other.commands.into_iter().map(Command::from).collect();
 
   // Move inputs over whilst applying replacements.
   let mut inputs_map = HashMap::with_capacity(other.inputs.len());
   for (idx, input) in other.inputs.into_iter().enumerate() {
     let argument = replacements
       .iter()
-      .find_map(|(to_replace, replacement)| (*to_replace == input).then_some(*replacement))
+      .find_map(|(to_replace, replacement)| (*to_replace == input.clone().into()).then_some(*replacement))
       .unwrap_or_else(|| ptb.input(input).expect("an input in other is a valid input"));
 
     inputs_map.insert(idx as u16, argument);
@@ -40,7 +41,7 @@ pub(crate) fn ptb_merge_tx_with_inputs_replacement(
     return;
   };
   cmd_update_args(&mut fst_cmd, |arg| update_input_arg(arg, &inputs_map));
-  let Argument::Result(offset) = ptb.command(fst_cmd) else {
+  let Argument::Result(offset) = ptb.command(fst_cmd.into()) else {
     unreachable!("Ptb::command always returns a Result variant");
   };
 
@@ -61,11 +62,11 @@ pub(crate) fn ptb_merge_tx(ptb: &mut Ptb, other: ProgrammableTransaction) {
 }
 
 fn update_input_arg(input_arg: &mut Argument, inputs_map: &HashMap<u16, Argument>) {
-  let Argument::Input(ref idx) = input_arg else {
+  let Argument::Input(idx) = input_arg else {
     return;
   };
 
-  *input_arg = *inputs_map.get(idx).expect("all inputs have been mapped");
+  *input_arg = *inputs_map.get(&(*idx as u16)).expect("all inputs have been mapped");
 }
 
 fn update_input_and_result(arg: &mut Argument, inputs_map: &HashMap<u16, Argument>, result_offset: u16) {
@@ -83,21 +84,22 @@ where
 {
   let arguments = match cmd {
     Command::MoveCall(move_call) => move_call.arguments.iter_mut(),
-    Command::MakeMoveVec(_, args) => args.iter_mut(),
-    Command::TransferObjects(args, arg) => {
-      update_fn(arg);
-      args.iter_mut()
+    Command::TransferObjects(transfer) => {
+      update_fn(&mut transfer.address);
+      transfer.objects.iter_mut()
     }
-    Command::MergeCoins(arg, args) => {
-      update_fn(arg);
-      args.iter_mut()
+    Command::MergeCoins(merge_coins) => {
+      update_fn(&mut merge_coins.coin);
+      merge_coins.coins_to_merge.iter_mut()
     }
-    Command::SplitCoins(arg, args) => {
-      update_fn(arg);
-      args.iter_mut()
+    Command::SplitCoins(split_coins) => {
+      update_fn(&mut split_coins.coin);
+      split_coins.amounts.iter_mut()
     }
-    Command::Upgrade(_, _, _, arg) => std::slice::from_mut(arg).iter_mut(),
-    Command::Publish(_, _) => std::slice::IterMut::default(),
+    Command::Upgrade(upgrade) => std::slice::from_mut(&mut upgrade.ticket).iter_mut(),
+    Command::Publish(_) => std::slice::IterMut::default(),
+    Command::MakeMoveVector(mmv) => mmv.elements.iter_mut(),
+    _ => panic!("unsupported command variant"),
   };
 
   arguments.for_each(update_fn);
@@ -107,8 +109,8 @@ where
 mod tests {
   use super::*;
   use iota_interaction::ident_str;
-  use iota_interaction::types::base_types::IotaAddress;
-  use iota_interaction::types::base_types::ObjectID;
+  use iota_interaction::types::base_types::Address;
+  use iota_interaction::types::base_types::ObjectId;
   use iota_interaction::types::transaction::ObjectArg;
   use iota_interaction::types::IOTA_FRAMEWORK_PACKAGE_ID;
   use iota_interaction::IOTA_COIN_TYPE;
@@ -132,7 +134,7 @@ mod tests {
     let mut ptb = Ptb::new();
     let pt = {
       let (mut ptb, coin) = empty_iota_coin_ptb();
-      ptb.transfer_arg(IotaAddress::random_for_testing_only(), coin);
+      ptb.transfer_arg(Address::random_for_testing_only(), coin);
       ptb.finish()
     };
 
@@ -142,9 +144,9 @@ mod tests {
 
   #[test]
   fn merging_pt_with_replacements_works() {
-    let recipient = IotaAddress::random_for_testing_only();
+    let recipient = Address::random_for_testing_only();
     let object_to_replace = CallArg::Object(ObjectArg::SharedObject {
-      id: ObjectID::random(),
+      id: ObjectId::random(),
       initial_shared_version: 0.into(),
       mutable: true,
     });

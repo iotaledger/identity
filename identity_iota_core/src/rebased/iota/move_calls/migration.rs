@@ -1,48 +1,38 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use iota_interaction::ident_str;
-use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::ObjectRef;
-use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::ObjectArg;
-use iota_interaction::types::IOTA_FRAMEWORK_PACKAGE_ID;
-use iota_interaction::ProgrammableTransactionBcs;
-
-use crate::rebased::Error;
-
-use super::utils;
+use iota_sdk::graphql_client::Client;
+use iota_sdk::transaction_builder::Shared;
+use iota_sdk::transaction_builder::SharedMut;
+use iota_sdk::transaction_builder::TransactionBuilder;
+use iota_sdk::types::Address;
+use iota_sdk::types::ObjectId;
+use product_core::CLOCK_ADDRESS;
 
 pub(crate) fn migrate_did_output(
-  did_output: ObjectRef,
+  ptb: &mut TransactionBuilder<Client>,
+  did_output: ObjectId,
   creation_timestamp: Option<u64>,
-  migration_registry: OwnedObjectRef,
-  package: ObjectID,
-) -> anyhow::Result<ProgrammableTransactionBcs, Error> {
-  let mut ptb = Ptb::new();
-  let did_output = ptb.obj(ObjectArg::ImmOrOwnedObject(did_output))?;
-  let migration_registry = utils::owned_ref_to_shared_object_arg(migration_registry, &mut ptb, true)?;
-  let clock = utils::get_clock_ref(&mut ptb);
+  migration_registry: ObjectId,
+  package: ObjectId,
+) {
+  let did_output = ptb.apply_argument(did_output);
+  let migration_registry = ptb.apply_argument(SharedMut(migration_registry));
+  let clock = ptb.apply_argument(Shared(CLOCK_ADDRESS));
 
-  let creation_timestamp = match creation_timestamp {
-    Some(timestamp) => ptb.pure(timestamp)?,
-    _ => ptb.programmable_move_call(
-      IOTA_FRAMEWORK_PACKAGE_ID,
-      ident_str!("clock").into(),
-      ident_str!("timestamp_ms").into(),
-      vec![],
-      vec![clock],
-    ),
+  let creation_timestamp = if let Some(timestamp) = creation_timestamp {
+    ptb.pure(timestamp)
+  } else {
+    ptb
+      .move_call(Address::FRAMEWORK, "clock", "timestamp_ms")
+      .arguments(clock)
+      .arg()
   };
 
-  ptb.programmable_move_call(
-    package,
-    ident_str!("migration").into(),
-    ident_str!("migrate_alias_output").into(),
-    vec![],
-    vec![did_output, migration_registry, creation_timestamp, clock],
-  );
-
-  Ok(bcs::to_bytes(&ptb.finish())?)
+  ptb.move_call(package, "migration", "migrate_alias_output").arguments([
+    did_output,
+    migration_registry,
+    creation_timestamp,
+    clock,
+  ]);
 }

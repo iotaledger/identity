@@ -45,7 +45,7 @@ use identity_iota::did::DIDUrl;
 use identity_iota::did::DID;
 use identity_iota::document::verifiable::JwsVerificationOptions;
 use identity_iota::document::Service;
-use identity_iota::iota::rebased::client::IdentityClient;
+use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use identity_iota::iota::rebased::client::IotaKeySignature;
 use identity_iota::iota::IotaDocument;
 use identity_iota::iota_interaction::OptionalSync;
@@ -68,7 +68,7 @@ use std::thread;
 use std::time::Duration as SleepDuration;
 
 async fn create_did<K, I, S>(
-  identity_client: &IdentityClient<S>,
+  identity_client: &IdentityClientReadOnly<S>,
   storage: &Storage<K, I>,
   key_type: KeyType,
   alg: Option<JwsAlgorithm>,

@@ -3,15 +3,13 @@
 
 //! Errors that may occur for the rebased logic.
 
-use crate::iota_interaction_adapter::AdapterError;
-
 /// This type represents all possible errors that can occur in the library.
 #[derive(Debug, thiserror::Error, strum::IntoStaticStr)]
 #[non_exhaustive]
 pub enum Error {
   /// failed to connect to network.
   #[error("failed to connect to iota network node; {0:?}")]
-  Network(String, #[source] iota_interaction::error::Error),
+  Network(String, iota_sdk::graphql_client::error::Error),
   /// could not lookup an object ID.
   #[error("failed to lookup an object; {0}")]
   ObjectLookup(String),
@@ -40,8 +38,8 @@ pub enum Error {
   #[error("failed to sign transaction; {0}")]
   TransactionSigningFailed(String),
   /// Could not execute transaction.
-  #[error("transaction execution failed; {0}")]
-  TransactionExecutionFailed(#[from] iota_interaction::error::Error),
+  #[error(transparent)]
+  TransactionExecutionFailed(#[from] iota_sdk::types::ExecutionError),
   /// Transaction yielded invalid response. This usually means that the transaction was executed but did not produce
   /// the expected result.
   #[error("transaction returned an unexpected response; {0}")]
@@ -52,13 +50,6 @@ pub enum Error {
     /// The actual error coming from `apply`.
     #[source]
     source: Box<Self>,
-    /// The raw RPC response, as received by the client.
-    // Dev-comment: Neeeded to box this to avoid clippy complaining about the size of this variant.
-    #[cfg(not(target_arch = "wasm32"))]
-    response: Box<iota_interaction::rpc_types::IotaTransactionBlockResponse>,
-    /// JSON-encoded string representation for the actual execution's RPC response.
-    #[cfg(target_arch = "wasm32")]
-    response: String,
   },
   /// Config is invalid.
   #[error("invalid config: {0}")]
@@ -90,12 +81,6 @@ pub enum Error {
   /// An error caused by a foreign function interface call.
   #[error("FFI error: {0}")]
   FfiError(String),
-  /// Caused by an interaction with the IOTA protocol.
-  #[error("IOTA interaction error")]
-  IotaInteractionError(#[source] iota_interaction::interaction_error::Error),
-  /// Caused by a platform-specific adapter to interact with the IOTA protocol.
-  #[error("TsSdkError: {0}")]
-  IotaInteractionAdapterError(#[from] AdapterError),
 }
 
 /// Can be used for example like `map_err(rebased_err)` to convert other error

@@ -2,18 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::HashMap;
-use std::str::FromStr as _;
 use std::sync::LazyLock;
 
-use iota_interaction::move_types::language_storage::StructTag;
-use iota_interaction::rpc_types::EventFilter;
-use iota_interaction::rpc_types::IotaData;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::id::ID;
-use iota_interaction::IotaClientTrait;
+use iota_sdk::graphql_client::query_types::EventFilter;
+use iota_sdk::graphql_client::Direction;
+use iota_sdk::graphql_client::PaginationFilter;
+use iota_sdk::types::ObjectId;
+use iota_sdk::types::TypeTag;
 use phf::phf_map;
 use phf::Map;
-use product_common::core_client::CoreClientReadOnly;
+use product_core::network::Network;
+use product_core::product_client::ProductClient;
+use serde::Deserialize;
 use tokio::sync::RwLock;
 
 use crate::rebased::client::IdentityClientReadOnly;
@@ -28,14 +28,11 @@ static MIGRATION_REGISTRY_ON_IOTA_NETWORK: Map<&str, &str> = phf_map! {
   "6364aad5" => "0xa884c72da9971da8ec32efade0a9b05faa114770ba85f10925d0edbc3fa3edc3", // Mainnet
 };
 
-static MIGRATION_REGISTRY_ON_CUSTOM_NETWORK: LazyLock<RwLock<HashMap<String, ObjectID>>> =
+static MIGRATION_REGISTRY_ON_CUSTOM_NETWORK: LazyLock<RwLock<HashMap<String, ObjectId>>> =
   LazyLock::new(|| RwLock::new(HashMap::default()));
 
-pub(crate) async fn migration_registry_id<C>(client: &C) -> Result<ObjectID, Error>
-where
-  C: CoreClientReadOnly,
-{
-  let network_id = client.network_name().as_ref();
+pub(crate) async fn migration_registry_id(client: &impl ProductClient) -> Result<ObjectId, Error> {
+  let network_id = client.network().as_chain_id();
 
   // The registry has already been computed for this network.
   if let Some(registry) = MIGRATION_REGISTRY_ON_CUSTOM_NETWORK.read().await.get(network_id) {
@@ -47,9 +44,9 @@ where
     return Ok(registry.parse().unwrap());
   }
 
-  let package_id = identity_package_id(client)
+  let package_id = identity_package_id(client.network())
     .await
-    .map_err(|_| Error::Client(anyhow::anyhow!("unknown network {network_id}")))?;
+    .map_err(|_| Error::UnknownNetwork(client.network()))?;
   let registry_id = find_migration_registry(client, package_id).await?;
 
   // Cache registry for network.
@@ -61,7 +58,7 @@ where
   Ok(package_id)
 }
 
-pub(crate) fn set_migration_registry_id(chain_id: &str, id: ObjectID) {
+pub(crate) fn set_migration_registry_id(chain_id: &str, id: ObjectId) {
   MIGRATION_REGISTRY_ON_CUSTOM_NETWORK
     .blocking_write()
     .insert(chain_id.to_owned(), id);
@@ -72,7 +69,10 @@ pub(crate) fn set_migration_registry_id(chain_id: &str, id: ObjectID) {
 pub enum Error {
   /// An error occurred while interacting with the IOTA Client.
   #[error(transparent)]
-  Client(#[from] anyhow::Error),
+  Client(#[from] iota_sdk::graphql_client::error::Error),
+  /// Unknown network.
+  #[error("unknown network '{0}'")]
+  UnknownNetwork(Network),
   /// The MigrationRegistry object was not found.
   #[error("could not locate MigrationRegistry object: {0}")]
   NotFound(String),
@@ -83,68 +83,55 @@ pub enum Error {
 
 /// Lookup a legacy `alias_id` into the migration registry
 /// to get the ID of the corresponding migrated DID document, if any.
-pub async fn lookup(id_client: &IdentityClientReadOnly, alias_id: ObjectID) -> Result<Option<OnChainIdentity>, Error> {
+pub async fn lookup(id_client: &IdentityClientReadOnly, alias_id: ObjectId) -> Result<Option<OnChainIdentity>, Error> {
   let registry_id = migration_registry_id(id_client).await?;
-  let dynamic_field_name = serde_json::from_value(serde_json::json!({
-    "type": "0x2::object::ID",
-    "value": alias_id.to_string()
-  }))
-  .expect("valid move value");
+  let type_ = TypeTag::from_str("0x2::object::ID").expect("valid type id");
 
-  let identity_id = id_client
-    .read_api()
-    .get_dynamic_field_object(registry_id, dynamic_field_name)
-    .await
-    .map_err(|e| Error::Client(e.into()))?
-    .data
-    .map(|data| {
-      data
-        .content
-        .and_then(|content| content.try_into_move())
-        .and_then(|move_object| move_object.fields.to_json_value().get_mut("value").map(std::mem::take))
-        .and_then(|value| serde_json::from_value::<ID>(value).map(|id| id.bytes).ok())
-        .ok_or(Error::Malformed(
-          "invalid MigrationRegistry's Entry encoding".to_string(),
-        ))
-    })
-    .transpose()?;
-
-  if let Some(id) = identity_id {
-    get_identity(id_client, id).await.map_err(|e| Error::Client(e.into()))
-  } else {
-    Ok(None)
-  }
-}
-
-async fn find_migration_registry<C>(iota_client: &C, package_id: ObjectID) -> Result<ObjectID, Error>
-where
-  C: CoreClientReadOnly,
-{
-  #[derive(serde::Deserialize)]
-  struct MigrationRegistryCreatedEvent {
-    id: ObjectID,
-  }
-
-  let event_filter = EventFilter::MoveEventType(
-    StructTag::from_str(&format!("{package_id}::migration_registry::MigrationRegistryCreated")).expect("valid utf8"),
-  );
-  let mut returned_events = iota_client
-    .client_adapter()
-    .event_api()
-    .query_events(event_filter, None, Some(1), false)
-    .await
-    .map_err(|e| Error::Client(e.into()))?
-    .data;
-  let event = if !returned_events.is_empty() {
-    returned_events.swap_remove(0)
-  } else {
-    return Err(Error::NotFound(format!(
-      "No MigrationRegistryCreated event on network {}",
-      iota_client.network_name()
-    )));
+  let Some(df_value) = id_client
+    .dynamic_field(alias_id.into(), type_, alias_id)
+    .await?
+    .and_then(|df| df.value_as_json)
+  else {
+    return Ok(None);
   };
 
-  serde_json::from_value::<MigrationRegistryCreatedEvent>(event.parsed_json)
+  #[derive(Debug, Deserialize)]
+  struct Id {
+    bytes: ObjectId,
+  }
+
+  let id = serde_json::from_value::<Id>(df_value)
+    .map_err(|e| Error::Malformed(e.to_string()))?
+    .bytes;
+  get_identity(id_client, id).await
+}
+
+async fn find_migration_registry<C>(client: &impl ProductClient, package_id: ObjectId) -> Result<ObjectId, Error> {
+  #[derive(serde::Deserialize)]
+  struct MigrationRegistryCreatedEvent {
+    id: ObjectId,
+  }
+
+  let event_filter = EventFilter {
+    event_type: Some(format!("{package_id}::migration_registry::MigrationRegistryCreated")),
+    ..Default::default()
+  };
+  let pagination_filter = PaginationFilter {
+    direction: Direction::Forward,
+    ..Default::default()
+  };
+
+  let event = client
+    .events(event_filter, pagination_filter)
+    .await?
+    .data()
+    .first()
+    .ok_or_else(Error::NotFound(format!(
+      "No MigrationRegistryCreated event on network {}",
+      client.network_name()
+    )))?;
+
+  serde_json::from_value::<MigrationRegistryCreatedEvent>(event.json)
     .map(|e| e.id)
     .map_err(|e| Error::Malformed(e.to_string()))
 }

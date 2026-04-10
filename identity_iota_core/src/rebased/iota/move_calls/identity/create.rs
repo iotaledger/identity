@@ -1,51 +1,30 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use iota_interaction::ident_str;
-use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::Argument;
-use iota_interaction::types::TypeTag;
-use iota_interaction::OptionalSend;
-use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk::graphql_client::Client;
+use iota_sdk::transaction_builder::unresolved::Argument;
+use iota_sdk::transaction_builder::TransactionBuilder;
+use iota_sdk::types::Address;
+use iota_sdk::types::ObjectId;
+use iota_sdk::types::TypeTag;
 
-use crate::rebased::iota::move_calls::utils;
-use crate::rebased::Error;
-
-pub(crate) async fn new_identity(
-  did_doc: Option<&[u8]>,
-  package_id: ObjectID,
-) -> Result<ProgrammableTransactionBcs, Error> {
-  let mut ptb = Ptb::new();
-  let doc_arg = utils::ptb_pure(&mut ptb, "did_doc", did_doc)?;
-  let clock = utils::get_clock_ref(&mut ptb);
+pub(crate) fn new_identity(ptb: &mut TransactionBuilder<Client>, did_doc: Option<&[u8]>, package_id: ObjectId) {
+  let doc_arg = ptb.pure(did_doc);
+  let clock = ptb.apply_argument(ObjectId::CLOCK);
 
   // Create a new identity, sending its capability to the tx's sender.
-  let _identity_id = ptb.programmable_move_call(
-    package_id,
-    ident_str!("identity").into(),
-    ident_str!("new").into(),
-    vec![],
-    vec![doc_arg, clock],
-  );
-
-  Ok(bcs::to_bytes(&ptb.finish())?)
+  ptb.move_call(package_id, "identity", "new").arguments([doc_arg, clock]);
 }
 
-pub(crate) async fn new_with_controllers<C>(
+pub(crate) fn new_with_controllers(
+  ptb: &mut TransactionBuilder<Client>,
   did_doc: Option<&[u8]>,
-  controllers: C,
+  controllers: impl IntoIterator<Item = (Address, u64, bool)>,
   threshold: u64,
-  package_id: ObjectID,
-) -> Result<ProgrammableTransactionBcs, Error>
-where
-  C: IntoIterator<Item = (IotaAddress, u64, bool)> + OptionalSend,
-{
+  package_id: ObjectId,
+) {
   use itertools::Either;
   use itertools::Itertools as _;
-
-  let mut ptb = Ptb::new();
 
   let (controllers_that_can_delegate, controllers): (Vec<_>, Vec<_>) =
     controllers.into_iter().partition_map(|(address, vp, can_delegate)| {
@@ -56,39 +35,32 @@ where
       }
     });
 
-  let mut make_vec_map = |controllers: Vec<(IotaAddress, u64)>| -> Result<Argument, Error> {
+  let mut make_vec_map = |controllers: Vec<(Address, u64)>| -> Argument {
     let (ids, vps): (Vec<_>, Vec<_>) = controllers.into_iter().unzip();
-    let ids = ptb.pure(ids).map_err(|e| Error::InvalidArgument(e.to_string()))?;
-    let vps = ptb.pure(vps).map_err(|e| Error::InvalidArgument(e.to_string()))?;
-    Ok(ptb.programmable_move_call(
-      package_id,
-      ident_str!("utils").into(),
-      ident_str!("vec_map_from_keys_values").into(),
-      vec![TypeTag::Address, TypeTag::U64],
-      vec![ids, vps],
-    ))
+    let ids = ptb.pure(ids);
+    let vps = ptb.pure(vps);
+
+    ptb
+      .move_call(package_id, "utils", "vec_map_from_keys_values")
+      .type_tags([TypeTag::Address, TypeTag::U64])
+      .arguments([ids, vps])
+      .arg()
   };
 
-  let controllers = make_vec_map(controllers)?;
-  let controllers_that_can_delegate = make_vec_map(controllers_that_can_delegate)?;
-  let doc_arg = ptb.pure(did_doc).map_err(|e| Error::InvalidArgument(e.to_string()))?;
-  let threshold_arg = ptb.pure(threshold).map_err(|e| Error::InvalidArgument(e.to_string()))?;
-  let clock = utils::get_clock_ref(&mut ptb);
+  let controllers = make_vec_map(controllers);
+  let controllers_that_can_delegate = make_vec_map(controllers_that_can_delegate);
+  let doc_arg = ptb.pure(did_doc);
+  let threshold_arg = ptb.pure(threshold);
+  let clock = ptb.apply_argument(ObjectId::CLOCK);
 
   // Create a new identity, sending its capabilities to the specified controllers.
-  let _identity_id = ptb.programmable_move_call(
-    package_id,
-    ident_str!("identity").into(),
-    ident_str!("new_with_controllers").into(),
-    vec![],
-    vec![
+  ptb
+    .move_call(package_id, "identity", "new_with_controllers")
+    .arguments([
       doc_arg,
       controllers,
       controllers_that_can_delegate,
       threshold_arg,
       clock,
-    ],
-  );
-
-  Ok(bcs::to_bytes(&ptb.finish())?)
+    ]);
 }

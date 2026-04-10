@@ -1,63 +1,47 @@
 // Copyright 2020-2025 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use iota_interaction::ident_str;
-use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk::graphql_client::Client;
+use iota_sdk::transaction_builder::SharedMut;
+use iota_sdk::transaction_builder::TransactionBuilder;
+use iota_sdk::types::ObjectId;
 
-use crate::rebased::iota::move_calls::utils;
-use crate::rebased::iota::move_calls::ControllerTokenRef;
-use crate::rebased::rebased_err;
-use crate::rebased::Error;
+use crate::rebased::migration::ControllerToken;
 
 use super::ControllerTokenArg;
 
 pub(crate) fn propose_upgrade(
-  identity: OwnedObjectRef,
-  capability: ControllerTokenRef,
+  ptb: &mut TransactionBuilder<Client>,
+  identity: ObjectId,
+  capability: &ControllerToken,
   expiration: Option<u64>,
-  package_id: ObjectID,
-) -> Result<ProgrammableTransactionBcs, Error> {
-  let mut ptb = Ptb::new();
-  let capability = ControllerTokenArg::from_ref(capability, &mut ptb, package_id)?;
-  let identity_arg = utils::owned_ref_to_shared_object_arg(identity, &mut ptb, true)?;
-  let exp_arg = utils::option_to_move(expiration, &mut ptb, package_id).map_err(rebased_err)?;
+  package_id: ObjectId,
+) {
+  let capability = ControllerTokenArg::from_token(capability, ptb, package_id);
+  let identity_arg = ptb.apply_argument(SharedMut(identity));
+  let exp_arg = ptb.pure(expiration);
 
-  let _proposal_id = ptb.programmable_move_call(
-    package_id,
-    ident_str!("identity").into(),
-    ident_str!("propose_upgrade").into(),
-    vec![],
-    vec![identity_arg, capability.arg(), exp_arg],
-  );
+  ptb
+    .move_call(package_id, "identity", "propose_upgrade")
+    .arguments([identity_arg, capability.arg(), exp_arg]);
 
-  capability.put_back(&mut ptb, package_id);
-
-  Ok(bcs::to_bytes(&ptb.finish())?)
+  capability.put_back(ptb, package_id);
 }
 
 pub(crate) fn execute_upgrade(
-  identity: OwnedObjectRef,
-  capability: ControllerTokenRef,
-  proposal_id: ObjectID,
-  package_id: ObjectID,
-) -> Result<ProgrammableTransactionBcs, Error> {
-  let mut ptb = Ptb::new();
-  let capability = ControllerTokenArg::from_ref(capability, &mut ptb, package_id)?;
-  let proposal_id = ptb.pure(proposal_id).map_err(rebased_err)?;
-  let identity_arg = utils::owned_ref_to_shared_object_arg(identity, &mut ptb, true).map_err(rebased_err)?;
+  ptb: &mut TransactionBuilder<Client>,
+  identity: ObjectId,
+  capability: &ControllerToken,
+  proposal_id: ObjectId,
+  package_id: ObjectId,
+) {
+  let capability = ControllerTokenArg::from_token(capability, ptb, package_id)?;
+  let proposal_id = ptb.pure(proposal_id);
+  let identity_arg = ptb.apply_argument(SharedMut(identity));
 
-  let _ = ptb.programmable_move_call(
-    package_id,
-    ident_str!("identity").into(),
-    ident_str!("execute_upgrade").into(),
-    vec![],
-    vec![identity_arg, capability.arg(), proposal_id],
-  );
+  ptb
+    .move_call(package_id, "identity", "execute_upgrade")
+    .arguments([identity_arg, capability.arg(), proposal_id]);
 
   capability.put_back(&mut ptb, package_id);
-
-  Ok(bcs::to_bytes(&ptb.finish())?)
 }

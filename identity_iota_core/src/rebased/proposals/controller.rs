@@ -15,8 +15,8 @@ use iota_interaction::rpc_types::IotaObjectRef;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::Address;
+use iota_interaction::types::base_types::ObjectId;
 use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::types::TypeTag;
@@ -63,8 +63,8 @@ cfg_if::cfg_if! {
 /// a sub-owned identity.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ControllerExecution<F = ControllerIntentFn> {
-  controller_cap: ObjectID,
-  identity: IotaAddress,
+  controller_cap: ObjectId,
+  identity: Address,
   #[serde(skip, default = "Mutex::default")]
   intent_fn: Mutex<Option<F>>,
 }
@@ -87,7 +87,7 @@ where
 impl<F> ControllerExecution<F> {
   /// Creates a new [`ControllerExecution`] action, allowing a controller of `identity` to
   /// borrow `identity`'s controller cap for a transaction.
-  pub fn new(controller_cap: ObjectID, identity: &OnChainIdentity) -> Self {
+  pub fn new(controller_cap: ObjectId, identity: &OnChainIdentity) -> Self {
     Self {
       controller_cap,
       identity: identity.id().into(),
@@ -96,7 +96,7 @@ impl<F> ControllerExecution<F> {
   }
 
   /// Creates a new [ControllerExecution] action from identity's address and identity's controller cap ID.
-  pub fn new_from_identity_address(controller_cap: ObjectID, identity_address: IotaAddress) -> Self {
+  pub fn new_from_identity_address(controller_cap: ObjectId, identity_address: Address) -> Self {
     Self {
       controller_cap,
       identity: identity_address,
@@ -104,13 +104,13 @@ impl<F> ControllerExecution<F> {
     }
   }
 
-  /// Returns the [ObjectID] of the controller cap that will be borrowed.
-  pub fn controller_cap(&self) -> ObjectID {
+  /// Returns the [ObjectId] of the controller cap that will be borrowed.
+  pub fn controller_cap(&self) -> ObjectId {
     self.controller_cap
   }
 
   /// Returns the address of the identity whose controller cap will be borrowed.
-  pub fn identity_address(&self) -> IotaAddress {
+  pub fn identity_address(&self) -> Address {
     self.identity
   }
 
@@ -158,7 +158,7 @@ impl<'i, 'c, F> ProposalBuilder<'i, 'c, ControllerExecution<F>> {
 }
 
 impl MoveType for ControllerExecution {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     use std::str::FromStr;
 
     TypeTag::from_str(&format!("{package}::controller_proposal::ControllerExecution")).expect("valid move type")

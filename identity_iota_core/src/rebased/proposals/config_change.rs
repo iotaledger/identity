@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::rebased::iota::package::identity_package_id;
+use crate::rebased::iota::package::identity_package_id_blocking;
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -11,25 +12,25 @@ use std::str::FromStr as _;
 
 use crate::rebased::iota::move_calls;
 use crate::rebased::migration::ControllerToken;
-use product_common::core_client::CoreClientReadOnly;
-use product_common::transaction::transaction_builder::TransactionBuilder;
 
 use crate::rebased::migration::Proposal;
 use async_trait::async_trait;
-use iota_interaction::rpc_types::IotaTransactionBlockEffects;
-use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::collection_types::Entry;
-use iota_interaction::types::collection_types::VecMap;
-use iota_interaction::types::TypeTag;
+use iota_sdk::transaction_builder::TransactionBuilder;
+use iota_sdk::types::Address;
+use iota_sdk::types::ObjectId;
+use iota_sdk::types::TransactionEffects;
+use iota_sdk::types::TypeTag;
+use product_core::move_type::MoveType;
+use product_core::move_type::UnknownTypeForNetwork;
+use product_core::network::Network;
+use product_core::operation::OperationBuilder;
+use product_core::product_client::ProductClient;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::rebased::iota::types::Number;
 use crate::rebased::migration::OnChainIdentity;
 use crate::rebased::Error;
-use iota_interaction::MoveType;
-use iota_interaction::OptionalSync;
 
 use super::CreateProposal;
 use super::ExecuteProposal;
@@ -45,14 +46,26 @@ use super::ProposalT;
 #[serde(try_from = "Modify")]
 pub struct ConfigChange {
   threshold: Option<u64>,
-  controllers_to_add: HashMap<IotaAddress, u64>,
-  controllers_to_remove: HashSet<ObjectID>,
-  controllers_voting_power: HashMap<ObjectID, u64>,
+  controllers_to_add: HashMap<Address, u64>,
+  controllers_to_remove: HashSet<ObjectId>,
+  controllers_voting_power: HashMap<ObjectId, u64>,
 }
 
 impl MoveType for ConfigChange {
-  fn move_type(package: ObjectID) -> TypeTag {
-    TypeTag::from_str(&format!("{package}::config_proposal::Modify")).expect("valid type tag")
+  fn move_type(network: Network) -> Result<TypeTag, UnknownTypeForNetwork> {
+    let package = match network {
+      Network::Mainnet => "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08",
+      Network::Testnet => "0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555",
+      Network::Devnet => "0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103",
+      _ => identity_package_id_blocking(network)
+        .map_err(|_| UnknownTypeForNetwork::new("Modify", network))?
+        .to_string()
+        .as_str(),
+    };
+
+    format!("{package}::config_proposal::Modify")
+      .parse()
+      .expect("valid TypeTag")
   }
 }
 
@@ -64,7 +77,7 @@ impl ProposalBuilder<'_, '_, ConfigChange> {
   }
 
   /// Makes address `address` a new controller with voting power `voting_power`.
-  pub fn add_controller(mut self, address: IotaAddress, voting_power: u64) -> Self {
+  pub fn add_controller(mut self, address: Address, voting_power: u64) -> Self {
     self.deref_mut().add_controller(address, voting_power);
     self
   }
@@ -72,14 +85,14 @@ impl ProposalBuilder<'_, '_, ConfigChange> {
   /// Adds multiple controllers. See [`ProposalBuilder::add_controller`].
   pub fn add_multiple_controllers<I>(mut self, controllers: I) -> Self
   where
-    I: IntoIterator<Item = (IotaAddress, u64)>,
+    I: IntoIterator<Item = (Address, u64)>,
   {
     self.deref_mut().add_multiple_controllers(controllers);
     self
   }
 
   /// Removes an existing controller.
-  pub fn remove_controller(mut self, controller_id: ObjectID) -> Self {
+  pub fn remove_controller(mut self, controller_id: ObjectId) -> Self {
     self.deref_mut().remove_controller(controller_id);
     self
   }
@@ -87,14 +100,14 @@ impl ProposalBuilder<'_, '_, ConfigChange> {
   /// Removes many controllers.
   pub fn remove_multiple_controllers<I>(mut self, controllers: I) -> Self
   where
-    I: IntoIterator<Item = ObjectID>,
+    I: IntoIterator<Item = ObjectId>,
   {
     self.deref_mut().remove_multiple_controllers(controllers);
     self
   }
 
   /// Sets a new voting power for a controller.
-  pub fn update_controller(mut self, controller_id: ObjectID, voting_power: u64) -> Self {
+  pub fn update_controller(mut self, controller_id: ObjectId, voting_power: u64) -> Self {
     self.action.controllers_voting_power.insert(controller_id, voting_power);
     self
   }
@@ -102,7 +115,7 @@ impl ProposalBuilder<'_, '_, ConfigChange> {
   /// Updates many controllers' voting power.
   pub fn update_multiple_controllers<I>(mut self, controllers: I) -> Self
   where
-    I: IntoIterator<Item = (ObjectID, u64)>,
+    I: IntoIterator<Item = (ObjectId, u64)>,
   {
     let controllers_to_update = &mut self.action.controllers_voting_power;
     for (id, vp) in controllers {
@@ -129,30 +142,30 @@ impl ConfigChange {
     self.threshold
   }
 
-  /// Returns the controllers that will be added, as the map [IotaAddress] -> [u64].
-  pub fn controllers_to_add(&self) -> &HashMap<IotaAddress, u64> {
+  /// Returns the controllers that will be added, as the map [Address] -> [u64].
+  pub fn controllers_to_add(&self) -> &HashMap<Address, u64> {
     &self.controllers_to_add
   }
 
   /// Returns the set of controllers that will be removed.
-  pub fn controllers_to_remove(&self) -> &HashSet<ObjectID> {
+  pub fn controllers_to_remove(&self) -> &HashSet<ObjectId> {
     &self.controllers_to_remove
   }
 
-  /// Returns the controllers that will be updated as the map [IotaAddress] -> [u64].
-  pub fn controllers_to_update(&self) -> &HashMap<ObjectID, u64> {
+  /// Returns the controllers that will be updated as the map [Address] -> [u64].
+  pub fn controllers_to_update(&self) -> &HashMap<ObjectId, u64> {
     &self.controllers_voting_power
   }
 
   /// Adds a controller.
-  pub fn add_controller(&mut self, address: IotaAddress, voting_power: u64) {
+  pub fn add_controller(&mut self, address: Address, voting_power: u64) {
     self.controllers_to_add.insert(address, voting_power);
   }
 
   /// Adds many controllers.
   pub fn add_multiple_controllers<I>(&mut self, controllers: I)
   where
-    I: IntoIterator<Item = (IotaAddress, u64)>,
+    I: IntoIterator<Item = (Address, u64)>,
   {
     for (addr, vp) in controllers {
       self.add_controller(addr, vp)
@@ -160,14 +173,14 @@ impl ConfigChange {
   }
 
   /// Removes an existing controller.
-  pub fn remove_controller(&mut self, controller_id: ObjectID) {
+  pub fn remove_controller(&mut self, controller_id: ObjectId) {
     self.controllers_to_remove.insert(controller_id);
   }
 
   /// Removes many controllers.
   pub fn remove_multiple_controllers<I>(&mut self, controllers: I)
   where
-    I: IntoIterator<Item = ObjectID>,
+    I: IntoIterator<Item = ObjectId>,
   {
     for controller in controllers {
       self.remove_controller(controller)
@@ -223,16 +236,13 @@ impl ProposalT for Proposal<ConfigChange> {
   type Action = ConfigChange;
   type Output = ();
 
-  async fn create<'i, C>(
+  async fn create<'i>(
     action: Self::Action,
     expiration: Option<u64>,
     identity: &'i mut OnChainIdentity,
     controller_token: &ControllerToken,
-    client: &C,
-  ) -> Result<TransactionBuilder<CreateProposal<'i, Self::Action>>, Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
+    client: &impl ProductClient,
+  ) -> Result<OperationBuilder<CreateProposal<'i, Self::Action>>, Error> {
     // Check the validity of the proposed changes.
     action.validate(identity)?;
 
@@ -244,45 +254,38 @@ impl ProposalT for Proposal<ConfigChange> {
       )));
     }
 
-    let package = identity_package_id(client).await?;
-    let identity_ref = client
-      .get_object_ref_by_id(identity.id())
-      .await?
-      .expect("identity exists on-chain");
-    let controller_cap_ref = controller_token.controller_ref(client).await?;
+    let package = identity_package_id(client.network()).await?;
     let sender_vp = identity
       .controller_voting_power(controller_token.controller_id())
       .expect("controller exists");
     let chained_execution = sender_vp >= identity.threshold();
-    let tx = move_calls::identity::propose_config_change(
-      identity_ref,
-      controller_cap_ref,
+    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client((*client).clone());
+    move_calls::identity::propose_config_change(
+      &mut ptb,
+      identity.id(),
+      controller_token,
       expiration,
       action.threshold,
       action.controllers_to_add,
       action.controllers_to_remove,
       action.controllers_voting_power,
       package,
-    )
-    .map_err(|e| Error::TransactionBuildingFailed(e.to_string()))?;
+    );
 
-    Ok(TransactionBuilder::new(CreateProposal {
+    Ok(OperationBuilder::new(CreateProposal {
       identity,
-      ptb: bcs::from_bytes(&tx)?,
+      tx: ptb,
       chained_execution,
       _action: PhantomData,
     }))
   }
 
-  async fn into_tx<'i, C>(
+  async fn into_tx<'i>(
     self,
     identity: &'i mut OnChainIdentity,
     controller_token: &ControllerToken,
-    client: &C,
-  ) -> Result<TransactionBuilder<ExecuteProposal<'i, Self::Action>>, Error>
-  where
-    C: CoreClientReadOnly + OptionalSync,
-  {
+    client: &impl ProductClient,
+  ) -> Result<OperationBuilder<ExecuteProposal<'i, Self::Action>>, Error> {
     if identity.id() != controller_token.controller_of() {
       return Err(Error::Identity(format!(
         "token {} doesn't grant access to identity {}",
@@ -292,23 +295,19 @@ impl ProposalT for Proposal<ConfigChange> {
     }
 
     let proposal_id = self.id();
-    let identity_ref = client
-      .get_object_ref_by_id(identity.id())
-      .await?
-      .expect("identity exists on-chain");
-    let controller_cap_ref = controller_token.controller_ref(client).await?;
-    let package = identity_package_id(client).await?;
-    let tx = move_calls::identity::execute_config_change(identity_ref, controller_cap_ref, proposal_id, package)
-      .map_err(|e| Error::TransactionBuildingFailed(e.to_string()))?;
+    let package = identity_package_id(client.network()).await?;
+    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client((*client).clone());
 
-    Ok(TransactionBuilder::new(ExecuteProposal {
+    move_calls::identity::execute_config_change(&mut ptb, identity.id(), controller_token, proposal_id, package);
+
+    Ok(OperationBuilder::new(ExecuteProposal {
       identity,
-      ptb: bcs::from_bytes(&tx)?,
+      tx: ptb,
       _action: PhantomData,
     }))
   }
 
-  fn parse_tx_effects(_effects: &IotaTransactionBlockEffects) -> Result<Self::Output, Error> {
+  fn parse_tx_effects(_effects: &TransactionEffects) -> Result<Self::Output, Error> {
     Ok(())
   }
 }
@@ -316,9 +315,9 @@ impl ProposalT for Proposal<ConfigChange> {
 #[derive(Debug, Deserialize)]
 struct Modify {
   threshold: Option<Number<u64>>,
-  controllers_to_add: VecMap<IotaAddress, Number<u64>>,
-  controllers_to_remove: HashSet<ObjectID>,
-  controllers_to_update: VecMap<ObjectID, Number<u64>>,
+  controllers_to_add: VecMap<Address, Number<u64>>,
+  controllers_to_remove: HashSet<ObjectId>,
+  controllers_to_update: VecMap<ObjectId, Number<u64>>,
 }
 
 impl TryFrom<Modify> for ConfigChange {

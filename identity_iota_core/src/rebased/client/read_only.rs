@@ -1,162 +1,114 @@
 // Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::HashSet;
-use std::collections::VecDeque;
 use std::future::Future;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::str::FromStr;
 
-use async_trait::async_trait;
 use futures::stream::FuturesUnordered;
 use futures::Stream;
 use futures::StreamExt as _;
 use futures::TryStreamExt as _;
 use identity_core::common::Url;
 use identity_did::DID;
-use iota_interaction::move_types::language_storage::StructTag;
-use iota_interaction::rpc_types::IotaObjectDataFilter;
-use iota_interaction::rpc_types::IotaObjectDataOptions;
-use iota_interaction::rpc_types::IotaObjectResponseQuery;
-use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::TypeTag;
-use iota_interaction::IotaClientTrait;
-use iota_interaction::MoveType;
-use product_common::core_client::CoreClientReadOnly;
-use product_common::network_name::NetworkName;
+use iota_sdk::graphql_client::error::Error as IotaClientError;
+use iota_sdk::graphql_client::Client as IotaClient;
+use iota_sdk::types::Address;
+use iota_sdk::types::ObjectId;
+use product_core::move_type::MoveType;
+use product_core::network::Network;
+use product_core::operation::Operation;
+use product_core::product_client::ProductClient;
 
-use crate::iota_interaction_adapter::IotaClientAdapter;
-use crate::rebased::iota;
+use crate::rebased::iota::package::identity_package_registry;
 use crate::rebased::migration::get_alias;
 use crate::rebased::migration::get_identity;
 use crate::rebased::migration::lookup;
-use crate::rebased::migration::ControllerCap;
 use crate::rebased::migration::ControllerToken;
-use crate::rebased::migration::DelegationToken;
 use crate::rebased::migration::Identity;
 use crate::rebased::Error;
 use crate::IotaDID;
 use crate::IotaDocument;
 
-#[cfg(not(target_arch = "wasm32"))]
-use iota_interaction::IotaClient;
-
-#[cfg(target_arch = "wasm32")]
-use iota_interaction_ts::bindings::WasmIotaClient;
-
-/// An [`IotaClient`] enriched with identity-related
-/// functionalities.
+/// An IOTA Identity client.
 #[derive(Clone)]
 pub struct IdentityClientReadOnly {
-  iota_client: IotaClientAdapter,
-  package_history: Vec<ObjectID>,
-  network: NetworkName,
-  chain_id: String,
+  iota_client: IotaClient,
+  package_id: ObjectId,
+  network: Network,
 }
 
 impl Deref for IdentityClientReadOnly {
-  type Target = IotaClientAdapter;
+  type Target = IotaClient;
   fn deref(&self) -> &Self::Target {
     &self.iota_client
   }
 }
 
+impl ProductClient for IdentityClientReadOnly {
+  fn network(&self) -> Network {
+    self.network
+  }
+  fn package_id(&self) -> ObjectId {
+    self.package_id
+  }
+}
+
 impl IdentityClientReadOnly {
-  /// Returns `iota_identity`'s package ID.
-  /// The ID of the packages depends on the network
-  /// the client is connected to.
-  pub fn package_id(&self) -> ObjectID {
-    *self
-      .package_history
-      .last()
-      .expect("at least one package exists in history")
-  }
-
-  /// Returns the name of the network the client is
-  /// currently connected to.
-  pub const fn network(&self) -> &NetworkName {
-    &self.network
-  }
-
-  /// Returns the chain identifier for the network this client is connected to.
-  /// This method differs from [IdentityClientReadOnly::network] as it doesn't
-  /// return the human-readable network ID when available.
-  pub fn chain_id(&self) -> &str {
-    &self.chain_id
-  }
-
-  /// Attempts to create a new [`IdentityClientReadOnly`] from a given [`IotaClient`].
+  /// Creates a new [IdentityClient], with **no** signing capabilities, from the given [IotaClient].
   ///
-  /// # Failures
-  /// This function fails if the provided `iota_client` is connected to an unrecognized
-  /// network.
+  /// # Warning
+  /// Passing a `custom_package_id` is **only** required when connecting to a custom IOTA network.
   ///
-  /// # Notes
-  /// When trying to connect to a local or unofficial network, prefer using
-  /// [`IdentityClientReadOnly::new_with_pkg_id`].
-  pub async fn new(
-    #[cfg(target_arch = "wasm32")] iota_client: WasmIotaClient,
-    #[cfg(not(target_arch = "wasm32"))] iota_client: IotaClient,
-  ) -> Result<Self, Error> {
-    let client = IotaClientAdapter::new(iota_client);
-    let network = network_id(&client).await?;
-    Self::new_internal(client, network).await
-  }
-
-  async fn new_internal(iota_client: IotaClientAdapter, network: NetworkName) -> Result<Self, Error> {
-    let chain_id = network.as_ref().to_string();
-    let (network, package_history) = {
-      let package_registry = iota::package::identity_package_registry().await;
-      let package_history = package_registry
-        .history(&network)
-        .ok_or_else(|| {
-        Error::InvalidConfig(format!(
-          "no information for a published `iota_identity` package on network {network}; try to use `IdentityClientReadOnly::new_with_package_id`"
-        ))
-      })?
-      .to_vec();
-      let network = package_registry
-        .chain_alias(&chain_id)
-        .and_then(|alias| NetworkName::try_from(alias).ok())
-        .unwrap_or(network);
-
-      (network, package_history)
+  /// Relying on a custom Identity package when connected to an official IOTA network is **highly
+  /// discouraged** and is sure to result in compatibility issues when interacting with other official
+  /// IOTA Trust Framework's products.
+  ///
+  /// # Examples
+  /// ```
+  /// # use identity_iota_core::rebased::client::IdentityClient;
+  ///
+  /// # #[tokio::main(flavor = "current_thread")]
+  /// # async fn main() -> anyhow::Result<()> {
+  /// let iota_client = iota_sdk::IotaClientBuilder::default()
+  ///   .build_testnet()
+  ///   .await?;
+  /// // No package ID is required since we are connecting to an official IOTA network.
+  /// let identity_client = IdentityClient::from_iota_client(iota_client, None).await?;
+  /// # Ok(())
+  /// # }
+  /// ```
+  pub async fn from_iota_client(
+    iota_client: IotaClient,
+    custom_package_id: impl Into<Option<ObjectId>>,
+  ) -> Result<Self, FromIotaClientError> {
+    let network = get_network(&iota_client)
+      .await
+      .map_err(|e| FromIotaClientErrorKind::NetworkResolution(e.into()))?;
+    let package_id = if network.is_custom() {
+      custom_package_id
+        .into()
+        .ok_or(FromIotaClientErrorKind::MissingPackageId)?
+    } else {
+      identity_package_registry()
+        .await
+        .package_id(network.as_str())
+        .expect("package id for official networks is tracked by this library")
     };
-    Ok(IdentityClientReadOnly {
+
+    Ok(Self {
       iota_client,
-      package_history,
+      package_id,
       network,
-      chain_id,
     })
-  }
-
-  /// Attempts to create a new [`IdentityClientReadOnly`] from the given IOTA client
-  /// and the ID of the IotaIdentity package published on the network the client is
-  /// connected to.
-  pub async fn new_with_pkg_id(
-    #[cfg(target_arch = "wasm32")] iota_client: WasmIotaClient,
-    #[cfg(not(target_arch = "wasm32"))] iota_client: IotaClient,
-    package_id: ObjectID,
-  ) -> Result<Self, Error> {
-    let client = IotaClientAdapter::new(iota_client);
-    let network = network_id(&client).await?;
-
-    // Use the passed pkg_id to force it at the end of the list or create a new env.
-    {
-      let mut registry = iota::package::identity_package_registry_mut().await;
-      registry.insert_new_package_version(&network, package_id);
-    }
-
-    Self::new_internal(client, network).await
   }
 
   /// Sets the migration registry ID for the current network.
   /// # Notes
   /// This is only needed when automatic retrieval of MigrationRegistry's ID fails.
-  pub fn set_migration_registry_id(&mut self, id: ObjectID) {
-    crate::rebased::migration::set_migration_registry_id(&self.chain_id, id);
+  pub fn set_migration_registry_id(&mut self, id: ObjectId) {
+    crate::rebased::migration::set_migration_registry_id(self.network.as_chain_id(), id);
   }
 
   /// Queries an [`IotaDocument`] DID Document through its `did`.
@@ -172,7 +124,7 @@ impl IdentityClientReadOnly {
         but this client is connected to network `{client_network}`"
       )));
     }
-    let identity = self.get_identity(get_object_id_from_did(did)?).await?;
+    let identity = self.get_identity(did.to_object_id()).await?;
     let did_doc = identity.did_document(self.network())?;
 
     match identity {
@@ -184,7 +136,7 @@ impl IdentityClientReadOnly {
   }
 
   /// Resolves an [`Identity`] from its ID `object_id`.
-  pub async fn get_identity(&self, object_id: ObjectID) -> Result<Identity, Error> {
+  pub async fn get_identity(&self, object_id: ObjectId) -> Result<Identity, Error> {
     // spawn all checks
     cfg_if::cfg_if! {
       // Unfortunately the compiler runs into lifetime problems if we try to use a 'type ='
@@ -240,55 +192,16 @@ impl IdentityClientReadOnly {
   /// ```
   pub(crate) fn streamed_dids_controlled_by(
     &self,
-    address: IotaAddress,
+    address: Address,
   ) -> impl Stream<Item = Result<IotaDID, QueryControlledDidsError>> + use<'_> {
-    // Create a filter that matches objects of type ControllerCap or DelegationToken with any package ID in history.
-    let all_struct_tags = history_type_tags::<ControllerCap>(&self.package_history)
-      .chain(history_type_tags::<DelegationToken>(&self.package_history))
-      .map(IotaObjectDataFilter::StructType)
-      .collect();
-    let query = IotaObjectResponseQuery::new(
-      Some(IotaObjectDataFilter::MatchAny(all_struct_tags)),
-      Some(IotaObjectDataOptions::default().with_bcs()),
-    );
-
-    // Create a stream that returns unique DIDs.
-    async_stream::try_stream! {
-      let mut page = self
-      .client_adapter()
-      .read_api()
-      .get_owned_objects(address, Some(query.clone()), None, None)
-      .await
-      .map_err(|e| QueryControlledDidsError { address, source: e.into() })?;
-      let mut identities = HashSet::new();
-
-      loop {
-        // Return data from the front of the current page until it is exhausted.
-        let mut data = VecDeque::from(std::mem::take(&mut page.data));
-        if let Some(obj_data) = data.pop_front() {
-          let bcs_content = obj_data.move_object_bcs().expect("bcs was requested").as_slice();
-          let token = bcs::from_bytes::<ControllerCap>(bcs_content)
-            .map(ControllerToken::Controller)
-            .or_else(|_| bcs::from_bytes::<DelegationToken>(bcs_content).map(ControllerToken::Delegate))
-            .expect("object is either a valid ControllerCap or DelegationToken");
-          if !identities.insert(token.controller_of()) {
-            continue;
-          }
-          yield IotaDID::new(&token.controller_of().into_bytes(), &self.network);
-        } else if page.has_next_page && page.next_cursor.is_some() {
-          // The page's content was exhausted, but a new page can be fetched.
-          page = self
-            .client_adapter()
-            .read_api()
-            .get_owned_objects(address, Some(query.clone()), page.next_cursor, None)
-            .await
-            .map_err(|e| QueryControlledDidsError { address, source: e.into() })?;
-        } else {
-          // End of content: current page is exhausted and no more pages are available.
-          break;
-        }
-      }
-    }
+    self.objects_for_address::<ControllerToken>(address, None).map(|res| {
+      res
+        .map(|token| IotaDID::from_object_id(token.controller_of(), self.network))
+        .map_err(|e| QueryControlledDidsError {
+          address,
+          source: e.into(),
+        })
+    })
   }
 
   /// Returns the list of **all** unique DIDs the given address has access to as a controller.
@@ -320,7 +233,7 @@ impl IdentityClientReadOnly {
   /// # Ok(())
   /// # }
   /// ```
-  pub async fn dids_controlled_by(&self, address: IotaAddress) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
+  pub async fn dids_controlled_by(&self, address: Address) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
     self.streamed_dids_controlled_by(address).try_collect().await
   }
 }
@@ -331,32 +244,21 @@ impl IdentityClientReadOnly {
 #[non_exhaustive]
 pub struct QueryControlledDidsError {
   /// The queried address.
-  pub address: IotaAddress,
+  pub address: Address,
   source: Box<dyn std::error::Error + Send + Sync>,
 }
 
-/// Returns the list of all type ID for a given move type where the package ID is taken from history.
-/// # Panics
-/// If type parameter T's move_type returns a TypeTag that is not TypeTag::Struct.
-fn history_type_tags<T: MoveType>(history: &[ObjectID]) -> impl Iterator<Item = StructTag> + use<'_, T> {
-  history.iter().copied().map(|pkg| {
-    let TypeTag::Struct(tag) = T::move_type(pkg) else {
-      panic!("T must be a Move struct")
-    };
-    *tag
-  })
+async fn get_network(iota_client: &IotaClient) -> Result<Network, IotaClientError> {
+  Ok(
+    iota_client
+      .chain_id()
+      .await?
+      .parse()
+      .expect("a successful call to chain_id returns a valid Network"),
+  )
 }
 
-async fn network_id(iota_client: &IotaClientAdapter) -> Result<NetworkName, Error> {
-  let network_id = iota_client
-    .read_api()
-    .get_chain_identifier()
-    .await
-    .map_err(|e| Error::RpcError(e.to_string()))?;
-  Ok(network_id.try_into().expect("chain ID is a valid network name"))
-}
-
-async fn resolve_new(client: &IdentityClientReadOnly, object_id: ObjectID) -> Result<Option<Identity>, Error> {
+async fn resolve_new(client: &IdentityClientReadOnly, object_id: ObjectId) -> Result<Option<Identity>, Error> {
   let onchain_identity = get_identity(client, object_id).await.map_err(|err| {
     Error::DIDResolutionError(format!(
       "could not get identity document for object id {object_id}; {err}"
@@ -365,7 +267,7 @@ async fn resolve_new(client: &IdentityClientReadOnly, object_id: ObjectID) -> Re
   Ok(onchain_identity.map(Identity::FullFledged))
 }
 
-async fn resolve_migrated(client: &IdentityClientReadOnly, object_id: ObjectID) -> Result<Option<Identity>, Error> {
+async fn resolve_migrated(client: &IdentityClientReadOnly, object_id: ObjectId) -> Result<Option<Identity>, Error> {
   let onchain_identity = lookup(client, object_id).await.map_err(|err| {
     Error::DIDResolutionError(format!(
       "failed to look up object_id {object_id} in migration registry; {err}"
@@ -374,7 +276,7 @@ async fn resolve_migrated(client: &IdentityClientReadOnly, object_id: ObjectID) 
   let Some(mut onchain_identity) = onchain_identity else {
     return Ok(None);
   };
-  let queried_did = IotaDID::from_object_id(object_id, &client.network);
+  let queried_did = IotaDID::from_object_id(object_id, client.network);
   let doc = onchain_identity.did_document_mut();
   let identity_did = doc.id().clone();
   // When querying a migrated identity we obtain a DID document with DID `identity_did` and the `alsoKnownAs`
@@ -390,41 +292,34 @@ async fn resolve_migrated(client: &IdentityClientReadOnly, object_id: ObjectID) 
   Ok(Some(Identity::FullFledged(onchain_identity)))
 }
 
-async fn resolve_unmigrated(client: &IdentityClientReadOnly, object_id: ObjectID) -> Result<Option<Identity>, Error> {
+async fn resolve_unmigrated(client: &IdentityClientReadOnly, object_id: ObjectId) -> Result<Option<Identity>, Error> {
   let unmigrated_alias = get_alias(client, object_id)
     .await
     .map_err(|err| Error::DIDResolutionError(format!("could not query for object id {object_id}; {err}")))?;
   Ok(unmigrated_alias.map(Identity::Legacy))
 }
 
-/// Extracts the object ID from the given `IotaDID`.
-///
-/// # Arguments
-///
-/// * `did` - A reference to the `IotaDID` to be converted.
-pub fn get_object_id_from_did(did: &IotaDID) -> Result<ObjectID, Error> {
-  ObjectID::from_str(did.tag_str())
-    .map_err(|err| Error::DIDResolutionError(format!("could not parse object id from did {did}; {err}")))
+/// The error that results from a failed attempt at creating an [IdentityClient]
+/// from a given [IotaClient].
+#[derive(Debug, thiserror::Error)]
+#[error("failed to create an 'IdentityClient' from the given 'IotaClient'")]
+#[non_exhaustive]
+pub struct FromIotaClientError {
+  /// Type of failure for this error.
+  #[source]
+  pub kind: FromIotaClientErrorKind,
 }
 
-#[cfg_attr(feature = "send-sync", async_trait)]
-#[cfg_attr(not(feature = "send-sync"), async_trait(?Send))]
-impl CoreClientReadOnly for IdentityClientReadOnly {
-  fn package_id(&self) -> ObjectID {
-    self.package_id()
-  }
-
-  fn network_name(&self) -> &NetworkName {
-    &self.network
-  }
-
-  fn client_adapter(&self) -> &IotaClientAdapter {
-    &self.iota_client
-  }
-
-  fn package_history(&self) -> Vec<ObjectID> {
-    self.package_history.clone()
-  }
+/// Types of failure for [FromIotaClientError].
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum FromIotaClientErrorKind {
+  /// A package ID is required, but was not supplied.
+  #[error("an IOTA Identity package ID must be supplied when connecting to an unofficial IOTA network")]
+  MissingPackageId,
+  /// Network ID resolution through an RPC call failed.
+  #[error("failed to resolve the network the given client is connected to")]
+  NetworkResolution(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
 #[cfg(test)]
@@ -433,13 +328,14 @@ mod tests {
 
   use super::IdentityClientReadOnly;
   use iota_sdk::IotaClientBuilder;
+  use product_core::network::Network;
 
   #[tokio::test]
   async fn resolution_of_a_did_for_a_different_network_fails() -> anyhow::Result<()> {
     let iota_client = IotaClientBuilder::default().build_testnet().await?;
     let identity_client = IdentityClientReadOnly::new(iota_client).await?;
 
-    let did = IotaDID::new(&[1; 32], &"unknown".parse().unwrap());
+    let did = IotaDID::new(&[1; 32], Network::Devnet);
     let error = identity_client.resolve_did(&did).await.unwrap_err();
 
     assert!(matches!(error, crate::rebased::Error::DIDResolutionError(_)));

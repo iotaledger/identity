@@ -34,7 +34,7 @@ use identity_iota::storage::JwpDocumentExt;
 use identity_iota::storage::KeyType;
 use identity_iota::verification::MethodScope;
 
-use identity_iota::iota::rebased::client::IdentityClient;
+use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use identity_iota::iota::rebased::client::IotaKeySignature;
 use identity_storage::Storage;
 use jsonprooftoken::jpa::algs::ProofAlgorithm;
@@ -43,7 +43,7 @@ use secret_storage::Signer;
 
 // Creates a DID with a JWP verification method.
 pub async fn create_did<K, I, S>(
-  identity_client: &IdentityClient<S>,
+  identity_client: &IdentityClientReadOnly<S>,
   storage: &Storage<K, I>,
   key_type: KeyType,
   alg: ProofAlgorithm,

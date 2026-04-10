@@ -6,7 +6,7 @@ use examples::get_memstorage;
 use examples::TEST_GAS_BUDGET;
 
 use anyhow::Context as _;
-use identity_iota::iota::rebased::client::IdentityClient;
+use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use identity_iota::iota::IotaDocument;
 use identity_iota::iota_interaction::IotaClientTrait as _;
 use identity_iota::iota_interaction::IotaKeySignature;
@@ -70,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
   Ok(())
 }
 
-async fn bob_sponsor_fn<S>(mut tx_data: MutGasDataRef<'_>, client: &IdentityClient<S>) -> anyhow::Result<Signature>
+async fn bob_sponsor_fn<S>(mut tx_data: MutGasDataRef<'_>, client: &IdentityClientReadOnly<S>) -> anyhow::Result<Signature>
 where
   S: Signer<IotaKeySignature> + Sync,
 {

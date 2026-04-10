@@ -3,15 +3,15 @@
 
 mod number;
 
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::id::UID;
+use iota_sdk::types::ObjectId;
 pub(crate) use number::*;
+use product_core::move_repr::Uid;
 use serde::Deserialize;
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct Bag {
-  pub id: UID,
+  pub id: Uid,
   #[serde(deserialize_with = "serde_aux::field_attributes::deserialize_number_from_string")]
   pub size: u64,
 }
@@ -19,7 +19,7 @@ pub(crate) struct Bag {
 impl Default for Bag {
   fn default() -> Self {
     Self {
-      id: UID::new(ObjectID::ZERO),
+      id: Uid::new(ObjectId::ZERO),
       size: 0,
     }
   }

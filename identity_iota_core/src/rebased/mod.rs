@@ -17,7 +17,3 @@ pub mod utils;
 
 pub use assets::*;
 pub use error::*;
-
-/// Integration with IOTA's Keytool.
-#[cfg(feature = "keytool")]
-pub use iota_interaction::keytool;

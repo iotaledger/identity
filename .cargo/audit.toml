@@ -1,5 +1,6 @@
 [advisories]
 ignore = [
+  "RUSTSEC-2026-0099", # Issue with an old dependency used by the legacy SDK.
   "RUSTSEC-2024-0437", # protobuf uncontrolled recursion https://github.com/iotaledger/iota/issues/5861
   "RUSTSEC-2021-0127", # serde_cbor is unmaintained https://github.com/iotaledger/identity/issues/518
   "RUSTSEC-2023-0052", # temporary ignore until fix is provided

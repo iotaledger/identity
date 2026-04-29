@@ -298,12 +298,10 @@ impl SdJwtVc {
         )));
       }
       match requirement {
-        RequiredKeyBinding::Jwk(json_jwk) => {
-          if jwk.to_json_value().unwrap().as_object().unwrap() != json_jwk {
-            return Err(Error::Validation(anyhow!(
-              "key used for signing KB-JWT does not match the key required in this SD-JWT"
-            )));
-          }
+        RequiredKeyBinding::Jwk(json_jwk) if jwk.to_json_value().unwrap().as_object().unwrap() != json_jwk => {
+          return Err(Error::Validation(anyhow!(
+            "key used for signing KB-JWT does not match the key required in this SD-JWT"
+          )));
         }
         RequiredKeyBinding::Kid(kid) | RequiredKeyBinding::Jwu { kid, .. } => jwk
           .kid()

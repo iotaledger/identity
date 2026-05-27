@@ -19,9 +19,9 @@ use async_trait::async_trait;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::collection_types::Entry;
 use iota_interaction::types::collection_types::VecMap;
-use iota_interaction::types::base_types::TypeTag;
 use serde::Deserialize;
 use serde::Serialize;
 

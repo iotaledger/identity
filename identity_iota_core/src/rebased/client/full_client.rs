@@ -20,13 +20,13 @@ use crate::StateMetadataDocument;
 use crate::StateMetadataEncoding;
 use async_trait::async_trait;
 use identity_verification::jwk::Jwk;
-use iota_interaction::types::base_types::StructTag;
 use iota_interaction::rpc_types::IotaObjectData;
 use iota_interaction::rpc_types::IotaObjectDataFilter;
 use iota_interaction::rpc_types::IotaObjectResponseQuery;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectRef;
+use iota_interaction::types::base_types::StructTag;
 use iota_interaction::types::crypto::PublicKey;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 #[cfg(not(target_arch = "wasm32"))]

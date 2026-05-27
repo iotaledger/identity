@@ -25,9 +25,9 @@ use identity_storage::JwsSignatureOptions;
 use identity_verification::VerificationMethod;
 use iota_interaction::IotaClientTrait;
 use iota_interaction::MoveType as _;
+use iota_sdk::types::base_types::StructTag;
 use iota_sdk::types::base_types::TypeTag;
 use itertools::Itertools as _;
-use iota_sdk::types::base_types::StructTag;
 use product_common::core_client::CoreClient;
 use secret_storage::Signer as _;
 

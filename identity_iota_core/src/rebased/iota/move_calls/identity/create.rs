@@ -4,9 +4,9 @@
 use iota_interaction::ident_str;
 use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::Argument;
-use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::OptionalSend;
 use iota_interaction::ProgrammableTransactionBcs;
 

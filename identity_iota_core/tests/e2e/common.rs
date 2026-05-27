@@ -43,6 +43,7 @@ use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
 
 use iota_interaction::IotaClientTrait;
+use iota_sdk::types::base_types::StructTag;
 use iota_sdk::types::base_types::TypeTag;
 use iota_sdk::types::IOTA_FRAMEWORK_PACKAGE_ID;
 use iota_sdk::IotaClient;
@@ -50,7 +51,6 @@ use iota_sdk::IotaClientBuilder;
 use iota_sdk::IOTA_LOCAL_NETWORK_URL;
 use lazy_static::lazy_static;
 use move_core_types::ident_str;
-use iota_sdk::types::base_types::StructTag;
 use product_common::transaction::transaction_builder::Transaction;
 use product_common::transaction::transaction_builder::TransactionBuilder;
 use secret_storage::Signer;

@@ -8,9 +8,10 @@ use iota_interaction::rpc_types::IotaObjectData;
 use iota_interaction::rpc_types::OwnedObjectRef;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::base_types::ObjectType;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::Argument;
-use iota_interaction::types::transaction::ObjectArg;
+use iota_interaction::types::transaction::CallArg;
 use iota_interaction::MoveType as _;
 use iota_interaction::ProgrammableTransactionBcs;
 use itertools::Itertools as _;
@@ -38,8 +39,8 @@ fn borrow_proposal_impl(
 
   let proposal_id = ptb.programmable_move_call(
     package_id,
-    ident_str!("identity").into(),
-    ident_str!("propose_borrow").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("propose_borrow").as_str().into(),
     vec![],
     vec![identity_arg, capability.arg(), exp_arg, objects_arg],
   );
@@ -67,8 +68,8 @@ where
   // Get the proposal's action as argument.
   let borrow_action = ptb.programmable_move_call(
     package,
-    ident_str!("identity").into(),
-    ident_str!("execute_proposal").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("execute_proposal").as_str().into(),
     vec![BorrowAction::move_type(package)],
     vec![identity, delegation_token, proposal_id],
   );
@@ -81,17 +82,17 @@ where
       let ObjectType::Struct(obj_type) = obj_data.object_type()? else {
         unreachable!("move packages cannot be borrowed to begin with");
       };
-      let recv_obj = ptb.obj(ObjectArg::Receiving(obj_ref))?;
+      let recv_obj = ptb.obj(CallArg::Receiving(obj_ref))?;
 
       let obj_arg = ptb.programmable_move_call(
         package,
-        ident_str!("identity").into(),
-        ident_str!("execute_borrow").into(),
-        vec![obj_type.into()],
+        ident_str!("identity").as_str().into(),
+        ident_str!("execute_borrow").as_str().into(),
+        vec![TypeTag::Struct(Box::new(obj_type.into()))],
         vec![identity, borrow_action, recv_obj],
       );
 
-      Ok((obj_ref.0, (obj_arg, obj_data)))
+      Ok((obj_ref.object_id, (obj_arg, obj_data)))
     })
     .collect::<anyhow::Result<_>>()?;
 
@@ -105,9 +106,9 @@ where
     };
     ptb.programmable_move_call(
       package,
-      ident_str!("borrow_proposal").into(),
-      ident_str!("put_back").into(),
-      vec![obj_type.into()],
+      ident_str!("borrow_proposal").as_str().into(),
+      ident_str!("put_back").as_str().into(),
+      vec![TypeTag::Struct(Box::new(obj_type.into()))],
       vec![borrow_action, obj_arg],
     );
   });
@@ -115,8 +116,8 @@ where
   // Consume the now empty borrow_action
   ptb.programmable_move_call(
     package,
-    ident_str!("borrow_proposal").into(),
-    ident_str!("conclude_borrow").into(),
+    ident_str!("borrow_proposal").as_str().into(),
+    ident_str!("conclude_borrow").as_str().into(),
     vec![],
     vec![borrow_action],
   );

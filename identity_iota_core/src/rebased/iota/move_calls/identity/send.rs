@@ -8,8 +8,8 @@ use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::Argument;
-use iota_interaction::types::transaction::ObjectArg;
-use iota_interaction::types::TypeTag;
+use iota_interaction::types::transaction::CallArg;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::MoveType as _;
 use iota_interaction::ProgrammableTransactionBcs;
 
@@ -99,8 +99,8 @@ fn send_proposal_impl(
 
   let proposal_id = ptb.programmable_move_call(
     package_id,
-    ident_str!("identity").into(),
-    ident_str!("propose_send").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("propose_send").as_str().into(),
     vec![],
     vec![identity_arg, capability.arg(), exp_arg, objects, recipients],
   );
@@ -124,8 +124,8 @@ pub(crate) fn execute_send_impl(
   // Get the proposal's action as argument.
   let send_action = ptb.programmable_move_call(
     package,
-    ident_str!("identity").into(),
-    ident_str!("execute_proposal").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("execute_proposal").as_str().into(),
     vec![SendAction::move_type(package)],
     vec![identity, delegation_token, proposal_id],
   );
@@ -133,12 +133,12 @@ pub(crate) fn execute_send_impl(
   // Send each object in this send action.
   // Traversing the map in reverse reduces the number of operations on the move side.
   for (obj, obj_type) in objects.into_iter().rev() {
-    let recv_obj = ptb.obj(ObjectArg::Receiving(obj))?;
+    let recv_obj = ptb.obj(CallArg::Receiving(obj))?;
 
     ptb.programmable_move_call(
       package,
-      ident_str!("identity").into(),
-      ident_str!("execute_send").into(),
+      ident_str!("identity").as_str().into(),
+      ident_str!("execute_send").as_str().into(),
       vec![obj_type],
       vec![identity, send_action, recv_obj],
     );
@@ -147,8 +147,8 @@ pub(crate) fn execute_send_impl(
   // Consume the now empty send_action
   ptb.programmable_move_call(
     package,
-    ident_str!("transfer_proposal").into(),
-    ident_str!("complete_send").into(),
+    ident_str!("transfer_proposal").as_str().into(),
+    ident_str!("complete_send").as_str().into(),
     vec![],
     vec![send_action],
   );

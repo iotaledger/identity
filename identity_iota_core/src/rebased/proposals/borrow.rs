@@ -27,7 +27,7 @@ use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::ProgrammableTransaction;
-use iota_interaction::types::TypeTag;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::MoveType;
 use iota_interaction::OptionalSync;
 use serde::Serialize;

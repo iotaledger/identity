@@ -6,7 +6,7 @@ use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::Argument;
-use iota_interaction::types::TypeTag;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::OptionalSend;
 use iota_interaction::ProgrammableTransactionBcs;
 
@@ -24,8 +24,8 @@ pub(crate) async fn new_identity(
   // Create a new identity, sending its capability to the tx's sender.
   let _identity_id = ptb.programmable_move_call(
     package_id,
-    ident_str!("identity").into(),
-    ident_str!("new").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("new").as_str().into(),
     vec![],
     vec![doc_arg, clock],
   );
@@ -62,8 +62,8 @@ where
     let vps = ptb.pure(vps).map_err(|e| Error::InvalidArgument(e.to_string()))?;
     Ok(ptb.programmable_move_call(
       package_id,
-      ident_str!("utils").into(),
-      ident_str!("vec_map_from_keys_values").into(),
+      ident_str!("utils").as_str().into(),
+      ident_str!("vec_map_from_keys_values").as_str().into(),
       vec![TypeTag::Address, TypeTag::U64],
       vec![ids, vps],
     ))
@@ -78,8 +78,8 @@ where
   // Create a new identity, sending its capabilities to the specified controllers.
   let _identity_id = ptb.programmable_move_call(
     package_id,
-    ident_str!("identity").into(),
-    ident_str!("new_with_controllers").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("new_with_controllers").as_str().into(),
     vec![],
     vec![
       doc_arg,

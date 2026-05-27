@@ -12,7 +12,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 
 use iota_interaction::ident_str;
-use iota_interaction::move_types::language_storage::StructTag;
+use iota_interaction::types::base_types::StructTag;
 use iota_interaction::rpc_types::IotaData as _;
 use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaObjectDataOptions;
@@ -25,7 +25,7 @@ use iota_interaction::types::base_types::SequenceNumber;
 use iota_interaction::types::id::UID;
 use iota_interaction::types::object::Owner;
 use iota_interaction::types::transaction::ProgrammableTransaction;
-use iota_interaction::types::TypeTag;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::IotaClientTrait;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;
 use iota_interaction::MoveType;
@@ -186,12 +186,12 @@ pub struct AuthenticatedAssetBuilder<T> {
 
 impl<T: MoveType> MoveType for AuthenticatedAsset<T> {
   fn move_type(package: ObjectID) -> TypeTag {
-    TypeTag::Struct(Box::new(StructTag {
-      address: package.into(),
-      module: ident_str!("asset").into(),
-      name: ident_str!("AuthenticatedAsset").into(),
-      type_params: vec![T::move_type(package)],
-    }))
+    TypeTag::Struct(Box::new(StructTag::new(
+      package,
+      ident_str!("asset").as_str(),
+      ident_str!("AuthenticatedAsset").as_str(),
+      vec![T::move_type(package)],
+    )))
   }
 }
 
@@ -264,12 +264,12 @@ pub struct TransferProposal {
 
 impl MoveType for TransferProposal {
   fn move_type(package: ObjectID) -> TypeTag {
-    TypeTag::Struct(Box::new(StructTag {
-      address: package.into(),
-      module: ident_str!("asset").into(),
-      name: ident_str!("TransferProposal").into(),
-      type_params: vec![],
-    }))
+    TypeTag::Struct(Box::new(StructTag::new(
+      package,
+      ident_str!("asset").as_str(),
+      ident_str!("TransferProposal").as_str(),
+      vec![],
+    )))
   }
 }
 
@@ -334,10 +334,10 @@ impl TransferProposal {
       .and_then(|data| data.type_.context("missing type"))
       .and_then(StructTag::try_from)
       .and_then(|mut tag| {
-        if tag.type_params.is_empty() {
+        if tag.type_params().is_empty() {
           anyhow::bail!("no type parameter")
         } else {
-          Ok(tag.type_params.remove(0))
+          Ok(tag.type_params_mut().remove(0))
         }
       })?;
 
@@ -353,7 +353,7 @@ impl TransferProposal {
       .owner()
       .context("missing owner information")?;
     match owner {
-      Owner::Shared { initial_shared_version } => Ok(initial_shared_version),
+      Owner::Shared(initial_shared_version) => Ok(initial_shared_version),
       _ => anyhow::bail!("`TransferProposal` is not a shared object"),
     }
   }
@@ -583,7 +583,7 @@ where
       .created()
       .iter()
       .enumerate()
-      .filter(|(_, obj)| obj.owner.is_address_owned())
+      .filter(|(_, obj)| matches!(obj.owner, Owner::Address(_)))
       .map(|(i, obj)| (i, obj.object_id()));
 
     let is_target_asset = |asset: &AuthenticatedAsset<T>| -> bool {

@@ -6,7 +6,7 @@ use iota_interaction::rpc_types::OwnedObjectRef;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::ObjectArg;
+use iota_interaction::types::transaction::CallArg;
 use iota_interaction::types::IOTA_FRAMEWORK_PACKAGE_ID;
 use iota_interaction::ProgrammableTransactionBcs;
 
@@ -21,7 +21,7 @@ pub(crate) fn migrate_did_output(
   package: ObjectID,
 ) -> anyhow::Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
-  let did_output = ptb.obj(ObjectArg::ImmOrOwnedObject(did_output))?;
+  let did_output = ptb.obj(CallArg::ImmutableOrOwned(did_output))?;
   let migration_registry = utils::owned_ref_to_shared_object_arg(migration_registry, &mut ptb, true)?;
   let clock = utils::get_clock_ref(&mut ptb);
 
@@ -29,8 +29,8 @@ pub(crate) fn migrate_did_output(
     Some(timestamp) => ptb.pure(timestamp)?,
     _ => ptb.programmable_move_call(
       IOTA_FRAMEWORK_PACKAGE_ID,
-      ident_str!("clock").into(),
-      ident_str!("timestamp_ms").into(),
+      ident_str!("clock").as_str().into(),
+      ident_str!("timestamp_ms").as_str().into(),
       vec![],
       vec![clock],
     ),
@@ -38,8 +38,8 @@ pub(crate) fn migrate_did_output(
 
   ptb.programmable_move_call(
     package,
-    ident_str!("migration").into(),
-    ident_str!("migrate_alias_output").into(),
+    ident_str!("migration").as_str().into(),
+    ident_str!("migrate_alias_output").as_str().into(),
     vec![],
     vec![did_output, migration_registry, creation_timestamp, clock],
   );

@@ -18,7 +18,7 @@ use crate::rebased::Error;
 
 macro_rules! object_id {
   ($id:literal) => {
-    ObjectID::from_hex_literal($id).unwrap()
+    ObjectID::from_prefixed_hex($id).unwrap()
   };
 }
 

@@ -12,9 +12,9 @@ use iota_interaction::types::base_types::SequenceNumber;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::Command;
-use iota_interaction::types::transaction::ObjectArg;
-use iota_interaction::types::transaction::ProgrammableMoveCall;
-use iota_interaction::types::TypeTag;
+use iota_interaction::types::transaction::CallArg;
+use iota_interaction::types::transaction::SharedObjectRef;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::MoveType;
 use iota_interaction::ProgrammableTransactionBcs;
 use iota_interaction::TypedValue;
@@ -29,13 +29,13 @@ fn try_to_argument<T: MoveType + Serialize>(
       let values = ptb
         .pure(value.data())
         .map_err(|e| Error::InvalidArgument(e.to_string()))?;
-      Ok(ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+      Ok(ptb.command(Command::new_move_call(
         package,
-        module: "public_vc".to_string(),
-        function: "new".to_string(),
-        type_arguments: vec![],
-        arguments: vec![values],
-      }))))
+        ident_str!("public_vc").as_str().into(),
+        ident_str!("new").as_str().into(),
+        vec![],
+        vec![values],
+      )))
     }
     TypedValue::Other(value) => ptb.pure(value).map_err(|e| Error::InvalidArgument(e.to_string())),
   }
@@ -56,13 +56,13 @@ pub(crate) fn new_asset<T: Serialize + MoveType>(
     .map_err(|e| Error::InvalidArgument(e.to_string()))?;
   let deletable = ptb.pure(deletable).map_err(|e| Error::InvalidArgument(e.to_string()))?;
 
-  ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+  ptb.command(Command::new_move_call(
     package,
-    module: "asset".to_string(),
-    function: "new_with_config".to_string(),
-    type_arguments: vec![T::move_type(package).into()],
-    arguments: vec![inner, mutable, transferable, deletable],
-  })));
+    ident_str!("asset").as_str().into(),
+    ident_str!("new_with_config").as_str().into(),
+    vec![T::move_type(package)],
+    vec![inner, mutable, transferable, deletable],
+  ));
 
   Ok(bcs::to_bytes(&ptb.finish())?)
 }
@@ -74,13 +74,13 @@ where
   let mut ptb = ProgrammableTransactionBuilder::new();
 
   let asset = ptb
-    .obj(ObjectArg::ImmOrOwnedObject(asset))
+    .obj(CallArg::ImmutableOrOwned(asset))
     .map_err(|e| Error::InvalidArgument(e.to_string()))?;
 
-  ptb.command(Command::move_call(
+  ptb.command(Command::new_move_call(
     package,
-    ident_str!("asset").into(),
-    ident_str!("delete").into(),
+    ident_str!("asset").as_str().into(),
+    ident_str!("delete").as_str().into(),
     vec![T::move_type(package)],
     vec![asset],
   ));
@@ -95,14 +95,14 @@ pub(crate) fn transfer<T: MoveType>(
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = ProgrammableTransactionBuilder::new();
   let asset = ptb
-    .obj(ObjectArg::ImmOrOwnedObject(asset))
+    .obj(CallArg::ImmutableOrOwned(asset))
     .map_err(|e| Error::InvalidArgument(e.to_string()))?;
   let recipient = ptb.pure(recipient).map_err(|e| Error::InvalidArgument(e.to_string()))?;
 
-  ptb.command(Command::move_call(
+  ptb.command(Command::new_move_call(
     package,
-    ident_str!("asset").into(),
-    ident_str!("transfer").into(),
+    ident_str!("asset").as_str().into(),
+    ident_str!("transfer").as_str().into(),
     vec![T::move_type(package)],
     vec![asset, recipient],
   ));
@@ -120,23 +120,23 @@ pub(crate) fn make_tx(
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = ProgrammableTransactionBuilder::new();
   let proposal = ptb
-    .obj(ObjectArg::SharedObject {
-      id: proposal.0,
+    .obj(CallArg::Shared(SharedObjectRef {
+      object_id: proposal.0,
       initial_shared_version: proposal.1,
       mutable: true,
-    })
+    }))
     .map_err(|e| Error::InvalidArgument(e.to_string()))?;
   let cap = ptb
-    .obj(ObjectArg::ImmOrOwnedObject(cap))
+    .obj(CallArg::ImmutableOrOwned(cap))
     .map_err(|e| Error::InvalidArgument(e.to_string()))?;
   let asset = ptb
-    .obj(ObjectArg::Receiving(asset))
+    .obj(CallArg::Receiving(asset))
     .map_err(|e| Error::InvalidArgument(e.to_string()))?;
 
-  ptb.command(Command::move_call(
+  ptb.command(Command::new_move_call(
     package,
-    ident_str!("asset").into(),
-    ident_str!(function_name).into(),
+    ident_str!("asset").as_str().into(),
+    ident_str!(function_name).as_str().into(),
     vec![asset_type_param],
     vec![proposal, cap, asset],
   ));
@@ -182,16 +182,16 @@ where
   let mut ptb = ProgrammableTransactionBuilder::new();
 
   let asset = ptb
-    .obj(ObjectArg::ImmOrOwnedObject(asset))
+    .obj(CallArg::ImmutableOrOwned(asset))
     .map_err(|e| Error::InvalidArgument(e.to_string()))?;
   let new_content = ptb
     .pure(new_content)
     .map_err(|e| Error::InvalidArgument(e.to_string()))?;
 
-  ptb.command(Command::move_call(
+  ptb.command(Command::new_move_call(
     package,
-    ident_str!("asset").into(),
-    ident_str!("set_content").into(),
+    ident_str!("asset").as_str().into(),
+    ident_str!("set_content").as_str().into(),
     vec![T::move_type(package)],
     vec![asset, new_content],
   ));

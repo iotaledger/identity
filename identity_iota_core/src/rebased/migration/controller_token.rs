@@ -10,7 +10,7 @@ use crate::rebased::iota::move_calls::ControllerTokenRef;
 use crate::rebased::iota::package::identity_package_id;
 use crate::rebased::Error;
 use async_trait::async_trait;
-use iota_interaction::move_types::language_storage::TypeTag;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI;
@@ -124,7 +124,7 @@ impl ControllerToken {
       .await?
       .expect("token exists on-chain")
       .reference
-      .to_object_ref();
+      ;
 
     Ok(match self {
       Self::Controller(_) => ControllerTokenRef::Controller(obj_ref),
@@ -430,7 +430,7 @@ impl Transaction for DelegateToken {
       .await?
       .expect("ControllerCap exists on-chain")
       .reference
-      .to_object_ref();
+      ;
 
     let ptb_bcs =
       move_calls::identity::delegate_controller_cap(controller_cap_ref, self.recipient, self.permissions.0, package)
@@ -450,7 +450,7 @@ impl Transaction for DelegateToken {
       .created()
       .iter()
       .enumerate()
-      .filter(|(_, elem)| matches!(elem.owner, Owner::AddressOwner(addr) if addr == self.recipient))
+      .filter(|(_, elem)| matches!(elem.owner, Owner::Address(addr) if addr == self.recipient))
       .map(|(i, obj)| (i, obj.object_id()));
 
     let is_target_token = |delegation_token: &DelegationToken| -> bool {
@@ -562,7 +562,7 @@ impl Transaction for DelegationTokenRevocation {
       .await?
       .expect("controller_cap exists on-chain")
       .reference
-      .to_object_ref();
+      ;
 
     let tx_bytes = if self.is_revocation() {
       move_calls::identity::revoke_delegation_token(identity_ref, controller_cap_ref, self.delegation_token_id, package)
@@ -645,7 +645,7 @@ impl Transaction for DeleteDelegationToken {
         ))
       })?
       .reference
-      .to_object_ref();
+      ;
 
     let tx_bytes = move_calls::identity::destroy_delegation_token(identity_ref, delegation_token_ref, package).await?;
 

@@ -43,14 +43,14 @@ use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
 
 use iota_interaction::IotaClientTrait;
-use iota_sdk::types::TypeTag;
+use iota_sdk::types::base_types::TypeTag;
 use iota_sdk::types::IOTA_FRAMEWORK_PACKAGE_ID;
 use iota_sdk::IotaClient;
 use iota_sdk::IotaClientBuilder;
 use iota_sdk::IOTA_LOCAL_NETWORK_URL;
 use lazy_static::lazy_static;
 use move_core_types::ident_str;
-use move_core_types::language_storage::StructTag;
+use iota_sdk::types::base_types::StructTag;
 use product_common::transaction::transaction_builder::Transaction;
 use product_common::transaction::transaction_builder::TransactionBuilder;
 use secret_storage::Signer;
@@ -416,8 +416,8 @@ impl Transaction for GetTestCoin {
     let mut ptb = ProgrammableTransactionBuilder::new();
     let coin = ptb.programmable_move_call(
       IOTA_FRAMEWORK_PACKAGE_ID,
-      ident_str!("coin").into(),
-      ident_str!("zero").into(),
+      ident_str!("coin").as_str().into(),
+      ident_str!("zero").as_str().into(),
       vec![TypeTag::Bool],
       vec![],
     );
@@ -433,7 +433,7 @@ impl Transaction for GetTestCoin {
       .created()
       .iter()
       .enumerate()
-      .filter(|(_, obj)| matches!(obj.owner, Owner::AddressOwner(address) if address == self.recipient))
+      .filter(|(_, obj)| matches!(obj.owner, Owner::Address(address) if address == self.recipient))
       .map(|(i, obj_ref)| (i, obj_ref.object_id()));
 
     let is_target_coin =

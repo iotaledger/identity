@@ -12,7 +12,7 @@ use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::id::UID;
 use iota_interaction::types::transaction::ProgrammableTransaction;
-use iota_interaction::types::TypeTag;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::STARDUST_PACKAGE_ID;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;
 use iota_interaction::OptionalSync;
@@ -113,7 +113,8 @@ impl MigrateLegacyIdentity {
       .map_err(|e| Error::RpcError(e.to_string()))?
       .owner()
       .expect("owner was requested")
-      .get_owner_address()
+      .address_or_object()
+      .copied()
       .expect("alias is a dynamic field")
       .into();
     let alias_output_id = client
@@ -124,7 +125,8 @@ impl MigrateLegacyIdentity {
       .map_err(|e| Error::RpcError(e.to_string()))?
       .owner()
       .expect("owner was requested")
-      .get_owner_address()
+      .address_or_object()
+      .copied()
       .expect("alias is owned by an alias_output")
       .into();
     // Get alias_output's ref.

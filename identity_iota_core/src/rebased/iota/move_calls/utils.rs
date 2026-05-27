@@ -4,11 +4,11 @@
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
 use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::STD_OPTION_MODULE_NAME;
 use iota_interaction::types::object::Owner;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::Argument;
-use iota_interaction::types::transaction::ObjectArg;
+use iota_interaction::types::transaction::CallArg;
+use iota_interaction::types::transaction::SharedObjectRef;
 use iota_interaction::types::IOTA_CLOCK_OBJECT_ID;
 use iota_interaction::types::IOTA_CLOCK_OBJECT_SHARED_VERSION;
 use iota_interaction::types::MOVE_STDLIB_PACKAGE_ID;
@@ -20,11 +20,11 @@ use crate::rebased::Error;
 /// Adds a reference to the on-chain clock to `ptb`'s arguments.
 pub(crate) fn get_clock_ref(ptb: &mut Ptb) -> Argument {
   ptb
-    .obj(ObjectArg::SharedObject {
-      id: IOTA_CLOCK_OBJECT_ID,
+    .obj(CallArg::Shared(SharedObjectRef {
+      object_id: IOTA_CLOCK_OBJECT_ID,
       initial_shared_version: IOTA_CLOCK_OBJECT_SHARED_VERSION,
       mutable: false,
-    })
+    }))
     .expect("network has a singleton clock instantiated")
 }
 
@@ -35,8 +35,8 @@ pub(crate) fn get_controller_delegation(
 ) -> (Argument, Argument) {
   let Argument::Result(idx) = ptb.programmable_move_call(
     package,
-    ident_str!("controller").into(),
-    ident_str!("borrow").into(),
+    ident_str!("controller").as_str().into(),
+    ident_str!("borrow").as_str().into(),
     vec![],
     vec![controller_cap],
   ) else {
@@ -55,8 +55,8 @@ pub(crate) fn put_back_delegation_token(
 ) {
   ptb.programmable_move_call(
     package,
-    ident_str!("controller").into(),
-    ident_str!("put_back").into(),
+    ident_str!("controller").as_str().into(),
+    ident_str!("put_back").as_str().into(),
     vec![],
     vec![controller_cap, delegation_token, borrow],
   );
@@ -67,14 +67,14 @@ pub(crate) fn owned_ref_to_shared_object_arg(
   ptb: &mut Ptb,
   mutable: bool,
 ) -> anyhow::Result<Argument> {
-  let Owner::Shared { initial_shared_version } = owned_ref.owner else {
+  let Owner::Shared(initial_shared_version) = owned_ref.owner else {
     anyhow::bail!("Object \"{}\" is not a shared object", owned_ref.object_id());
   };
-  ptb.obj(ObjectArg::SharedObject {
-    id: owned_ref.object_id(),
+  ptb.obj(CallArg::Shared(SharedObjectRef {
+    object_id: owned_ref.object_id(),
     initial_shared_version,
     mutable,
-  })
+  }))
 }
 
 pub(crate) fn option_to_move<T: MoveType + Serialize>(
@@ -86,16 +86,16 @@ pub(crate) fn option_to_move<T: MoveType + Serialize>(
     let t = ptb.pure(t)?;
     ptb.programmable_move_call(
       MOVE_STDLIB_PACKAGE_ID,
-      STD_OPTION_MODULE_NAME.into(),
-      ident_str!("some").into(),
+      ident_str!("option").as_str().into(),
+      ident_str!("some").as_str().into(),
       vec![T::move_type(package)],
       vec![t],
     )
   } else {
     ptb.programmable_move_call(
       MOVE_STDLIB_PACKAGE_ID,
-      STD_OPTION_MODULE_NAME.into(),
-      ident_str!("none").into(),
+      ident_str!("option").as_str().into(),
+      ident_str!("none").as_str().into(),
       vec![T::move_type(package)],
       vec![],
     )
@@ -116,8 +116,8 @@ where
 }
 
 #[allow(dead_code)]
-pub(crate) fn ptb_obj(ptb: &mut Ptb, name: &str, value: ObjectArg) -> Result<Argument, Error> {
+pub(crate) fn ptb_obj(ptb: &mut Ptb, name: &str, value: CallArg) -> Result<Argument, Error> {
   ptb
-    .obj(value)
+    .obj(value.clone())
     .map_err(|err| Error::InvalidArgument(format!("could not serialize object {name} {value:?}; {err}")))
 }

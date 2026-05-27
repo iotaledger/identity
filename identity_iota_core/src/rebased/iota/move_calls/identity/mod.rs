@@ -25,7 +25,7 @@ use iota_interaction::rpc_types::OwnedObjectRef;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::Argument;
-use iota_interaction::types::transaction::ObjectArg;
+use iota_interaction::types::transaction::CallArg;
 use iota_interaction::MoveType;
 use iota_interaction::ProgrammableTransactionBcs;
 
@@ -47,7 +47,7 @@ enum ControllerTokenArg {
 impl ControllerTokenArg {
   fn from_ref(controller_ref: ControllerTokenRef, ptb: &mut Ptb, package: ObjectID) -> Result<Self, Error> {
     let token_arg = ptb
-      .obj(ObjectArg::ImmOrOwnedObject(controller_ref.object_ref()))
+      .obj(CallArg::ImmutableOrOwned(controller_ref.object_ref()))
       .map_err(rebased_err)?;
     match controller_ref {
       ControllerTokenRef::Delegate(_) => Ok(ControllerTokenArg::Delegate(token_arg)),
@@ -97,8 +97,8 @@ pub(crate) fn approve_proposal<T: MoveType>(
 
   ptb.programmable_move_call(
     package,
-    ident_str!("identity").into(),
-    ident_str!("approve_proposal").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("approve_proposal").as_str().into(),
     vec![T::move_type(package)],
     vec![identity, capability.arg(), proposal_id],
   );

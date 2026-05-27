@@ -7,7 +7,7 @@ use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::Argument;
-use iota_interaction::types::transaction::ObjectArg;
+use iota_interaction::types::transaction::CallArg;
 use iota_interaction::MoveType as _;
 use iota_interaction::ProgrammableTransactionBcs;
 
@@ -84,7 +84,7 @@ where
   } = controller_execution_impl(
     identity,
     capability,
-    borrowing_controller_cap_ref.0,
+    borrowing_controller_cap_ref.object_id,
     expiration,
     package_id,
   )?;
@@ -119,8 +119,8 @@ fn controller_execution_impl(
 
   let proposal_id = ptb.programmable_move_call(
     package_id,
-    ident_str!("identity").into(),
-    ident_str!("propose_controller_execution").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("propose_controller_execution").as_str().into(),
     vec![],
     vec![identity_arg, capability.arg(), controller_cap_id, exp_arg],
   );
@@ -148,18 +148,18 @@ where
   // Get the proposal's action as argument.
   let controller_execution_action = ptb.programmable_move_call(
     package,
-    ident_str!("identity").into(),
-    ident_str!("execute_proposal").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("execute_proposal").as_str().into(),
     vec![ControllerExecution::move_type(package)],
     vec![identity, delegation_token, proposal_id],
   );
 
   // Borrow the controller cap into this transaction.
-  let receiving = ptb.obj(ObjectArg::Receiving(borrowing_controller_cap_ref))?;
+  let receiving = ptb.obj(CallArg::Receiving(borrowing_controller_cap_ref))?;
   let borrowed_controller_cap = ptb.programmable_move_call(
     package,
-    ident_str!("identity").into(),
-    ident_str!("borrow_controller_cap").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("borrow_controller_cap").as_str().into(),
     vec![],
     vec![identity, controller_execution_action, receiving],
   );
@@ -170,8 +170,8 @@ where
   // Put back the borrowed controller cap.
   ptb.programmable_move_call(
     package,
-    ident_str!("controller_proposal").into(),
-    ident_str!("put_back").into(),
+    ident_str!("controller_proposal").as_str().into(),
+    ident_str!("put_back").as_str().into(),
     vec![],
     vec![controller_execution_action, borrowed_controller_cap],
   );

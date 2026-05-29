@@ -91,7 +91,7 @@ impl IotaDID {
   /// Converts this [IotaDID] into an [ObjectID].
   pub fn to_object_id(&self) -> ObjectID {
     let object_id_hex = self.as_str().rsplit_once(':').expect("valid IOTA DID").1;
-    ObjectID::from_hex_literal(object_id_hex).expect("valid object ID")
+    ObjectID::from_prefixed_hex(object_id_hex).expect("valid object ID")
   }
 
   /// Creates a new placeholder [`IotaDID`] with the given network name.

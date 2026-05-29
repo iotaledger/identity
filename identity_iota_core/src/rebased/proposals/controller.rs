@@ -11,15 +11,14 @@ use crate::rebased::migration::Proposal;
 use crate::rebased::Error;
 use async_trait::async_trait;
 use iota_interaction::rpc_types::IotaExecutionStatus;
-use iota_interaction::rpc_types::IotaObjectRef;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI;
 use iota_interaction::rpc_types::OwnedObjectRef;
 use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::ProgrammableTransaction;
-use iota_interaction::types::TypeTag;
 use iota_interaction::MoveType;
 use iota_interaction::OptionalSend;
 use iota_interaction::OptionalSync;
@@ -208,14 +207,7 @@ where
       let borrowing_controller_cap_ref = client
         .get_object_ref_by_id(action.controller_cap)
         .await?
-        .map(|OwnedObjectRef { reference, .. }| {
-          let IotaObjectRef {
-            object_id,
-            version,
-            digest,
-          } = reference;
-          (object_id, version, digest)
-        })
+        .map(|OwnedObjectRef { reference, .. }| reference)
         .ok_or_else(|| Error::ObjectLookup(format!("object {} doesn't exist", action.controller_cap)))?;
 
       move_calls::identity::create_and_execute_controller_execution(
@@ -337,7 +329,7 @@ where
     let borrowing_controller_cap_ref = client
       .get_object_ref_by_id(borrowing_cap_id)
       .await?
-      .map(|object_ref| object_ref.reference.to_object_ref())
+      .map(|object_ref| object_ref.reference)
       .ok_or_else(|| Error::ObjectLookup(format!("object {borrowing_cap_id} doesn't exist")))?;
     let package = identity_package_id(client).await?;
 

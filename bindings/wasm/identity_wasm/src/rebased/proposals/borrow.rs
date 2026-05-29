@@ -63,7 +63,7 @@ impl WasmBorrowFn {
     move |ptb: &mut Ptb, objects: &HashMap<ObjectID, (Argument, IotaObjectData)>| {
       // Convert the PTB into a TS Transaction (the builder).
       let pt = std::mem::take(ptb).finish();
-      let tx_kind = TransactionKind::ProgrammableTransaction(pt);
+      let tx_kind = TransactionKind::Programmable(pt);
       let tx_kind_bytes = bcs::to_bytes(&tx_kind).unwrap();
       let ts_tx_builder = TransactionDataBuilder::from_tx_kind_bcs(tx_kind_bytes).unwrap();
       // Convert objects into a JS Map of the same types.

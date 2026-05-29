@@ -22,9 +22,10 @@ use iota_sdk::rpc_types::IotaObjectData;
 use iota_sdk::rpc_types::IotaTransactionBlockEffectsAPI;
 use iota_sdk::types::base_types::ObjectID;
 use iota_sdk::types::base_types::SequenceNumber;
+use iota_sdk::types::base_types::TypeTag;
 use iota_sdk::types::object::Owner;
-use iota_sdk::types::transaction::ObjectArg;
-use iota_sdk::types::TypeTag;
+use iota_sdk::types::transaction::CallArg;
+use iota_sdk::types::transaction::SharedObjectRef;
 use iota_sdk::types::IOTA_FRAMEWORK_PACKAGE_ID;
 use move_core_types::ident_str;
 use product_common::core_client::CoreClient;
@@ -245,7 +246,7 @@ async fn can_get_historical_identity_data() -> anyhow::Result<()> {
   assert_eq!(has_previous_version_responses, vec![true, false]);
 
   let versions: Vec<SequenceNumber> = history.iter().map(|elem| elem.version).collect();
-  let version_numbers: Vec<usize> = versions.iter().map(|v| (*v).into()).collect();
+  let version_numbers: Vec<u64> = versions.iter().map(|v| v.as_u64()).collect();
 
   // Check that we have 2 versions (original and updated)
   assert_eq!(version_numbers.len(), 2);
@@ -372,8 +373,8 @@ async fn borrow_proposal_works() -> anyhow::Result<()> {
     .with_intent(move |ptb, objs| {
       ptb.programmable_move_call(
         IOTA_FRAMEWORK_PACKAGE_ID,
-        ident_str!("coin").into(),
-        ident_str!("value").into(),
+        ident_str!("coin").as_str().into(),
+        ident_str!("value").as_str().into(),
         vec![TypeTag::Bool],
         vec![objs.get(&coin1).expect("coin1 data is borrowed").0],
       );
@@ -425,7 +426,7 @@ async fn controller_execution_works() -> anyhow::Result<()> {
     .expect("identity is a controller of identity2");
 
   let identity2_ref = identity_client.get_object_ref_by_id(identity2.id()).await?.unwrap();
-  let Owner::Shared { initial_shared_version } = identity2_ref.owner else {
+  let Owner::Shared(initial_shared_version) = identity2_ref.owner else {
     panic!("identity2 is shared")
   };
 
@@ -435,22 +436,22 @@ async fn controller_execution_works() -> anyhow::Result<()> {
     .expect("is a controller");
   // Perform an action on `identity2` as a controller of `identity`.
   let result = identity
-    .controller_execution(controller_cap.0, &token)
+    .controller_execution(controller_cap.object_id, &token)
     .with_intent(|ptb, controller_cap| {
       let identity2 = ptb
-        .obj(ObjectArg::SharedObject {
-          id: identity2_ref.object_id(),
+        .obj(CallArg::Shared(SharedObjectRef {
+          object_id: identity2_ref.object_id(),
           initial_shared_version,
           mutable: true,
-        })
+        }))
         .unwrap();
 
       let token_to_revoke = ptb.pure(ObjectID::ZERO).unwrap();
 
       ptb.programmable_move_call(
         identity_client.package_id(),
-        ident_str!("identity").into(),
-        ident_str!("revoke_token").into(),
+        ident_str!("identity").as_str().into(),
+        ident_str!("revoke_token").as_str().into(),
         vec![],
         vec![identity2, *controller_cap, token_to_revoke],
       );
@@ -553,7 +554,9 @@ async fn controller_delegation_works() -> anyhow::Result<()> {
     .expect("delegation token exists")
     .owner;
   assert_eq!(
-    delegation_token_owner.get_owner_address()?,
+    *delegation_token_owner
+      .address_or_object()
+      .ok_or_else(|| anyhow::anyhow!("delegation token must be address-owned"))?,
     alice_client.sender_address()
   );
 

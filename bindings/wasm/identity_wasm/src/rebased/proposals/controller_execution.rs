@@ -62,7 +62,7 @@ impl WasmControllerExecutionFn {
     move |ptb: &mut Ptb, cap: &Argument| {
       // Convert the PTB into a TS Transaction (the builder).
       let pt = std::mem::take(ptb).finish();
-      let tx_kind = TransactionKind::ProgrammableTransaction(pt);
+      let tx_kind = TransactionKind::Programmable(pt);
       let tx_kind_bytes = bcs::to_bytes(&tx_kind).unwrap();
       let ts_tx_builder = TransactionDataBuilder::from_tx_kind_bcs(tx_kind_bytes).unwrap();
       let ts_argument = serde_wasm_bindgen::to_value(cap).unwrap();

@@ -11,7 +11,7 @@ use crate::IotaDocument;
 use async_trait::async_trait;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::TypeTag;
+use iota_interaction::types::base_types::TypeTag;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::transaction::transaction_builder::TransactionBuilder;
 use serde::Deserialize;

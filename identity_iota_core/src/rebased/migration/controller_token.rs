@@ -10,12 +10,12 @@ use crate::rebased::iota::move_calls::ControllerTokenRef;
 use crate::rebased::iota::package::identity_package_id;
 use crate::rebased::Error;
 use async_trait::async_trait;
-use iota_interaction::move_types::language_storage::TypeTag;
 use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI;
 use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::id::UID;
 use iota_interaction::types::object::Owner;
 use iota_interaction::types::transaction::ProgrammableTransaction;
@@ -123,8 +123,7 @@ impl ControllerToken {
       .get_object_ref_by_id(self.id())
       .await?
       .expect("token exists on-chain")
-      .reference
-      .to_object_ref();
+      .reference;
 
     Ok(match self {
       Self::Controller(_) => ControllerTokenRef::Controller(obj_ref),
@@ -429,8 +428,7 @@ impl Transaction for DelegateToken {
       .get_object_ref_by_id(self.cap_id)
       .await?
       .expect("ControllerCap exists on-chain")
-      .reference
-      .to_object_ref();
+      .reference;
 
     let ptb_bcs =
       move_calls::identity::delegate_controller_cap(controller_cap_ref, self.recipient, self.permissions.0, package)
@@ -450,7 +448,7 @@ impl Transaction for DelegateToken {
       .created()
       .iter()
       .enumerate()
-      .filter(|(_, elem)| matches!(elem.owner, Owner::AddressOwner(addr) if addr == self.recipient))
+      .filter(|(_, elem)| matches!(elem.owner, Owner::Address(addr) if addr == self.recipient))
       .map(|(i, obj)| (i, obj.object_id()));
 
     let is_target_token = |delegation_token: &DelegationToken| -> bool {
@@ -561,8 +559,7 @@ impl Transaction for DelegationTokenRevocation {
       .get_object_ref_by_id(self.controller_cap_id)
       .await?
       .expect("controller_cap exists on-chain")
-      .reference
-      .to_object_ref();
+      .reference;
 
     let tx_bytes = if self.is_revocation() {
       move_calls::identity::revoke_delegation_token(identity_ref, controller_cap_ref, self.delegation_token_id, package)
@@ -644,8 +641,7 @@ impl Transaction for DeleteDelegationToken {
           self.delegation_token_id,
         ))
       })?
-      .reference
-      .to_object_ref();
+      .reference;
 
     let tx_bytes = move_calls::identity::destroy_delegation_token(identity_ref, delegation_token_ref, package).await?;
 

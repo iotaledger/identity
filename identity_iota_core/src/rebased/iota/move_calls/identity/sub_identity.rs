@@ -7,7 +7,6 @@ use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::CallArg;
-use iota_interaction::types::transaction::ObjectArg;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::MoveType as _;
 
@@ -109,8 +108,8 @@ fn identity_sub_access_impl(
 
   let proposal_id = ptb.programmable_move_call(
     package_id,
-    ident_str!("identity").into(),
-    ident_str!("propose_access_to_sub_identity").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("propose_access_to_sub_identity").as_str().into(),
     vec![],
     vec![identity_arg, cap.arg(), sub_identity_arg, exp_arg],
   );
@@ -135,27 +134,27 @@ pub(crate) fn execute_sub_identity_access_impl(
   // Get the proposal's action as argument.
   let action = ptb.programmable_move_call(
     package,
-    ident_str!("identity").into(),
-    ident_str!("execute_proposal").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("execute_proposal").as_str().into(),
     vec![AccessSubIdentity::move_type(package)],
     vec![identity, identity_token, proposal_id],
   );
 
   // Borrow the sub_identity_token into this transaction.
-  let receiving_sub_identity_token = ptb.obj(ObjectArg::Receiving(sub_identity_token.object_ref()))?;
+  let receiving_sub_identity_token = ptb.obj(CallArg::Receiving(sub_identity_token.object_ref()))?;
   let borrowed_token_to_sub_identity = if sub_identity_token.is_controller_cap() {
     ptb.programmable_move_call(
       package,
-      ident_str!("identity").into(),
-      ident_str!("borrow_controller_cap_to_sub_identity").into(),
+      ident_str!("identity").as_str().into(),
+      ident_str!("borrow_controller_cap_to_sub_identity").as_str().into(),
       vec![],
       vec![identity, action, receiving_sub_identity_token],
     )
   } else {
     ptb.programmable_move_call(
       package,
-      ident_str!("identity").into(),
-      ident_str!("borrow_delegation_token_to_sub_identity").into(),
+      ident_str!("identity").as_str().into(),
+      ident_str!("borrow_delegation_token_to_sub_identity").as_str().into(),
       vec![],
       vec![identity, action, receiving_sub_identity_token],
     )
@@ -167,7 +166,7 @@ pub(crate) fn execute_sub_identity_access_impl(
     ptb,
     inner_pt,
     vec![(
-      CallArg::Object(ObjectArg::ImmOrOwnedObject(sub_identity_token.object_ref())),
+      CallArg::ImmutableOrOwned(sub_identity_token.object_ref()),
       borrowed_token_to_sub_identity,
     )],
   );
@@ -176,16 +175,16 @@ pub(crate) fn execute_sub_identity_access_impl(
   if sub_identity_token.is_controller_cap() {
     ptb.programmable_move_call(
       package,
-      ident_str!("access_sub_entity_proposal").into(),
-      ident_str!("put_back_controller_cap").into(),
+      ident_str!("access_sub_entity_proposal").as_str().into(),
+      ident_str!("put_back_controller_cap").as_str().into(),
       vec![],
       vec![action, borrowed_token_to_sub_identity],
     );
   } else {
     ptb.programmable_move_call(
       package,
-      ident_str!("access_sub_entity_proposal").into(),
-      ident_str!("put_back_delegation_token").into(),
+      ident_str!("access_sub_entity_proposal").as_str().into(),
+      ident_str!("put_back_delegation_token").as_str().into(),
       vec![],
       vec![action, borrowed_token_to_sub_identity],
     );

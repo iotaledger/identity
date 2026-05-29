@@ -30,8 +30,8 @@ pub(crate) async fn propose_update(
 
   let _proposal_id = ptb.programmable_move_call(
     package_id,
-    ident_str!("identity").into(),
-    ident_str!("propose_update").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("propose_update").as_str().into(),
     vec![],
     vec![identity_arg, capability.arg(), doc_arg, exp_arg, clock],
   );
@@ -55,8 +55,8 @@ pub(crate) async fn execute_update(
 
   let _ = ptb.programmable_move_call(
     package_id,
-    ident_str!("identity").into(),
-    ident_str!("execute_update").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("execute_update").as_str().into(),
     vec![],
     vec![identity_arg, capability.arg(), proposal_id, clock],
   );

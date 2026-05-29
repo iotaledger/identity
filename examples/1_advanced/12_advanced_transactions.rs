@@ -84,7 +84,7 @@ where
     .object_ref();
   let gas_data = GasData {
     price: 1000,
-    payment: vec![coin_ref],
+    objects: vec![coin_ref],
     owner: client.sender_address(),
     budget: TEST_GAS_BUDGET,
   };

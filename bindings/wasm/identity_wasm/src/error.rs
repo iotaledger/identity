@@ -206,6 +206,15 @@ impl From<iota_sdk::types::block::Error> for WasmError<'_> {
   }
 }
 
+impl From<iota_interaction::types::sdk_types::AddressParseError> for WasmError<'_> {
+  fn from(error: iota_interaction::types::sdk_types::AddressParseError) -> Self {
+    Self {
+      name: Cow::Borrowed("AddressParseError"),
+      message: Cow::Owned(error.to_string()),
+    }
+  }
+}
+
 impl From<identity_iota::credential::CompoundCredentialValidationError> for WasmError<'_> {
   fn from(error: identity_iota::credential::CompoundCredentialValidationError) -> Self {
     Self {

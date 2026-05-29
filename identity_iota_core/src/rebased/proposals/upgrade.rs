@@ -12,7 +12,7 @@ use crate::rebased::iota::package::identity_package_id;
 use crate::rebased::migration::ControllerToken;
 use async_trait::async_trait;
 use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::TypeTag;
+use iota_interaction::types::base_types::TypeTag;
 use serde::Deserialize;
 use serde::Serialize;
 

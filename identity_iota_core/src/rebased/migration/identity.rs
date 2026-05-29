@@ -32,7 +32,6 @@ use crate::StateMetadataEncoding;
 use async_trait::async_trait;
 use identity_core::common::Timestamp;
 use iota_interaction::ident_str;
-use iota_interaction::move_types::language_storage::StructTag;
 use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaObjectData;
 use iota_interaction::rpc_types::IotaObjectDataOptions;
@@ -43,9 +42,10 @@ use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
 use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::StructTag;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::id::UID;
 use iota_interaction::types::object::Owner;
-use iota_interaction::types::TypeTag;
 use serde;
 use serde::Deserialize;
 use serde::Serialize;
@@ -367,7 +367,7 @@ impl OnChainIdentity {
 
 /// Returns the previous version of the given `history_item`.
 pub fn has_previous_version(history_item: &IotaObjectData) -> Result<bool, Error> {
-  if let Some(Owner::Shared { initial_shared_version }) = history_item.owner {
+  if let Some(Owner::Shared(initial_shared_version)) = history_item.owner {
     Ok(history_item.version != initial_shared_version)
   } else {
     Err(Error::InvalidIdentityHistory(format!(
@@ -504,7 +504,7 @@ pub struct IdentityResolutionError {
 fn is_identity(value: &IotaParsedMoveObject) -> bool {
   // if available we might also check if object stems from expected module
   // but how would this act upon package updates?
-  value.type_.module.as_ident_str().as_str() == MODULE && value.type_.name.as_ident_str().as_str() == NAME
+  value.type_.module().as_str() == MODULE && value.type_.name().as_str() == NAME
 }
 
 /// Unpack identity data from given `IotaObjectData`
@@ -666,12 +666,12 @@ impl IdentityBuilder {
 
 impl MoveType for OnChainIdentity {
   fn move_type(package: ObjectID) -> TypeTag {
-    TypeTag::Struct(Box::new(StructTag {
-      address: package.into(),
-      module: ident_str!("identity").into(),
-      name: ident_str!("Identity").into(),
-      type_params: vec![],
-    }))
+    TypeTag::Struct(Box::new(StructTag::new(
+      package,
+      ident_str!("identity").as_str(),
+      ident_str!("Identity").as_str(),
+      vec![],
+    )))
   }
 }
 
@@ -758,7 +758,7 @@ impl Transaction for CreateIdentity {
       .created()
       .iter()
       .enumerate()
-      .filter(|(_, elem)| matches!(elem.owner, Owner::Shared { .. }))
+      .filter(|(_, elem)| matches!(elem.owner, Owner::Shared(_)))
       .map(|(i, obj)| (i, obj.object_id()));
 
     let target_did_bytes = StateMetadataDocument::from(self.builder.did_doc)

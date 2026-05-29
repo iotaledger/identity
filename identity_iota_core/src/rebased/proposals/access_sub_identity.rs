@@ -13,8 +13,8 @@ use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
 use iota_interaction::rpc_types::IotaTransactionBlockEvents;
 use iota_interaction::rpc_types::IotaTransactionBlockResponseOptions;
 use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::transaction::ProgrammableTransaction;
-use iota_interaction::types::TypeTag;
 use iota_interaction::MoveType;
 use iota_interaction::OptionalSend;
 use iota_interaction::OptionalSync;
@@ -531,7 +531,7 @@ where
   {
     // Extract the event for the proposal we are expecting.
     let extract_proposal_id = |event: &IotaEvent| -> Option<ProposalEvent> {
-      if event.type_.module.as_str() == "identity" && event.type_.name.as_str() == "ProposalEvent" {
+      if event.type_.module().as_str() == "identity" && event.type_.name().as_str() == "ProposalEvent" {
         serde_json::from_value::<ProposalEvent>(event.parsed_json.clone())
           .ok()
           .filter(|event| event.identity == self.identity.id() && event.controller == self.identity_token.id())

@@ -27,8 +27,8 @@ pub(crate) fn propose_upgrade(
 
   let _proposal_id = ptb.programmable_move_call(
     package_id,
-    ident_str!("identity").into(),
-    ident_str!("propose_upgrade").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("propose_upgrade").as_str().into(),
     vec![],
     vec![identity_arg, capability.arg(), exp_arg],
   );
@@ -51,8 +51,8 @@ pub(crate) fn execute_upgrade(
 
   let _ = ptb.programmable_move_call(
     package_id,
-    ident_str!("identity").into(),
-    ident_str!("execute_upgrade").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("execute_upgrade").as_str().into(),
     vec![],
     vec![identity_arg, capability.arg(), proposal_id],
   );

@@ -28,8 +28,8 @@ use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
 use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::base_types::ObjectType;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::transaction::ProgrammableTransaction;
-use iota_interaction::types::TypeTag;
 use iota_interaction::IotaClientTrait;
 use iota_interaction::OptionalSend;
 use iota_interaction::OptionalSync;
@@ -424,7 +424,7 @@ async fn obj_ref_and_type_for_id(
   let obj_ref = res.object_ref();
   let obj_type = match res.object_type().expect("object type is requested") {
     ObjectType::Package => anyhow::bail!("a move package cannot be sent"),
-    ObjectType::Struct(type_) => type_.into(),
+    ObjectType::Struct(type_) => TypeTag::Struct(Box::new(type_.into())),
   };
 
   Ok((obj_ref, obj_type))

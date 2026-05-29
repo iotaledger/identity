@@ -5,10 +5,10 @@ use std::collections::HashMap;
 use std::str::FromStr as _;
 use std::sync::LazyLock;
 
-use iota_interaction::move_types::language_storage::StructTag;
 use iota_interaction::rpc_types::EventFilter;
 use iota_interaction::rpc_types::IotaData;
 use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::StructTag;
 use iota_interaction::types::id::ID;
 use iota_interaction::IotaClientTrait;
 use phf::phf_map;

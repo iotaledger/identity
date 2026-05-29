@@ -8,8 +8,8 @@ use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
 use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectID;
+use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::TypeTag;
 use iota_interaction::ProgrammableTransactionBcs;
 
 use crate::rebased::iota::move_calls::utils;
@@ -43,8 +43,8 @@ where
 
     ptb.programmable_move_call(
       package,
-      ident_str!("utils").into(),
-      ident_str!("vec_map_from_keys_values").into(),
+      ident_str!("utils").as_str().into(),
+      ident_str!("vec_map_from_keys_values").as_str().into(),
       vec![TypeTag::Address, TypeTag::U64],
       vec![addresses, vps],
     )
@@ -56,8 +56,8 @@ where
 
     ptb.programmable_move_call(
       package,
-      ident_str!("utils").into(),
-      ident_str!("vec_map_from_keys_values").into(),
+      ident_str!("utils").as_str().into(),
+      ident_str!("vec_map_from_keys_values").as_str().into(),
       vec![TypeTag::from_str("0x2::object::ID").expect("valid utf8"), TypeTag::U64],
       vec![ids, vps],
     )
@@ -70,8 +70,8 @@ where
 
   let _proposal_id = ptb.programmable_move_call(
     package,
-    ident_str!("identity").into(),
-    ident_str!("propose_config_change").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("propose_config_change").as_str().into(),
     vec![],
     vec![
       identity,
@@ -102,8 +102,8 @@ pub(crate) fn execute_config_change(
   let proposal_id = ptb.pure(proposal_id).map_err(rebased_err)?;
   ptb.programmable_move_call(
     package,
-    ident_str!("identity").into(),
-    ident_str!("execute_config_change").into(),
+    ident_str!("identity").as_str().into(),
+    ident_str!("execute_config_change").as_str().into(),
     vec![],
     vec![identity, capability.arg(), proposal_id],
   );

@@ -73,7 +73,8 @@ fn update_input_and_result(arg: &mut Argument, inputs_map: &HashMap<u16, Argumen
     Argument::Input(_) => update_input_arg(arg, inputs_map),
     Argument::Result(idx) => *idx += result_offset,
     Argument::NestedResult(idx, _) => *idx += result_offset,
-    Argument::GasCoin => {}
+    Argument::Gas => {}
+    _ => {}
   }
 }
 
@@ -83,21 +84,22 @@ where
 {
   let arguments = match cmd {
     Command::MoveCall(move_call) => move_call.arguments.iter_mut(),
-    Command::MakeMoveVec(_, args) => args.iter_mut(),
-    Command::TransferObjects(args, arg) => {
-      update_fn(arg);
-      args.iter_mut()
+    Command::MakeMoveVector(make_move_vec) => make_move_vec.elements.iter_mut(),
+    Command::TransferObjects(transfer) => {
+      update_fn(&mut transfer.address);
+      transfer.objects.iter_mut()
     }
-    Command::MergeCoins(arg, args) => {
-      update_fn(arg);
-      args.iter_mut()
+    Command::MergeCoins(merge) => {
+      update_fn(&mut merge.coin);
+      merge.coins_to_merge.iter_mut()
     }
-    Command::SplitCoins(arg, args) => {
-      update_fn(arg);
-      args.iter_mut()
+    Command::SplitCoins(split) => {
+      update_fn(&mut split.coin);
+      split.amounts.iter_mut()
     }
-    Command::Upgrade(_, _, _, arg) => std::slice::from_mut(arg).iter_mut(),
-    Command::Publish(_, _) => std::slice::IterMut::default(),
+    Command::Upgrade(upgrade) => std::slice::from_mut(&mut upgrade.ticket).iter_mut(),
+    Command::Publish(_) => std::slice::IterMut::default(),
+    _ => std::slice::IterMut::default(),
   };
 
   arguments.for_each(update_fn);
@@ -109,7 +111,7 @@ mod tests {
   use iota_interaction::ident_str;
   use iota_interaction::types::base_types::IotaAddress;
   use iota_interaction::types::base_types::ObjectID;
-  use iota_interaction::types::transaction::ObjectArg;
+  use iota_interaction::types::transaction::SharedObjectRef;
   use iota_interaction::types::IOTA_FRAMEWORK_PACKAGE_ID;
   use iota_interaction::IOTA_COIN_TYPE;
 
@@ -118,8 +120,8 @@ mod tests {
     let mut ptb = Ptb::new();
     let empty_coin = ptb.programmable_move_call(
       IOTA_FRAMEWORK_PACKAGE_ID,
-      ident_str!("coin").into(),
-      ident_str!("zero").into(),
+      ident_str!("coin").as_str().into(),
+      ident_str!("zero").as_str().into(),
       vec![IOTA_COIN_TYPE.parse().unwrap()],
       vec![],
     );
@@ -132,7 +134,7 @@ mod tests {
     let mut ptb = Ptb::new();
     let pt = {
       let (mut ptb, coin) = empty_iota_coin_ptb();
-      ptb.transfer_arg(IotaAddress::random_for_testing_only(), coin);
+      ptb.transfer_arg(IotaAddress::random(), coin);
       ptb.finish()
     };
 
@@ -142,9 +144,9 @@ mod tests {
 
   #[test]
   fn merging_pt_with_replacements_works() {
-    let recipient = IotaAddress::random_for_testing_only();
-    let object_to_replace = CallArg::Object(ObjectArg::SharedObject {
-      id: ObjectID::random(),
+    let recipient = IotaAddress::random();
+    let object_to_replace = CallArg::Shared(SharedObjectRef {
+      object_id: ObjectID::random(),
       initial_shared_version: 0.into(),
       mutable: true,
     });

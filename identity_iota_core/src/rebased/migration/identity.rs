@@ -9,7 +9,7 @@ use crate::rebased::iota::move_calls;
 
 use crate::rebased::iota::package::identity_package_id;
 use crate::rebased::proposals::AccessSubIdentityBuilder;
-use iota_interaction::types::error::IotaObjectResponseError;
+use iota_interaction::rpc_types::IotaObjectResponseError;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::IotaKeySignature;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;

@@ -25,6 +25,8 @@ use identity_iota::iota::rebased::Error;
 use iota_interaction_ts::bindings::WasmTransactionSigner;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
 use iota_interaction_ts::NativeTransactionBlockResponse;
+use iota_interaction::types::base_types::ObjectID;
+
 use js_sys::Object;
 
 use super::identity::WasmIdentityBuilder;
@@ -122,6 +124,11 @@ impl WasmIdentityClient {
   #[wasm_bindgen(js_name = packageId)]
   pub fn package_id(&self) -> String {
     self.0.package_id().to_string()
+  }
+
+  #[wasm_bindgen(js_name = tfComponentsPackageId)]
+  pub fn tf_components_package_id(&self) -> String {
+    self.0.tf_components_package_id().unwrap_or(ObjectID::ZERO).to_string()
   }
 
   #[wasm_bindgen(js_name = packageHistory)]

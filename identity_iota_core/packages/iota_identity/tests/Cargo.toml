@@ -1,0 +1,14 @@
+[package]
+name = "aa-enabled-identity"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.102"
+iota-sdk = { git = "https://github.com/iotaledger/iota-rust-sdk.git" }
+rand = "0.8.6"
+serde = { version = "1.0.228", features = ["alloc", "derive"] }
+serde_json = { version = "1.0.150", features = ["alloc"] }
+tokio = { version = "1.52.3", features = ["full"] }
+
+[workspace]

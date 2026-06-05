@@ -26,7 +26,7 @@ members = [
   "examples",
 ]
 
-exclude = ["bindings/wasm/identity_wasm", "bindings/grpc"]
+exclude = ["bindings/wasm/identity_wasm", "bindings/grpc", "identity_iota_core/packages/iota_identity/tests"]
 
 [workspace.dependencies]
 bls12_381_plus = { version = "0.8.17" }

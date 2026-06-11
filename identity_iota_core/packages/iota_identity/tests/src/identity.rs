@@ -25,12 +25,7 @@ impl Identity {
     sk: &Ed25519PrivateKey,
     client: &Client,
   ) -> anyhow::Result<TransactionProposalResult<()>> {
-    let invoking_controller = self
-      .config
-      .controllers
-      .iter()
-      .find(|c| c.address == sk.public_key().derive_address())
-      .context("not a controller")?;
+    let invoking_controller = self.invoking_controller(sk).context("not a controller")?;
     let update_did_tx = self.prepare_update_did_document_tx(did_document, client).await?;
 
     if invoking_controller.weight >= self.config.threshold {
@@ -48,7 +43,11 @@ impl Identity {
     }
   }
 
-  async fn prepare_update_did_document_tx(&self, did_document: &[u8], client: &Client) -> anyhow::Result<Transaction> {
+  pub async fn prepare_update_did_document_tx(
+    &self,
+    did_document: &[u8],
+    client: &Client,
+  ) -> anyhow::Result<Transaction> {
     let config = init();
     let update_did_tx = {
       let mut tx_builder = TransactionBuilder::new(*self.id.as_address()).with_client(client.clone());
@@ -68,15 +67,23 @@ impl Identity {
   pub async fn execute_tx(
     &self,
     tx: Transaction,
-    sk: &Ed25519PrivateKey,
+    sk: impl Into<Option<&Ed25519PrivateKey>>,
     client: &Client,
   ) -> anyhow::Result<TransactionEffects> {
-    let controller_sig: Ed25519Signature = Signer::sign(sk, tx.digest().as_bytes());
-    let controller_pk = sk.public_key().to_flagged_bytes();
+    let call_args = if let Some(sk) = sk.into() {
+      let controller_sig: Ed25519Signature = Signer::sign(sk, tx.digest().as_bytes());
+      let controller_pk = sk.public_key().to_flagged_bytes();
+
+      (Some(controller_sig.as_bytes().to_vec()), Some(controller_pk))
+    } else {
+      (None, None)
+    };
+
     let authenticator_params = MoveAuthenticatorBuilder::new(self.id)
-      .call_args((Some(controller_sig.as_bytes()), Some(controller_pk)))
+      .call_args(call_args)
       .finish(&client)
       .await?;
+
     Ok(
       TransactionBuilder::try_from(tx)?
         .with_client(client.clone())
@@ -105,6 +112,46 @@ impl Identity {
     } else {
       anyhow::bail!("Failed to update DID: {:?}", effects.as_v1().status);
     }
+  }
+
+  pub async fn propose_tx_to_sub_identity(
+    &self,
+    sub_identity: &Self,
+    tx: Transaction,
+    sk: &Ed25519PrivateKey,
+    client: &Client,
+  ) -> anyhow::Result<(TransactionProposalResult<()>, Transaction)> {
+    let config = init();
+    let mut tx_builder = TransactionBuilder::try_from(tx)?.with_client(client.clone());
+    tx_builder
+      .move_call(config.identity_pkg_id, "identity_v2", "remove_tx_execution_receipt")
+      .arguments([SharedMut(sub_identity.id)]);
+    let tx = tx_builder.finish().await?;
+
+    let mut tx_builder = TransactionBuilder::new(*self.id.as_address()).with_client(client.clone());
+    tx_builder
+      .move_call(config.identity_pkg_id, "identity_v2", "add_tx_execution_receipt")
+      .arguments((Shared(self.id), SharedMut(sub_identity.id), tx.digest()));
+    let make_receipt_tx = tx_builder.finish().await?;
+    let invoking_controller = self.invoking_controller(sk).context("not a controller")?;
+    if invoking_controller.weight >= self.config.threshold {
+      let effects = self.execute_tx(make_receipt_tx, sk, client).await?;
+      if effects.as_v1().status.is_success() {
+        Ok((TransactionProposalResult::Executed(()), tx))
+      } else {
+        anyhow::bail!("Failed to create tx execution receipt: {:?}", effects.as_v1().status);
+      }
+    } else {
+      Ok((TransactionProposalResult::Pending(make_receipt_tx), tx))
+    }
+  }
+
+  fn invoking_controller(&self, sk: &Ed25519PrivateKey) -> Option<&Controller> {
+    self
+      .config
+      .controllers
+      .iter()
+      .find(|c| c.address == sk.public_key().derive_address())
   }
 }
 

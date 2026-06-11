@@ -144,3 +144,77 @@ async fn cannot_update_did_without_permission_to_do_so() -> anyhow::Result<()> {
 
   Ok(())
 }
+
+#[tokio::test]
+async fn identity_can_update_sub_identity_did_doc() -> anyhow::Result<()> {
+  let sk = Ed25519PrivateKey::generate(rand::thread_rng());
+  let pk = sk.public_key();
+
+  let client = Client::new_localnet();
+  // Fund the sender account.
+  let faucet_client = FaucetClient::new_localnet();
+  faucet_client
+    .request_and_wait_for_finalized(pk.derive_address(), &client)
+    .await?;
+
+  // Create a first identity controller by the previously created address.
+  let identity = create_identity(
+    pk.derive_address(),
+    b"DID".as_slice(),
+    &[Controller {
+      address: pk.derive_address(),
+      weight: 1,
+      permissions: u64::MAX,
+    }],
+    1,
+    &sk,
+    &client,
+  )
+  .await?;
+
+  // Fund the identity with some tokens to be able to pay for transactions.
+  faucet_client
+    .request_and_wait_for_finalized(*identity.id.as_address(), &client)
+    .await?;
+
+  // Create another identity controller by the first one.
+  let sub_identity = create_identity(
+    pk.derive_address(),
+    b"DID".as_slice(),
+    &[Controller {
+      address: *identity.id.as_address(),
+      weight: 1,
+      permissions: u64::MAX,
+    }],
+    1,
+    &sk,
+    &client,
+  )
+  .await?;
+
+  // Fund the identity with some tokens to be able to pay for transactions.
+  faucet_client
+    .request_and_wait_for_finalized(*sub_identity.id.as_address(), &client)
+    .await?;
+
+  // Prepare a tx to update the sub_identity's did document and propose it (make a tx receipt for its execution).
+  let update_did_tx = sub_identity
+    .prepare_update_did_document_tx(b"new did doc".as_slice(), &client)
+    .await?;
+  let (TransactionProposalResult::Executed(_), tx) = identity
+    .propose_tx_to_sub_identity(&sub_identity, update_did_tx, &sk, &client)
+    .await?
+  else {
+    unreachable!("controller has enough voting power to execute tx alone");
+  };
+
+  // Execute the transaction. Passing `None` there ensure a tx receipt is consumed during authentication.
+  let effects = sub_identity.execute_tx(tx, None, &client).await?;
+  assert!(effects.as_v1().status.is_success());
+
+  // Re-sync sub-identity.
+  let sub_identity = get_identity(&client, sub_identity.id).await?;
+  assert_eq!(&sub_identity.document_metadata.document, b"new did doc".as_slice());
+
+  Ok(())
+}

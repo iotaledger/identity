@@ -448,10 +448,20 @@ fun ensure_proposal_removal(commands: &vector<Command>) {
 }
 
 fun ensure_receipt_removal(commands: &vector<Command>) {
-    let cmd = commands.borrow(commands.length() - 2);
-    let move_call = cmd.as_move_call().destroy_some();
+    let mut i = commands.length() - 2;
+    while (i < commands.length()) {
+        let cmd = commands.borrow(i);
+        if (cmd.is_move_call()) {
+            let move_call = cmd.as_move_call().destroy_some();
+            if (move_call_is(&move_call, b"remove_tx_execution_receipt")) {
+                return
+            };
+        };
 
-    assert!(move_call_is(&move_call, b"remove_tx_execution_receipt"), EMissingTxReceiptRemoval);
+        i = i + 1;
+    };
+
+    abort EMissingTxReceiptRemoval;
 }
 
 fun validate_auth_fn(auth_fn: &AuthenticatorFunctionRefV1<IdentityV2>) {

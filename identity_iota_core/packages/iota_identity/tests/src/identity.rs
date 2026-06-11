@@ -43,8 +43,8 @@ impl Identity {
 
       Ok(TransactionProposalResult::Executed(()))
     } else {
-      self.propose_tx(&update_did_tx, sk, client).await?;
-      Ok(TransactionProposalResult::Pending(update_did_tx))
+      let pending_tx = self.propose_tx(update_did_tx, sk, client).await?;
+      Ok(TransactionProposalResult::Pending(pending_tx))
     }
   }
 
@@ -85,8 +85,15 @@ impl Identity {
     )
   }
 
-  async fn propose_tx(&self, tx: &Transaction, sk: &Ed25519PrivateKey, client: &Client) -> anyhow::Result<()> {
+  async fn propose_tx(&self, tx: Transaction, sk: &Ed25519PrivateKey, client: &Client) -> anyhow::Result<Transaction> {
     let config = init();
+    // Add a command for the removal of this proposal once it's executed.
+    let mut tx_builder = TransactionBuilder::try_from(tx)?.with_client(client.clone());
+    tx_builder
+      .move_call(config.identity_pkg_id, "identity_v2", "remove_tx")
+      .arguments([SharedMut(self.id)]);
+    let tx = tx_builder.finish().await?;
+
     let mut tx_builder = TransactionBuilder::new(sk.public_key().derive_address()).with_client(client.clone());
     tx_builder
       .move_call(config.identity_pkg_id, "identity_v2", "propose_tx")
@@ -94,7 +101,7 @@ impl Identity {
     let effects = tx_builder.execute(sk, WaitForTx::Finalized).await?;
 
     if effects.as_v1().status.is_success() {
-      Ok(())
+      Ok(tx)
     } else {
       anyhow::bail!("Failed to update DID: {:?}", effects.as_v1().status);
     }

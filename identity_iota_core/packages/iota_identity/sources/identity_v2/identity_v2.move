@@ -36,10 +36,13 @@ const ETransactionDigestMismatch: vector<u8> = b"Transaction digest mismatch";
 #[error(code = 7)]
 const EInsufficientPermissions: vector<u8> = b"Controller does not have sufficient permissions";
 #[error(code = 8)]
-const EInvalidParameter: vector<u8> = b"An invalid parameter was provided to the function";
-#[error(code = 9)]
 const ENotASubIdentity: vector<u8> =
     b"The provided identity is not a sub-identity of this identity";
+#[error(code = 9)]
+const ELastCommandNotProposalRemoval: vector<u8> = b"The last command is not a call to remove_tx";
+#[error(code = 10)]
+const EMissingTxReceiptRemoval: vector<u8> =
+    b"A TxExecutionReceipt was used for authentication but it was not removed";
 
 public struct IdentityV2 has key {
     id: UID,
@@ -142,6 +145,15 @@ public fun approve_tx(self: &mut IdentityV2, tx_digest: vector<u8>, ctx: &mut Tx
 
     let tx = transactions.borrow_mut(&tx_digest);
     tx.add_approver(ctx.sender());
+}
+
+public fun remove_tx(self: &mut IdentityV2, ctx: &mut TxContext) {
+    // This ensures that only the identity itself can update its DID Document,
+    // hence an authenticator function must have been called successfully before this function is executed.
+    assert!(ctx.sender() == self.account_address(), ESenderNotIdentity);
+
+    let transactions: &mut Transactions = df::borrow_mut(&mut self.id, TransactionsKey {});
+    transactions.remove(*ctx.digest());
 }
 
 public fun id(self: &IdentityV2): ID {
@@ -283,9 +295,9 @@ public fun add_tx_execution_receipt(
     tx_digest: vector<u8>,
     ctx: &mut TxContext,
 ) {
-    // This ensures that only the sub-identity itself can add a transaction execution receipt,
+    // This ensures that only the identity itself can add a transaction execution receipt,
     // hence an authenticator function must have been called successfully before this function is executed.
-    assert!(ctx.sender() == sub_identity.account_address(), ESenderNotIdentity);
+    assert!(ctx.sender() == self.account_address(), ESenderNotIdentity);
 
     let sub_identity_config: &IdentityConfig = df::borrow(&sub_identity.id, ConfigKey {});
     assert!(sub_identity_config.contains(self.account_address()), ENotASubIdentity);
@@ -295,6 +307,17 @@ public fun add_tx_execution_receipt(
         TxExecutionReceiptsKey {},
     );
     receipts_table.add(tx_digest, self.account_address());
+}
+
+public fun remove_tx_execution_receipt(self: &mut IdentityV2, ctx: &mut TxContext) {
+    // This ensures that only the sub-identity itself can add a transaction execution receipt,
+    // hence an authenticator function must have been called successfully before this function is executed.
+    assert!(ctx.sender() == self.account_address(), ESenderNotIdentity);
+    let receipts_table: &mut Table<vector<u8>, address> = df::borrow_mut(
+        &mut self.id,
+        TxExecutionReceiptsKey {},
+    );
+    receipts_table.remove(*ctx.digest());
 }
 
 public fun legacy_id(self: &IdentityV2): Option<ID> {
@@ -366,12 +389,14 @@ public fun authenticate_v1(
     assert!(ctx.sender() == identity.account_address(), ESenderNotIdentity);
     let config: &IdentityConfig = df::borrow(&identity.id, ConfigKey {});
     let transactions: &Transactions = df::borrow(&identity.id, TransactionsKey {});
+    let mut has_authenticated_through_receipt = false;
     // Extract the invoking controller from the provided authentication parameters and validate the authenticity of the invocation.
     let controller = if (controller_sig.is_some() && controller_pk.is_some()) {
         let controller_sig = controller_sig.destroy_some();
         let controller_pk = controller_pk.destroy_some();
         validate_controller_signature(&controller_pk, &controller_sig, config, ctx.digest())
     } else {
+        has_authenticated_through_receipt = true;
         let receipt_table = df::borrow(&identity.id, TxExecutionReceiptsKey {});
         check_for_receipt(receipt_table, config, ctx.digest())
     };
@@ -382,7 +407,8 @@ public fun authenticate_v1(
     let mut largest_weight = controller.weight();
     let mut approvals = controller.weight();
     let mut comulative_permissions = controller.permissions();
-    if (transactions.contains(ctx.digest())) {
+    let has_proposed_tx = transactions.contains(ctx.digest());
+    if (has_proposed_tx) {
         let tx = transactions.borrow(ctx.digest());
         tx.approvers().do_ref!(|addr| {
             if (addr != controller.addr()) {
@@ -405,6 +431,27 @@ public fun authenticate_v1(
         comulative_permissions,
         largest_weight,
     );
+
+    if (has_proposed_tx) {
+        ensure_proposal_removal(auth_ctx.tx_commands());
+    };
+    if (has_authenticated_through_receipt) {
+        ensure_receipt_removal(auth_ctx.tx_commands());
+    };
+}
+
+fun ensure_proposal_removal(commands: &vector<Command>) {
+    let cmd = commands.borrow(commands.length() - 1);
+    let move_call = cmd.as_move_call().destroy_some();
+
+    assert!(move_call_is(&move_call, b"remove_tx"), ELastCommandNotProposalRemoval);
+}
+
+fun ensure_receipt_removal(commands: &vector<Command>) {
+    let cmd = commands.borrow(commands.length() - 2);
+    let move_call = cmd.as_move_call().destroy_some();
+
+    assert!(move_call_is(&move_call, b"remove_tx_execution_receipt"), EMissingTxReceiptRemoval);
 }
 
 fun validate_auth_fn(auth_fn: &AuthenticatorFunctionRefV1<IdentityV2>) {
@@ -557,7 +604,9 @@ fun validate_remove_controller_call(
 }
 
 fun move_call_is(cmd: &ProgrammableMoveCall, function: vector<u8>): bool {
-    cmd.module_name().as_bytes() == b"identity_v2" && cmd.function().as_bytes() == function
+    *cmd.package() == identity_v2_pkg_id() 
+        && cmd.module_name().as_bytes() == b"identity_v2"
+        && cmd.function().as_bytes() == function
 }
 
 fun assert_permissions(permissions: u64, required_permissions: u64) {

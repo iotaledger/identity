@@ -57,3 +57,7 @@ public fun borrow_mut(self: &mut Transactions, digest: &vector<u8>): &mut Transa
 public fun insert(self: &mut Transactions, digest: vector<u8>) {
     self.transactions.add(digest, Transaction { digest, approvers: vector::empty() });
 }
+
+public fun remove(self: &mut Transactions, digest: vector<u8>) {
+    self.transactions.remove(digest);
+}

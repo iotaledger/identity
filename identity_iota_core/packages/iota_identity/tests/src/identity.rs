@@ -4,7 +4,7 @@ use super::{FromMoveViewCallResult, init};
 use anyhow::{Context as _, anyhow};
 use iota_sdk::{
   crypto::{Signer, ed25519::Ed25519PrivateKey},
-  graphql_client::{Client, WaitForTx, query_types::MoveViewResult},
+  graphql_client::{Client, WaitForTx},
   transaction_builder::{MoveAuthenticatorBuilder, Shared, SharedMut, TransactionBuilder, TransactionSigner},
   types::{Address, Ed25519Signature, ObjectId, PublicKeyExt as _, Transaction, TransactionEffects, TypeTag},
 };
@@ -157,19 +157,21 @@ impl Identity {
 
 pub async fn get_identity(client: &Client, id: ObjectId) -> anyhow::Result<Identity> {
   let config = init();
-  let document_metadata = make_move_view_call(client.move_view_call(
-    format!("{}::identity_v2::did_document", config.identity_pkg_id),
-    None,
-    [&id],
-  ))
-  .await?;
+  let res = client
+    .move_view_call(
+      format!("{}::identity_v2::borrow_parts_v1", config.identity_pkg_id),
+      None,
+      [&id],
+    )
+    .await?;
 
-  let config = make_move_view_call(client.move_view_call(
-    format!("{}::identity_v2::borrow_config", config.identity_pkg_id),
-    None,
-    [&id],
-  ))
-  .await?;
+  let Some(mut results) = res.results else {
+    return Err(anyhow!(res.error.unwrap()).context("move view call failed"));
+  };
+
+  let document_metadata =
+    DidDocumentMetadata::from_move_view_call_result(results.first_mut().unwrap().get_mut("fields").unwrap())?;
+  let config = IdentityConfig::from_move_view_call_result(results.get_mut(1).unwrap().get_mut("fields").unwrap())?;
 
   Ok(Identity {
     id,
@@ -333,19 +335,6 @@ impl FromMoveViewCallResult for Controller {
       permissions,
     })
   }
-}
-
-async fn make_move_view_call<F, T>(view_call: F) -> anyhow::Result<T>
-where
-  F: Future<Output = Result<MoveViewResult, iota_sdk::graphql_client::error::Error>>,
-  T: FromMoveViewCallResult,
-{
-  let res = view_call.await?;
-  let Some(mut results) = res.results else {
-    return Err(anyhow!(res.error.unwrap()).context("move view call failed"));
-  };
-  let json_value = results.first_mut().unwrap().get_mut("fields").unwrap();
-  T::from_move_view_call_result(json_value)
 }
 
 #[derive(Debug)]

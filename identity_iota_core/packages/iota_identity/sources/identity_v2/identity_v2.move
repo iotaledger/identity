@@ -178,6 +178,17 @@ public fun borrow_config(self: &IdentityV2): &IdentityConfig {
     df::borrow(&self.id, ConfigKey {})
 }
 
+/// Returns the parts that comprise this identity:
+/// - DID Document and its metadata;
+/// - Configuration (threshold, controllers metadata);
+/// - Legacy ID (if the identity was the result of a migration);
+public fun borrow_parts_v1(self: &IdentityV2): (&DidDocument, &IdentityConfig, Option<ID>) {
+    let did_document = df::borrow(&self.id, DidDocumentKey {});
+    let config = df::borrow(&self.id, ConfigKey {});
+
+    (did_document, config, self.legacy_id())
+}
+
 /// Updates the DID Document of this Identity.
 public fun update_did_document(
     self: &mut IdentityV2,

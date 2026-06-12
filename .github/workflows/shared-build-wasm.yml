@@ -58,6 +58,13 @@ jobs:
         uses: jetli/wasm-bindgen-action@24ba6f9fff570246106ac3f80f35185600c3f6c9
         with:
           version: '0.2.108'
+  
+      # Install wasm-opt from binaryen repository.
+      - name: Install binaryen
+        uses: sigoden/install-binary@v1
+        with:
+          repo: WebAssembly/binaryen
+          name: wasm-opt
 
       - name: Setup sccache
         uses: './.github/actions/rust/sccache/setup-sccache'

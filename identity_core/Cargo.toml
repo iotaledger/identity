@@ -22,7 +22,7 @@ serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
 strum.workspace = true
 thiserror.workspace = true
-time = { version = "0.3.23", default-features = false, features = ["std", "serde", "parsing", "formatting"] }
+time = { version = ">=0.3.23, <0.3.47", default-features = false, features = ["std", "serde", "parsing", "formatting"] }
 url = { version = "2.4", default-features = false, features = ["serde"] }
 
 [target.'cfg(all(target_arch = "wasm32", not(target_os = "wasi")))'.dependencies]

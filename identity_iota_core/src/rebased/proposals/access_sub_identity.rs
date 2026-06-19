@@ -12,8 +12,7 @@ use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
 use iota_interaction::rpc_types::IotaTransactionBlockEvents;
 use iota_interaction::rpc_types::IotaTransactionBlockResponseOptions;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::TypeTag;
+use iota_sdk_types::{ObjectId, TypeTag};
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::MoveType;
 use iota_interaction::OptionalSend;
@@ -100,10 +99,10 @@ impl Transaction for EmptyTx {
 pub struct AccessSubIdentity {
   /// ID of the Identity whose token will be used to access the sub-Identity.
   #[serde(rename = "entity")]
-  pub identity: ObjectID,
+  pub identity: ObjectId,
   #[serde(rename = "sub_entity")]
   /// ID of the sub-Identity that will be accessed through this action.
-  pub sub_identity: ObjectID,
+  pub sub_identity: ObjectId,
 }
 
 /// A builder structure that eases the creation of an [AccessSubIdentityTx].
@@ -324,9 +323,9 @@ impl Proposal<AccessSubIdentity> {
 #[error("Identity `{identity}` has no control over Identity `{sub_identity}`")]
 pub struct UnrelatedIdentities {
   /// ID of the base-Identity.
-  pub identity: ObjectID,
+  pub identity: ObjectId,
   /// ID of the sub-Identity to be accessed.
-  pub sub_identity: ObjectID,
+  pub sub_identity: ObjectId,
 }
 
 /// Kind of failure that might happen when consuming an [AccessSubIdentityBuilder].
@@ -347,7 +346,7 @@ pub enum AccessSubIdentityBuilderErrorKind {
   #[error("user-defined operation on sub-Identity `{sub_identity}` failed")]
   SubIdentityOperation {
     /// ID of the sub-Identity.
-    sub_identity: ObjectID,
+    sub_identity: ObjectId,
     /// Error returned by the user closure.
     source: BoxedStdError,
   },
@@ -370,7 +369,7 @@ enum TxKind<Tx> {
     expiration: Option<u64>,
   },
   Execute {
-    proposal_id: ObjectID,
+    proposal_id: ObjectId,
     sub_tx: Tx,
     sub_identity_token: ControllerToken,
   },
@@ -386,7 +385,7 @@ enum TxKind<Tx> {
 pub struct AccessSubIdentityTx<'i, 'sub, Tx = EmptyTx> {
   identity: &'i mut OnChainIdentity,
   identity_token: ControllerToken,
-  sub_identity: ObjectID,
+  sub_identity: ObjectId,
   tx_kind: TxKind<Tx>,
   // The lifetime of sub-identity, borrowed within type parameter Tx.
   _sub: PhantomData<&'sub ()>,
@@ -585,7 +584,7 @@ where
 }
 
 impl MoveType for AccessSubIdentity {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     use std::str::FromStr;
 
     TypeTag::from_str(&format!("{package}::access_sub_entity_proposal::AccessSubEntity")).expect("valid move type")
@@ -620,9 +619,9 @@ enum AccessSubIdentityErrorKind {
 #[non_exhaustive]
 pub struct AccessSubIdentityError {
   /// ID of the base-Identity.
-  pub identity: ObjectID,
+  pub identity: ObjectId,
   /// Id of the sub-Identity.
-  pub sub_identity: ObjectID,
+  pub sub_identity: ObjectId,
   /// Type of failure.
   #[source]
   kind: AccessSubIdentityErrorKind,

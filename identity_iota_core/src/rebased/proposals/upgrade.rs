@@ -11,8 +11,7 @@ use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
 use crate::rebased::migration::ControllerToken;
 use async_trait::async_trait;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::TypeTag;
+use iota_sdk_types::{ObjectId, TypeTag};
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -38,7 +37,7 @@ impl Upgrade {
 }
 
 impl MoveType for Upgrade {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     format!("{package}::upgrade_proposal::Upgrade")
       .parse()
       .expect("valid utf8")

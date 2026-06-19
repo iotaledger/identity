@@ -9,8 +9,7 @@ use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::TypeTag;
+use iota_sdk_types::{ObjectId, TypeTag};
 use iota_interaction::types::id::UID;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::types::STARDUST_PACKAGE_ID;
@@ -62,7 +61,7 @@ pub struct UnmigratedAlias {
 }
 
 impl MoveType for UnmigratedAlias {
-  fn move_type(_: ObjectID) -> TypeTag {
+  fn move_type(_: ObjectId) -> TypeTag {
     format!("{STARDUST_PACKAGE_ID}::alias::Alias")
       .parse()
       .expect("valid move type")
@@ -70,7 +69,7 @@ impl MoveType for UnmigratedAlias {
 }
 
 /// Resolves an [`UnmigratedAlias`] given its ID `object_id`.
-pub async fn get_alias(client: &IdentityClientReadOnly, object_id: ObjectID) -> Result<Option<UnmigratedAlias>, Error> {
+pub async fn get_alias(client: &IdentityClientReadOnly, object_id: ObjectId) -> Result<Option<UnmigratedAlias>, Error> {
   match client.get_object_by_id(object_id).await {
     Ok(Some(alias)) => Ok(Some(alias)),
     Ok(None) => Ok(None),

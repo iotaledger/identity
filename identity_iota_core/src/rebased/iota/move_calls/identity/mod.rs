@@ -22,9 +22,8 @@ pub(crate) use upgrade::*;
 
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::{ObjectId, Argument};
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::MoveType;
 use iota_interaction::ProgrammableTransactionBcs;
@@ -45,7 +44,7 @@ enum ControllerTokenArg {
 }
 
 impl ControllerTokenArg {
-  fn from_ref(controller_ref: ControllerTokenRef, ptb: &mut Ptb, package: ObjectID) -> Result<Self, Error> {
+  fn from_ref(controller_ref: ControllerTokenRef, ptb: &mut Ptb, package: ObjectId) -> Result<Self, Error> {
     let token_arg = ptb
       .obj(CallArg::ImmutableOrOwned(controller_ref.object_ref()))
       .map_err(rebased_err)?;
@@ -67,7 +66,7 @@ impl ControllerTokenArg {
     }
   }
 
-  fn put_back(self, ptb: &mut Ptb, package_id: ObjectID) {
+  fn put_back(self, ptb: &mut Ptb, package_id: ObjectId) {
     if let Self::Controller { cap, token, borrow } = self {
       utils::put_back_delegation_token(ptb, cap, token, borrow, package_id);
     }
@@ -84,8 +83,8 @@ struct ProposalContext {
 pub(crate) fn approve_proposal<T: MoveType>(
   identity: OwnedObjectRef,
   controller_cap: ControllerTokenRef,
-  proposal_id: ObjectID,
-  package: ObjectID,
+  proposal_id: ObjectId,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
   let identity = utils::owned_ref_to_shared_object_arg(identity, &mut ptb, true)

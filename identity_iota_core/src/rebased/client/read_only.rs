@@ -19,9 +19,7 @@ use iota_interaction::rpc_types::IotaObjectDataFilter;
 use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaObjectResponseQuery;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::StructTag;
-use iota_interaction::types::base_types::TypeTag;
+use iota_sdk_types::{ObjectId, StructTag, TypeTag};
 use iota_interaction::IotaClientTrait;
 use iota_interaction::MoveType;
 use product_common::core_client::CoreClientReadOnly;
@@ -51,7 +49,7 @@ use iota_interaction_ts::bindings::WasmIotaClient;
 #[derive(Clone)]
 pub struct IdentityClientReadOnly {
   iota_client: IotaClientAdapter,
-  package_history: Vec<ObjectID>,
+  package_history: Vec<ObjectId>,
   network: NetworkName,
   chain_id: String,
 }
@@ -67,7 +65,7 @@ impl IdentityClientReadOnly {
   /// Returns `iota_identity`'s package ID.
   /// The ID of the packages depends on the network
   /// the client is connected to.
-  pub fn package_id(&self) -> ObjectID {
+  pub fn package_id(&self) -> ObjectId {
     *self
       .package_history
       .last()
@@ -138,7 +136,7 @@ impl IdentityClientReadOnly {
   pub async fn new_with_pkg_id(
     #[cfg(target_arch = "wasm32")] iota_client: WasmIotaClient,
     #[cfg(not(target_arch = "wasm32"))] iota_client: IotaClient,
-    package_id: ObjectID,
+    package_id: ObjectId,
   ) -> Result<Self, Error> {
     let client = IotaClientAdapter::new(iota_client);
     let network = network_id(&client).await?;
@@ -155,7 +153,7 @@ impl IdentityClientReadOnly {
   /// Sets the migration registry ID for the current network.
   /// # Notes
   /// This is only needed when automatic retrieval of MigrationRegistry's ID fails.
-  pub fn set_migration_registry_id(&mut self, id: ObjectID) {
+  pub fn set_migration_registry_id(&mut self, id: ObjectId) {
     crate::rebased::migration::set_migration_registry_id(&self.chain_id, id);
   }
 
@@ -184,7 +182,7 @@ impl IdentityClientReadOnly {
   }
 
   /// Resolves an [`Identity`] from its ID `object_id`.
-  pub async fn get_identity(&self, object_id: ObjectID) -> Result<Identity, Error> {
+  pub async fn get_identity(&self, object_id: ObjectId) -> Result<Identity, Error> {
     // spawn all checks
     cfg_if::cfg_if! {
       // Unfortunately the compiler runs into lifetime problems if we try to use a 'type ='
@@ -338,7 +336,7 @@ pub struct QueryControlledDidsError {
 /// Returns the list of all type ID for a given move type where the package ID is taken from history.
 /// # Panics
 /// If type parameter T's move_type returns a TypeTag that is not TypeTag::Struct.
-fn history_type_tags<T: MoveType>(history: &[ObjectID]) -> impl Iterator<Item = StructTag> + use<'_, T> {
+fn history_type_tags<T: MoveType>(history: &[ObjectId]) -> impl Iterator<Item = StructTag> + use<'_, T> {
   history.iter().copied().map(|pkg| {
     let TypeTag::Struct(tag) = T::move_type(pkg) else {
       panic!("T must be a Move struct")
@@ -356,7 +354,7 @@ async fn network_id(iota_client: &IotaClientAdapter) -> Result<NetworkName, Erro
   Ok(network_id.try_into().expect("chain ID is a valid network name"))
 }
 
-async fn resolve_new(client: &IdentityClientReadOnly, object_id: ObjectID) -> Result<Option<Identity>, Error> {
+async fn resolve_new(client: &IdentityClientReadOnly, object_id: ObjectId) -> Result<Option<Identity>, Error> {
   let onchain_identity = get_identity(client, object_id).await.map_err(|err| {
     Error::DIDResolutionError(format!(
       "could not get identity document for object id {object_id}; {err}"
@@ -365,7 +363,7 @@ async fn resolve_new(client: &IdentityClientReadOnly, object_id: ObjectID) -> Re
   Ok(onchain_identity.map(Identity::FullFledged))
 }
 
-async fn resolve_migrated(client: &IdentityClientReadOnly, object_id: ObjectID) -> Result<Option<Identity>, Error> {
+async fn resolve_migrated(client: &IdentityClientReadOnly, object_id: ObjectId) -> Result<Option<Identity>, Error> {
   let onchain_identity = lookup(client, object_id).await.map_err(|err| {
     Error::DIDResolutionError(format!(
       "failed to look up object_id {object_id} in migration registry; {err}"
@@ -390,7 +388,7 @@ async fn resolve_migrated(client: &IdentityClientReadOnly, object_id: ObjectID) 
   Ok(Some(Identity::FullFledged(onchain_identity)))
 }
 
-async fn resolve_unmigrated(client: &IdentityClientReadOnly, object_id: ObjectID) -> Result<Option<Identity>, Error> {
+async fn resolve_unmigrated(client: &IdentityClientReadOnly, object_id: ObjectId) -> Result<Option<Identity>, Error> {
   let unmigrated_alias = get_alias(client, object_id)
     .await
     .map_err(|err| Error::DIDResolutionError(format!("could not query for object id {object_id}; {err}")))?;
@@ -402,15 +400,15 @@ async fn resolve_unmigrated(client: &IdentityClientReadOnly, object_id: ObjectID
 /// # Arguments
 ///
 /// * `did` - A reference to the `IotaDID` to be converted.
-pub fn get_object_id_from_did(did: &IotaDID) -> Result<ObjectID, Error> {
-  ObjectID::from_str(did.tag_str())
+pub fn get_object_id_from_did(did: &IotaDID) -> Result<ObjectId, Error> {
+  ObjectId::from_str(did.tag_str())
     .map_err(|err| Error::DIDResolutionError(format!("could not parse object id from did {did}; {err}")))
 }
 
 #[cfg_attr(feature = "send-sync", async_trait)]
 #[cfg_attr(not(feature = "send-sync"), async_trait(?Send))]
 impl CoreClientReadOnly for IdentityClientReadOnly {
-  fn package_id(&self) -> ObjectID {
+  fn package_id(&self) -> ObjectId {
     self.package_id()
   }
 
@@ -422,7 +420,7 @@ impl CoreClientReadOnly for IdentityClientReadOnly {
     &self.iota_client
   }
 
-  fn package_history(&self) -> Vec<ObjectID> {
+  fn package_history(&self) -> Vec<ObjectId> {
     self.package_history.clone()
   }
 }

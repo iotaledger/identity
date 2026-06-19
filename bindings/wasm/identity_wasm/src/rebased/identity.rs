@@ -10,7 +10,7 @@ use identity_iota::iota::rebased::migration::OnChainIdentity;
 use identity_iota::iota::rebased::Error as RebasedError;
 use identity_iota::iota::IotaDocument;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::ObjectId;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
 use iota_interaction_ts::wasm_error::WasmError;
@@ -68,7 +68,7 @@ impl WasmOnChainIdentity {
   #[wasm_bindgen(js_name = getById)]
   pub async fn get_by_id(id: String, client: &WasmCoreClientReadOnly) -> Result<Self> {
     let client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
-    let id = id.parse::<ObjectID>().map_err(|e| JsError::new(&e.to_string()))?;
+    let id = id.parse::<ObjectId>().map_err(|e| JsError::new(&e.to_string()))?;
 
     get_identity(&client, id)
       .await
@@ -273,7 +273,7 @@ impl WasmOnChainIdentity {
     let objects = objects
       .into_iter()
       .map(|s| s.parse().map_err(|e| JsError::from(e).into()))
-      .collect::<Result<Vec<ObjectID>>>()?;
+      .collect::<Result<Vec<ObjectId>>>()?;
     let tx = JsValue::from(WasmCreateBorrowProposal::new(
       self,
       controller_token,

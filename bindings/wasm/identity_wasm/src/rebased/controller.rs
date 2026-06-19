@@ -8,7 +8,7 @@ use identity_iota::iota::rebased::migration::DelegateToken;
 use identity_iota::iota::rebased::migration::DelegationToken;
 use identity_iota::iota::rebased::migration::DelegationTokenRevocation;
 use identity_iota::iota::rebased::migration::DeleteDelegationToken;
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::ObjectId;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
 use js_sys::Object;
@@ -75,7 +75,7 @@ impl WasmControllerToken {
 
   #[wasm_bindgen(js_name = getById)]
   pub async fn get_by_id(id: &str, client: &WasmCoreClientReadOnly) -> Result<Self> {
-    let id = id.parse::<ObjectID>().map_err(|e| JsError::new(&e.to_string()))?;
+    let id = id.parse::<ObjectId>().map_err(|e| JsError::new(&e.to_string()))?;
     let client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
     client.get_object_by_id(id).await.map(WasmControllerToken).wasm_result()
   }

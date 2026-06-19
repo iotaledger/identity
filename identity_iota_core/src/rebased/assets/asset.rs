@@ -18,13 +18,10 @@ use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::{ObjectId, StructTag, TypeTag, Owner};
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::base_types::SequenceNumber;
-use iota_interaction::types::base_types::StructTag;
-use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::id::UID;
-use iota_interaction::types::object::Owner;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::IotaClientTrait;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;
@@ -75,7 +72,7 @@ where
   T: DeserializeOwned,
 {
   /// Resolves an [`AuthenticatedAsset`] by its ID `id`.
-  pub async fn get_by_id(id: ObjectID, client: &impl CoreClientReadOnly) -> Result<Self, Error> {
+  pub async fn get_by_id(id: ObjectId, client: &impl CoreClientReadOnly) -> Result<Self, Error> {
     let res = client
       .client_adapter()
       .read_api()
@@ -107,7 +104,7 @@ impl<T: MoveType + Send + Sync> AuthenticatedAsset<T> {
   }
 
   /// Returns this [`AuthenticatedAsset`]'s ID.
-  pub fn id(&self) -> ObjectID {
+  pub fn id(&self) -> ObjectId {
     *self.id.object_id()
   }
 
@@ -185,7 +182,7 @@ pub struct AuthenticatedAssetBuilder<T> {
 }
 
 impl<T: MoveType> MoveType for AuthenticatedAsset<T> {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     TypeTag::Struct(Box::new(StructTag::new(
       package,
       ident_str!("asset").as_str(),
@@ -254,16 +251,16 @@ where
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransferProposal {
   id: UID,
-  asset_id: ObjectID,
-  sender_cap_id: ObjectID,
+  asset_id: ObjectId,
+  sender_cap_id: ObjectId,
   sender_address: IotaAddress,
-  recipient_cap_id: ObjectID,
+  recipient_cap_id: ObjectId,
   recipient_address: IotaAddress,
   done: bool,
 }
 
 impl MoveType for TransferProposal {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     TypeTag::Struct(Box::new(StructTag::new(
       package,
       ident_str!("asset").as_str(),
@@ -275,7 +272,7 @@ impl MoveType for TransferProposal {
 
 impl TransferProposal {
   /// Resolves a [`TransferProposal`] by its ID `id`.
-  pub async fn get_by_id(id: ObjectID, client: &impl CoreClientReadOnly) -> Result<Self, Error> {
+  pub async fn get_by_id(id: ObjectId, client: &impl CoreClientReadOnly) -> Result<Self, Error> {
     let res = client
       .client_adapter()
       .read_api()
@@ -375,7 +372,7 @@ impl TransferProposal {
   }
 
   /// Returns this [`TransferProposal`]'s ID.
-  pub fn id(&self) -> ObjectID {
+  pub fn id(&self) -> ObjectId {
     *self.id.object_id()
   }
 
@@ -401,7 +398,7 @@ pub struct UpdateContent<'a, T> {
   asset: &'a mut AuthenticatedAsset<T>,
   new_content: T,
   cached_ptb: OnceCell<ProgrammableTransaction>,
-  package: ObjectID,
+  package: ObjectId,
 }
 
 impl<'a, T: MoveType + Send + Sync> UpdateContent<'a, T> {
@@ -465,7 +462,7 @@ where
 pub struct DeleteAsset<T> {
   asset: AuthenticatedAsset<T>,
   cached_ptb: OnceCell<ProgrammableTransaction>,
-  package: ObjectID,
+  package: ObjectId,
 }
 
 impl<T: MoveType + Send + Sync> DeleteAsset<T> {
@@ -530,7 +527,7 @@ where
 pub struct CreateAsset<T> {
   builder: AuthenticatedAssetBuilder<T>,
   cached_ptb: OnceCell<ProgrammableTransaction>,
-  package: ObjectID,
+  package: ObjectId,
 }
 
 impl<T: MoveType> CreateAsset<T> {
@@ -624,7 +621,7 @@ pub struct TransferAsset<T> {
   asset: AuthenticatedAsset<T>,
   recipient: IotaAddress,
   cached_ptb: OnceCell<ProgrammableTransaction>,
-  package: ObjectID,
+  package: ObjectId,
 }
 
 impl<T: MoveType + Send + Sync> TransferAsset<T> {
@@ -709,7 +706,7 @@ where
 pub struct AcceptTransfer {
   proposal: TransferProposal,
   cached_ptb: OnceCell<ProgrammableTransaction>,
-  package: ObjectID,
+  package: ObjectId,
 }
 
 impl AcceptTransfer {
@@ -800,7 +797,7 @@ impl Transaction for AcceptTransfer {
 pub struct ConcludeTransfer {
   proposal: TransferProposal,
   cached_ptb: OnceCell<ProgrammableTransaction>,
-  package: ObjectID,
+  package: ObjectId,
 }
 
 impl ConcludeTransfer {

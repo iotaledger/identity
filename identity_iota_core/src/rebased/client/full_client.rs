@@ -19,6 +19,7 @@ use crate::IotaDocument;
 use crate::StateMetadataDocument;
 use crate::StateMetadataEncoding;
 use async_trait::async_trait;
+use iota_sdk_types::StructTag;
 use identity_verification::jwk::Jwk;
 use iota_interaction::rpc_types::IotaObjectData;
 use iota_interaction::rpc_types::IotaObjectDataFilter;
@@ -26,7 +27,6 @@ use iota_interaction::rpc_types::IotaObjectResponseQuery;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectRef;
-use iota_interaction::types::base_types::StructTag;
 use iota_interaction::types::crypto::PublicKey;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 #[cfg(not(target_arch = "wasm32"))]
@@ -48,7 +48,7 @@ use crate::rebased::assets::AuthenticatedAssetBuilder;
 use crate::rebased::migration::Identity;
 use crate::rebased::migration::IdentityBuilder;
 use crate::rebased::Error;
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::ObjectId;
 use iota_interaction::IotaClientTrait;
 use iota_interaction::IotaKeySignature;
 use iota_interaction::MoveType;
@@ -159,7 +159,7 @@ impl IdentityClient<NoSigner> {
   /// ```
   pub async fn from_iota_client(
     iota_client: IotaClient,
-    custom_package_id: impl Into<Option<ObjectID>>,
+    custom_package_id: impl Into<Option<ObjectId>>,
   ) -> Result<Self, FromIotaClientError> {
     let read_only_client = if let Some(custom_package_id) = custom_package_id.into() {
       IdentityClientReadOnly::new_with_pkg_id(iota_client, custom_package_id).await
@@ -425,11 +425,11 @@ where
     &self.read_client
   }
 
-  fn package_id(&self) -> ObjectID {
+  fn package_id(&self) -> ObjectId {
     self.read_client.package_id()
   }
 
-  fn package_history(&self) -> Vec<ObjectID> {
+  fn package_history(&self) -> Vec<ObjectId> {
     self.read_client.package_history()
   }
 

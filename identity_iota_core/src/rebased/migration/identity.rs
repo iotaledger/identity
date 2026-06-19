@@ -41,11 +41,8 @@ use iota_interaction::rpc_types::IotaPastObjectResponse;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::StructTag;
-use iota_interaction::types::base_types::TypeTag;
+use iota_sdk_types::{ObjectId, TypeTag, StructTag, Owner};
 use iota_interaction::types::id::UID;
-use iota_interaction::types::object::Owner;
 use serde;
 use serde::Deserialize;
 use serde::Serialize;
@@ -78,7 +75,7 @@ const HISTORY_DEFAULT_PAGE_SIZE: usize = 10;
 pub(crate) struct IdentityData {
   pub(crate) id: UID,
   pub(crate) multicontroller: Multicontroller<Option<Vec<u8>>>,
-  pub(crate) legacy_id: Option<ObjectID>,
+  pub(crate) legacy_id: Option<ObjectId>,
   pub(crate) created: Timestamp,
   pub(crate) updated: Timestamp,
   pub(crate) version: u64,
@@ -125,8 +122,8 @@ pub struct OnChainIdentity {
 }
 
 impl OnChainIdentity {
-  /// Returns the [`ObjectID`] of this [`OnChainIdentity`].
-  pub fn id(&self) -> ObjectID {
+  /// Returns the [`ObjectId`] of this [`OnChainIdentity`].
+  pub fn id(&self) -> ObjectId {
     *self.id.object_id()
   }
 
@@ -154,12 +151,12 @@ impl OnChainIdentity {
   }
 
   /// Returns this [`OnChainIdentity`]'s list of active proposals.
-  pub fn proposals(&self) -> &HashSet<ObjectID> {
+  pub fn proposals(&self) -> &HashSet<ObjectId> {
     self.multi_controller.proposals()
   }
 
   /// Returns this [`OnChainIdentity`]'s controllers as the map: `controller_id -> controller_voting_power`.
-  pub fn controllers(&self) -> &HashMap<ObjectID, u64> {
+  pub fn controllers(&self) -> &HashMap<ObjectId, u64> {
     self.multi_controller.controllers()
   }
 
@@ -169,7 +166,7 @@ impl OnChainIdentity {
   }
 
   /// Returns the voting power of controller with ID `controller_id`, if any.
-  pub fn controller_voting_power(&self, controller_id: ObjectID) -> Option<u64> {
+  pub fn controller_voting_power(&self, controller_id: ObjectId) -> Option<u64> {
     self.multi_controller.controller_voting_power(controller_id)
   }
 
@@ -275,7 +272,7 @@ impl OnChainIdentity {
   #[deprecated = "use `OnChainIdentity::access_sub_identity` instead."]
   pub fn controller_execution<'i, 'c>(
     &'i mut self,
-    controller_cap: ObjectID,
+    controller_cap: ObjectId,
     controller_token: &'c ControllerToken,
   ) -> ProposalBuilder<'i, 'c, ControllerExecution> {
     let action = ControllerExecution::new(controller_cap, self);
@@ -386,7 +383,7 @@ async fn get_previous_version(
 /// Returns the [`OnChainIdentity`] having ID `object_id`, if it exists.
 pub async fn get_identity(
   client: &impl CoreClientReadOnly,
-  object_id: ObjectID,
+  object_id: ObjectId,
 ) -> Result<Option<OnChainIdentity>, Error> {
   use IdentityResolutionErrorKind::NotFound;
 
@@ -403,7 +400,7 @@ pub async fn get_identity(
 
 pub(crate) async fn get_identity_impl(
   client: &impl CoreClientReadOnly,
-  object_id: ObjectID,
+  object_id: ObjectId,
 ) -> Result<OnChainIdentity, IdentityResolutionError> {
   let response = client
     .client_adapter()
@@ -495,7 +492,7 @@ pub enum IdentityResolutionErrorKind {
 #[non_exhaustive]
 pub struct IdentityResolutionError {
   /// The Identity's ID.
-  pub resolving: ObjectID,
+  pub resolving: ObjectId,
   /// Specific type of failure for this error.
   #[source]
   pub kind: IdentityResolutionErrorKind,
@@ -536,7 +533,7 @@ pub(crate) fn unpack_identity_data(data: IotaObjectData) -> Result<IdentityData,
   struct TempOnChainIdentity {
     id: UID,
     did_doc: Multicontroller<Option<Vec<u8>>>,
-    legacy_id: Option<ObjectID>,
+    legacy_id: Option<ObjectId>,
     created: Number<u64>,
     updated: Number<u64>,
     version: Number<u64>,
@@ -665,7 +662,7 @@ impl IdentityBuilder {
 }
 
 impl MoveType for OnChainIdentity {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     TypeTag::Struct(Box::new(StructTag::new(
       package,
       ident_str!("identity").as_str(),

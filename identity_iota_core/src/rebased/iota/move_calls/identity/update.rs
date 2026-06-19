@@ -3,7 +3,7 @@
 
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::ObjectId;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::ProgrammableTransactionBcs;
 
@@ -19,7 +19,7 @@ pub(crate) async fn propose_update(
   capability: ControllerTokenRef,
   did_doc: Option<&[u8]>,
   expiration: Option<u64>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
   let capability = ControllerTokenArg::from_ref(capability, &mut ptb, package_id)?;
@@ -44,8 +44,8 @@ pub(crate) async fn propose_update(
 pub(crate) async fn execute_update(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  proposal_id: ObjectID,
-  package_id: ObjectID,
+  proposal_id: ObjectId,
+  package_id: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
   let capability = ControllerTokenArg::from_ref(capability, &mut ptb, package_id)?;

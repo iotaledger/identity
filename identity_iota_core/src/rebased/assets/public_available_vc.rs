@@ -9,7 +9,7 @@ use identity_credential::credential::Jwt;
 use identity_credential::credential::JwtCredential;
 use identity_jose::jwt::JwtHeader;
 use identity_jose::jwu;
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::ObjectId;
 use iota_interaction::IotaKeySignature;
 use iota_interaction::IotaVerifiableCredential;
 use iota_interaction::OptionalSync;
@@ -39,7 +39,7 @@ impl Deref for PublicAvailableVC {
 
 impl PublicAvailableVC {
   /// Get the ID of the asset.
-  pub fn object_id(&self) -> ObjectID {
+  pub fn object_id(&self) -> ObjectId {
     self.asset.id()
   }
 
@@ -78,7 +78,7 @@ impl PublicAvailableVC {
   }
 
   /// Get a publicly available VC by its ID.
-  pub async fn get_by_id(id: ObjectID, client: &IdentityClientReadOnly) -> Result<Self, crate::rebased::Error> {
+  pub async fn get_by_id(id: ObjectId, client: &IdentityClientReadOnly) -> Result<Self, crate::rebased::Error> {
     let asset = client
       .get_object_by_id::<AuthenticatedAsset<IotaVerifiableCredential>>(id)
       .await?;

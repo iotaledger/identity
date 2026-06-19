@@ -4,7 +4,7 @@
 use identity_iota::did::Error as DIDError;
 use identity_iota::did::DID;
 use identity_iota::iota::IotaDID;
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::ObjectId;
 use product_common::network_name::NetworkName;
 use wasm_bindgen::prelude::*;
 
@@ -57,7 +57,7 @@ impl WasmIotaDID {
   #[allow(non_snake_case)]
   pub fn from_object_id(objectId: String, network: String) -> Result<WasmIotaDID> {
     let network_name = NetworkName::try_from(network).wasm_result()?;
-    let object_id = ObjectID::from_prefixed_hex(&objectId).map_err(JsError::from)?;
+    let object_id = ObjectId::from_prefixed_hex(&objectId).map_err(JsError::from)?;
 
     Ok(Self(IotaDID::from_object_id(object_id, &network_name)))
   }
@@ -155,7 +155,7 @@ impl WasmIotaDID {
     WasmDIDUrl::from(self.0.to_url())
   }
 
-  /// Returns the hex-encoded ObjectID with a '0x' prefix, from the DID tag.
+  /// Returns the hex-encoded ObjectId with a '0x' prefix, from the DID tag.
   #[wasm_bindgen(js_name = toObjectID)]
   pub fn to_object_id(&self) -> String {
     self.0.to_object_id().to_string()

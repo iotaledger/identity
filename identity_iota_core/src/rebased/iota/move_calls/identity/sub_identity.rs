@@ -3,9 +3,8 @@
 
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::{ObjectId, Argument};
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::MoveType as _;
@@ -24,7 +23,7 @@ pub(crate) fn propose_identity_sub_access(
   sub_identity: OwnedObjectRef,
   identity_token: ControllerTokenRef,
   expiration: Option<u64>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> Result<ProgrammableTransaction, Error> {
   let ProposalContext {
     mut ptb, capability, ..
@@ -37,10 +36,10 @@ pub(crate) fn propose_identity_sub_access(
 pub(crate) fn execute_sub_identity_access(
   identity: OwnedObjectRef,
   identity_token: ControllerTokenRef,
-  proposal_id: ObjectID,
+  proposal_id: ObjectId,
   sub_identity_token: ControllerTokenRef,
   inner_pt: ProgrammableTransaction,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<ProgrammableTransaction, Error> {
   let mut ptb = Ptb::new();
   let identity = utils::owned_ref_to_shared_object_arg(identity, &mut ptb, true)?;
@@ -69,7 +68,7 @@ pub(crate) fn propose_and_execute_sub_identity_access(
   sub_identity_token: ControllerTokenRef,
   inner_pt: ProgrammableTransaction,
   expiration: Option<u64>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> Result<ProgrammableTransaction, Error> {
   let ProposalContext {
     mut ptb,
@@ -98,7 +97,7 @@ fn identity_sub_access_impl(
   sub_identity: OwnedObjectRef,
   identity_token: ControllerTokenRef,
   expiration: Option<u64>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> anyhow::Result<ProposalContext> {
   let mut ptb = Ptb::new();
   let cap = ControllerTokenArg::from_ref(identity_token, &mut ptb, package_id)?;
@@ -129,7 +128,7 @@ pub(crate) fn execute_sub_identity_access_impl(
   identity_token: Argument,
   sub_identity_token: ControllerTokenRef,
   inner_pt: ProgrammableTransaction,
-  package: ObjectID,
+  package: ObjectId,
 ) -> anyhow::Result<()> {
   // Get the proposal's action as argument.
   let action = ptb.programmable_move_call(

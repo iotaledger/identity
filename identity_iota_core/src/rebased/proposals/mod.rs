@@ -25,10 +25,9 @@ use iota_interaction::rpc_types::IotaObjectData;
 use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::{ObjectId, TypeTag};
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::base_types::ObjectType;
-use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::IotaClientTrait;
 use iota_interaction::OptionalSend;
@@ -404,7 +403,7 @@ where
   }
 }
 
-async fn obj_data_for_id(client: &impl CoreClientReadOnly, obj_id: ObjectID) -> anyhow::Result<IotaObjectData> {
+async fn obj_data_for_id(client: &impl CoreClientReadOnly, obj_id: ObjectId) -> anyhow::Result<IotaObjectData> {
   use anyhow::Context;
 
   client
@@ -418,7 +417,7 @@ async fn obj_data_for_id(client: &impl CoreClientReadOnly, obj_id: ObjectID) -> 
 
 async fn obj_ref_and_type_for_id(
   client: &impl CoreClientReadOnly,
-  obj_id: ObjectID,
+  obj_id: ObjectId,
 ) -> anyhow::Result<(ObjectRef, TypeTag)> {
   let res = obj_data_for_id(client, obj_id).await?;
   let obj_ref = res.object_ref();
@@ -433,14 +432,14 @@ async fn obj_ref_and_type_for_id(
 /// A transaction that requires user input in order to be executed.
 pub struct UserDrivenTx<'i, A> {
   identity: &'i mut OnChainIdentity,
-  controller_token: ObjectID,
+  controller_token: ObjectId,
   action: A,
-  proposal_id: ObjectID,
+  proposal_id: ObjectId,
   cached_ptb: OnceCell<ProgrammableTransaction>,
 }
 
 impl<'i, A> UserDrivenTx<'i, A> {
-  fn new(identity: &'i mut OnChainIdentity, controller_token: ObjectID, action: A, proposal_id: ObjectID) -> Self {
+  fn new(identity: &'i mut OnChainIdentity, controller_token: ObjectId, action: A, proposal_id: ObjectId) -> Self {
     Self {
       identity,
       controller_token,
@@ -453,9 +452,9 @@ impl<'i, A> UserDrivenTx<'i, A> {
 
 #[derive(Debug, Deserialize)]
 struct ProposalEvent {
-  identity: ObjectID,
-  controller: ObjectID,
-  proposal: ObjectID,
+  identity: ObjectId,
+  controller: ObjectId,
+  proposal: ObjectId,
   #[allow(dead_code)]
   executed: bool,
 }

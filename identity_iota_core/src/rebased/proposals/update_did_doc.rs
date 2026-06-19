@@ -10,8 +10,7 @@ use crate::rebased::migration::ControllerToken;
 use crate::IotaDocument;
 use async_trait::async_trait;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::TypeTag;
+use iota_sdk_types::{ObjectId, TypeTag};
 use product_common::core_client::CoreClientReadOnly;
 use product_common::transaction::transaction_builder::TransactionBuilder;
 use serde::Deserialize;
@@ -32,7 +31,7 @@ use super::ProposalT;
 pub struct UpdateDidDocument(Option<Vec<u8>>);
 
 impl MoveType for UpdateDidDocument {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     use std::str::FromStr;
 
     TypeTag::from_str(&format!(

@@ -22,7 +22,7 @@ use identity_storage::KeyType;
 use identity_storage::StorageSigner;
 use identity_stronghold::StrongholdStorage;
 use iota_sdk::types::base_types::IotaAddress;
-use iota_sdk::types::base_types::ObjectID;
+use iota_sdk_types::ObjectId;
 use iota_sdk::IotaClient;
 use iota_sdk::IotaClientBuilder;
 use iota_sdk::IOTA_DEVNET_URL;
@@ -134,7 +134,7 @@ where
   request_funds(&sender_address).await?;
 
   let iota_client = get_iota_client().await?;
-  let package_id: ObjectID = std::env::var("IOTA_IDENTITY_PKG_ID")
+  let package_id: ObjectId = std::env::var("IOTA_IDENTITY_PKG_ID")
     .map_err(|e| {
       anyhow::anyhow!("env variable IOTA_IDENTITY_PKG_ID must be set in order to run the examples").context(e)
     })

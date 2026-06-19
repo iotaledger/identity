@@ -7,8 +7,7 @@ use crate::rebased::iota::package::identity_package_id;
 use async_trait::async_trait;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::TypeTag;
+use iota_sdk_types::{ObjectId, TypeTag};
 use iota_interaction::MoveType;
 use iota_interaction::OptionalSync;
 use product_common::core_client::CoreClientReadOnly;
@@ -30,10 +29,10 @@ use super::ProposalT;
 /// An action used to transfer [`crate::migration::OnChainIdentity`]-owned assets to other addresses.
 #[derive(Debug, Clone, Deserialize, Default, Serialize)]
 #[serde(from = "IotaSendAction", into = "IotaSendAction")]
-pub struct SendAction(Vec<(ObjectID, IotaAddress)>);
+pub struct SendAction(Vec<(ObjectId, IotaAddress)>);
 
 impl MoveType for SendAction {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     use std::str::FromStr;
 
     TypeTag::from_str(&format!("{package}::transfer_proposal::Send")).expect("valid move type")
@@ -42,14 +41,14 @@ impl MoveType for SendAction {
 
 impl SendAction {
   /// Adds to the list of object to send the object with ID `object_id` and send it to address `recipient`.
-  pub fn send_object(&mut self, object_id: ObjectID, recipient: IotaAddress) {
+  pub fn send_object(&mut self, object_id: ObjectId, recipient: IotaAddress) {
     self.0.push((object_id, recipient));
   }
 
   /// Adds multiple objects to the list of objects to send.
   pub fn send_objects<I>(&mut self, objects: I)
   where
-    I: IntoIterator<Item = (ObjectID, IotaAddress)>,
+    I: IntoIterator<Item = (ObjectId, IotaAddress)>,
   {
     objects
       .into_iter()
@@ -57,15 +56,15 @@ impl SendAction {
   }
 }
 
-impl AsRef<[(ObjectID, IotaAddress)]> for SendAction {
-  fn as_ref(&self) -> &[(ObjectID, IotaAddress)] {
+impl AsRef<[(ObjectId, IotaAddress)]> for SendAction {
+  fn as_ref(&self) -> &[(ObjectId, IotaAddress)] {
     &self.0
   }
 }
 
 impl ProposalBuilder<'_, '_, SendAction> {
   /// Adds one object to the list of objects to send.
-  pub fn object(mut self, object_id: ObjectID, recipient: IotaAddress) -> Self {
+  pub fn object(mut self, object_id: ObjectId, recipient: IotaAddress) -> Self {
     self.send_object(object_id, recipient);
     self
   }
@@ -73,7 +72,7 @@ impl ProposalBuilder<'_, '_, SendAction> {
   /// Adds multiple objects to the list of objects to send.
   pub fn objects<I>(mut self, objects: I) -> Self
   where
-    I: IntoIterator<Item = (ObjectID, IotaAddress)>,
+    I: IntoIterator<Item = (ObjectId, IotaAddress)>,
   {
     self.send_objects(objects);
     self
@@ -201,7 +200,7 @@ impl ProposalT for Proposal<SendAction> {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct IotaSendAction {
-  objects: Vec<ObjectID>,
+  objects: Vec<ObjectId>,
   recipients: Vec<IotaAddress>,
 }
 

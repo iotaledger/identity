@@ -3,7 +3,7 @@
 
 mod number;
 
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::ObjectId;
 use iota_interaction::types::id::UID;
 pub(crate) use number::*;
 use serde::Deserialize;
@@ -19,7 +19,7 @@ pub(crate) struct Bag {
 impl Default for Bag {
   fn default() -> Self {
     Self {
-      id: UID::new(ObjectID::ZERO),
+      id: UID::new(ObjectId::ZERO),
       size: 0,
     }
   }

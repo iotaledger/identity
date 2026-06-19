@@ -13,13 +13,12 @@ use identity_iota::iota::rebased::proposals::BorrowIntentFnT;
 use identity_iota::iota::rebased::proposals::ProposalResult;
 use identity_iota::iota::rebased::proposals::ProposalT as _;
 use iota_interaction::rpc_types::IotaObjectData;
-use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
-use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::types::transaction::TransactionKind;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
+use iota_sdk_types::{ObjectId, Argument};
 use product_common::bindings::core_client::WasmManagedCoreClientReadOnly;
 use product_common::bindings::transaction::WasmTransactionBuilder;
 use product_common::core_client::CoreClientReadOnly;
@@ -60,7 +59,7 @@ impl WasmBorrowFn {
   pub(crate) fn into_intent_fn(self) -> impl BorrowIntentFnT {
     type Ptb = ProgrammableTransactionBuilder;
 
-    move |ptb: &mut Ptb, objects: &HashMap<ObjectID, (Argument, IotaObjectData)>| {
+    move |ptb: &mut Ptb, objects: &HashMap<ObjectId, (Argument, IotaObjectData)>| {
       // Convert the PTB into a TS Transaction (the builder).
       let pt = std::mem::take(ptb).finish();
       let tx_kind = TransactionKind::Programmable(pt);
@@ -99,7 +98,7 @@ impl WasmBorrowFn {
 #[derive(Clone)]
 #[wasm_bindgen(js_name = Borrow, inspectable, getter_with_clone)]
 pub struct WasmBorrow {
-  objects: Vec<ObjectID>,
+  objects: Vec<ObjectId>,
   pub borrow_fn: Option<WasmBorrowFn>,
 }
 
@@ -120,7 +119,7 @@ impl WasmBorrow {
   pub fn new(objects: Vec<String>, borrow_fn: Option<WasmBorrowFn>) -> StdResult<Self, JsError> {
     let objects = objects
       .iter()
-      .map(|s| s.parse::<ObjectID>())
+      .map(|s| s.parse::<ObjectId>())
       .collect::<StdResult<Vec<_>, _>>()?;
 
     Ok(Self { borrow_fn, objects })
@@ -380,7 +379,7 @@ pub struct WasmCreateBorrowProposal {
   controller_token: WasmControllerToken,
   expiration_epoch: Option<u64>,
   borrow_fn: Option<WasmBorrowFn>,
-  objects: Vec<ObjectID>,
+  objects: Vec<ObjectId>,
 }
 
 #[wasm_bindgen(js_class = CreateBorrowProposal)]
@@ -388,7 +387,7 @@ impl WasmCreateBorrowProposal {
   pub(crate) fn new(
     identity: &WasmOnChainIdentity,
     controller_token: &WasmControllerToken,
-    objects: Vec<ObjectID>,
+    objects: Vec<ObjectId>,
     borrow_fn: Option<WasmBorrowFn>,
     expiration_epoch: Option<u64>,
   ) -> Self {

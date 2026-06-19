@@ -3,10 +3,9 @@
 
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::{ObjectId, Argument};
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::MoveType as _;
 use iota_interaction::ProgrammableTransactionBcs;
@@ -22,9 +21,9 @@ use super::ProposalContext;
 pub(crate) fn propose_controller_execution(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  controller_cap_id: ObjectID,
+  controller_cap_id: ObjectId,
   expiration: Option<u64>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let ProposalContext {
     mut ptb, capability, ..
@@ -37,10 +36,10 @@ pub(crate) fn propose_controller_execution(
 pub(crate) fn execute_controller_execution<F>(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  proposal_id: ObjectID,
+  proposal_id: ObjectId,
   borrowing_controller_cap_ref: ObjectRef,
   intent_fn: F,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error>
 where
   F: FnOnce(&mut Ptb, &Argument),
@@ -71,7 +70,7 @@ pub(crate) fn create_and_execute_controller_execution<F>(
   expiration: Option<u64>,
   borrowing_controller_cap_ref: ObjectRef,
   intent_fn: F,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error>
 where
   F: FnOnce(&mut Ptb, &Argument),
@@ -107,9 +106,9 @@ where
 fn controller_execution_impl(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  controller_cap_id: ObjectID,
+  controller_cap_id: ObjectId,
   expiration: Option<u64>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> anyhow::Result<ProposalContext> {
   let mut ptb = Ptb::new();
   let capability = ControllerTokenArg::from_ref(capability, &mut ptb, package_id)?;
@@ -140,7 +139,7 @@ pub(crate) fn execute_controller_execution_impl<F>(
   delegation_token: Argument,
   borrowing_controller_cap_ref: ObjectRef,
   intent_fn: F,
-  package: ObjectID,
+  package: ObjectId,
 ) -> anyhow::Result<()>
 where
   F: FnOnce(&mut Ptb, &Argument),

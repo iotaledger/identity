@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::ObjectId;
 use product_common::core_client::CoreClientReadOnly;
 use serde::Deserialize;
 use serde::Serialize;
@@ -18,7 +18,7 @@ use crate::rebased::Error;
 
 macro_rules! object_id {
   ($id:literal) => {
-    ObjectID::from_prefixed_hex($id).unwrap()
+    ObjectId::from_prefixed_hex($id).unwrap()
   };
 }
 
@@ -80,7 +80,7 @@ impl Env {
 #[derive(Debug, Clone, Default)]
 pub(crate) struct PackageRegistry {
   aliases: HashMap<String, String>,
-  envs: HashMap<String, Vec<ObjectID>>,
+  envs: HashMap<String, Vec<ObjectId>>,
 }
 
 impl PackageRegistry {
@@ -89,13 +89,13 @@ impl PackageRegistry {
   ///
   /// ID at position `0` is the first ever published version of the package, `1` is
   /// the second, and so forth until the last, which is the currently active version.
-  pub(crate) fn history(&self, chain: &str) -> Option<&[ObjectID]> {
+  pub(crate) fn history(&self, chain: &str) -> Option<&[ObjectId]> {
     let from_alias = || self.aliases.get(chain).and_then(|chain_id| self.envs.get(chain_id));
     self.envs.get(chain).or_else(from_alias).map(|v| v.as_slice())
   }
 
   /// Returns this package's latest version ID for a given chain.
-  pub(crate) fn package_id(&self, chain: &str) -> Option<ObjectID> {
+  pub(crate) fn package_id(&self, chain: &str) -> Option<ObjectId> {
     self.history(chain).and_then(|versions| versions.last()).copied()
   }
 
@@ -108,7 +108,7 @@ impl PackageRegistry {
   }
 
   /// Adds or replaces this package's metadata for a given environment.
-  pub(crate) fn insert_env(&mut self, env: Env, history: Vec<ObjectID>) {
+  pub(crate) fn insert_env(&mut self, env: Env, history: Vec<ObjectId>) {
     let Env { chain_id, alias } = env;
 
     if let Some(alias) = alias {
@@ -117,7 +117,7 @@ impl PackageRegistry {
     self.envs.insert(chain_id, history);
   }
 
-  pub(crate) fn insert_new_package_version(&mut self, chain_id: &str, package: ObjectID) {
+  pub(crate) fn insert_new_package_version(&mut self, chain_id: &str, package: ObjectId) {
     let history = self.envs.entry(chain_id.to_string()).or_default();
     if history.last() != Some(&package) {
       history.push(package)
@@ -133,7 +133,7 @@ pub(crate) async fn identity_package_registry_mut() -> RwLockWriteGuard<'static,
   IOTA_IDENTITY_PACKAGE_REGISTRY.write().await
 }
 
-pub(crate) async fn identity_package_id<C>(client: &C) -> Result<ObjectID, Error>
+pub(crate) async fn identity_package_id<C>(client: &C) -> Result<ObjectId, Error>
 where
   C: CoreClientReadOnly,
 {

@@ -7,9 +7,10 @@ use std::sync::LazyLock;
 
 use iota_interaction::rpc_types::EventFilter;
 use iota_interaction::rpc_types::IotaData;
-use iota_sdk_types::{ObjectId, StructTag};
 use iota_interaction::types::id::ID;
 use iota_interaction::IotaClientTrait;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::StructTag;
 use phf::phf_map;
 use phf::Map;
 use product_common::core_client::CoreClientReadOnly;

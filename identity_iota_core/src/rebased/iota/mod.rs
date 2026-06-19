@@ -8,10 +8,11 @@ pub(crate) mod types;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
-use iota_sdk_types::{Argument, Command};
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::types::transaction::ProgrammableTransaction;
+use iota_sdk_types::Argument;
+use iota_sdk_types::Command;
 
 pub(crate) fn ptb_merge_tx_with_inputs_replacement(
   ptb: &mut Ptb,
@@ -109,10 +110,10 @@ mod tests {
   use super::*;
   use iota_interaction::ident_str;
   use iota_interaction::types::base_types::IotaAddress;
-  use iota_sdk_types::ObjectId;
   use iota_interaction::types::transaction::SharedObjectRef;
   use iota_interaction::types::IOTA_FRAMEWORK_PACKAGE_ID;
   use iota_interaction::IOTA_COIN_TYPE;
+  use iota_sdk_types::ObjectId;
 
   /// Returns a PTB with a single call to `0x2::coin::zero`, together with its result.
   fn empty_iota_coin_ptb() -> (Ptb, Argument) {

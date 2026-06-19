@@ -4,9 +4,9 @@
 use std::process::Output;
 
 use anyhow::Context as _;
-use iota_sdk_types::ObjectId;
 use iota_interaction::IotaClient;
 use iota_interaction::IotaClientBuilder;
+use iota_sdk_types::ObjectId;
 use serde::Deserialize;
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::process::Command;

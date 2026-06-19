@@ -24,8 +24,8 @@ fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "69d496c7
 identity_ecdsa_verifier = { path = "../../../identity_ecdsa_verifier", default-features = false, features = ["es256", "es256k"] }
 identity_eddsa_verifier = { path = "../../../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
 iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", features = ["serde"] }
-iota-sdk-types = { git = "https://github.com/iotaledger/iota-rust-sdk.git", rev = "35a27488b887e28e844a1e46d7edb78605871155", default-features = false }
 iota-sdk = { version = "1.1.5", default-features = false, features = ["serde", "std"] }
+iota-sdk-types = { git = "https://github.com/iotaledger/iota-rust-sdk.git", rev = "35a27488b887e28e844a1e46d7edb78605871155", default-features = false }
 iota_interaction = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-25-rc-upstream-merge", package = "iota_interaction", default-features = false }
 iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1-25-rc-upstream-merge", package = "iota_interaction_ts" }
 js-sys = { version = "0.3.61" }

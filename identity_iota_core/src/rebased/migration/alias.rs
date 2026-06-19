@@ -9,12 +9,13 @@ use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_sdk_types::{ObjectId, TypeTag};
 use iota_interaction::types::id::UID;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::types::STARDUST_PACKAGE_ID;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;
 use iota_interaction::OptionalSync;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::TypeTag;
 
 use product_common::core_client::CoreClientReadOnly;
 use product_common::transaction::transaction_builder::Transaction;

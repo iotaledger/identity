@@ -11,7 +11,8 @@ use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
 use crate::rebased::migration::ControllerToken;
 use async_trait::async_trait;
-use iota_sdk_types::{ObjectId, TypeTag};
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::TypeTag;
 use serde::Deserialize;
 use serde::Serialize;
 

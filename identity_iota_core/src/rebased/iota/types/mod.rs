@@ -3,8 +3,8 @@
 
 mod number;
 
-use iota_sdk_types::ObjectId;
 use iota_interaction::types::id::UID;
+use iota_sdk_types::ObjectId;
 pub(crate) use number::*;
 use serde::Deserialize;
 use serde::Serialize;

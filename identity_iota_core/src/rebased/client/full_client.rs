@@ -19,7 +19,6 @@ use crate::IotaDocument;
 use crate::StateMetadataDocument;
 use crate::StateMetadataEncoding;
 use async_trait::async_trait;
-use iota_sdk_types::StructTag;
 use identity_verification::jwk::Jwk;
 use iota_interaction::rpc_types::IotaObjectData;
 use iota_interaction::rpc_types::IotaObjectDataFilter;
@@ -33,6 +32,7 @@ use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::IotaClient;
 #[cfg(target_arch = "wasm32")]
 use iota_interaction_ts::bindings::WasmIotaClient as IotaClient;
+use iota_sdk_types::StructTag;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
@@ -48,11 +48,11 @@ use crate::rebased::assets::AuthenticatedAssetBuilder;
 use crate::rebased::migration::Identity;
 use crate::rebased::migration::IdentityBuilder;
 use crate::rebased::Error;
-use iota_sdk_types::ObjectId;
 use iota_interaction::IotaClientTrait;
 use iota_interaction::IotaKeySignature;
 use iota_interaction::MoveType;
 use iota_interaction::OptionalSync;
+use iota_sdk_types::ObjectId;
 
 use super::IdentityClientReadOnly;
 

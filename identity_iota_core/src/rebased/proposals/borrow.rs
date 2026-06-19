@@ -24,10 +24,12 @@ use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaObjectData;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
-use iota_sdk_types::{ObjectId, TypeTag, Argument};
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::MoveType;
 use iota_interaction::OptionalSync;
+use iota_sdk_types::Argument;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::TypeTag;
 use serde::Serialize;
 
 use super::CreateProposal;

@@ -19,9 +19,11 @@ use iota_interaction::rpc_types::IotaObjectDataFilter;
 use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaObjectResponseQuery;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_sdk_types::{ObjectId, StructTag, TypeTag};
 use iota_interaction::IotaClientTrait;
 use iota_interaction::MoveType;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::StructTag;
+use iota_sdk_types::TypeTag;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
 

@@ -24,12 +24,12 @@ use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaObjectData;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::TypeTag;
-use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::MoveType;
 use iota_interaction::OptionalSync;
+use iota_sdk_types::Argument;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::TypeTag;
 use serde::Serialize;
 
 use super::CreateProposal;
@@ -43,8 +43,8 @@ cfg_if::cfg_if! {
       use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
       /// Instances of BorrowIntentFnT can be used as user-provided function to describe how
       /// a borrowed assets shall be used.
-      pub trait BorrowIntentFnT: FnOnce(&mut Ptb, &HashMap<ObjectID, (Argument, IotaObjectData)>) {}
-      impl<T> BorrowIntentFnT for T where T: FnOnce(&mut Ptb, &HashMap<ObjectID, (Argument, IotaObjectData)>) {}
+      pub trait BorrowIntentFnT: FnOnce(&mut Ptb, &HashMap<ObjectId, (Argument, IotaObjectData)>) {}
+      impl<T> BorrowIntentFnT for T where T: FnOnce(&mut Ptb, &HashMap<ObjectId, (Argument, IotaObjectData)>) {}
       /// Boxed dynamic trait object of {@link BorrowIntentFnT}
       #[allow(unreachable_pub)]
       pub type BorrowIntentFn = Box<dyn BorrowIntentFnT>;
@@ -52,8 +52,8 @@ cfg_if::cfg_if! {
       use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
       /// Instances of BorrowIntentFnT can be used as user-provided function to describe how
       /// a borrowed assets shall be used.
-      pub trait BorrowIntentFnT: FnOnce(&mut Ptb, &HashMap<ObjectID, (Argument, IotaObjectData)>) {}
-      impl<T> BorrowIntentFnT for T where T: FnOnce(&mut Ptb, &HashMap<ObjectID, (Argument, IotaObjectData)>) {}
+      pub trait BorrowIntentFnT: FnOnce(&mut Ptb, &HashMap<ObjectId, (Argument, IotaObjectData)>) {}
+      impl<T> BorrowIntentFnT for T where T: FnOnce(&mut Ptb, &HashMap<ObjectId, (Argument, IotaObjectData)>) {}
       /// Boxed dynamic trait object of {@link BorrowIntentFnT}
       #[allow(unreachable_pub)]
       pub type BorrowIntentFn = Box<dyn BorrowIntentFnT + Send>;
@@ -63,7 +63,7 @@ cfg_if::cfg_if! {
 /// Action used to borrow in transaction [OnChainIdentity]'s assets.
 #[derive(Deserialize, Serialize)]
 pub struct BorrowAction<F = BorrowIntentFn> {
-  objects: Vec<ObjectID>,
+  objects: Vec<ObjectId>,
   #[serde(skip, default = "Mutex::default")]
   intent_fn: Mutex<Option<F>>,
 }
@@ -84,7 +84,7 @@ where
   F: BorrowIntentFnT;
 
 impl MoveType for BorrowAction {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     use std::str::FromStr;
 
     TypeTag::from_str(&format!("{package}::borrow_proposal::Borrow")).expect("valid move type")
@@ -95,7 +95,7 @@ impl<F> BorrowAction<F> {
   /// Returns a new [BorrowAction].
   pub fn new<I>(objects: I) -> Self
   where
-    I: IntoIterator<Item = ObjectID>,
+    I: IntoIterator<Item = ObjectId>,
   {
     Self {
       objects: objects.into_iter().collect(),
@@ -106,7 +106,7 @@ impl<F> BorrowAction<F> {
   /// Returns a new [BorrowAction], attempting to directly execute the borrow.
   pub fn new_with_intent<I>(objects: I, intent: F) -> Self
   where
-    I: IntoIterator<Item = ObjectID>,
+    I: IntoIterator<Item = ObjectId>,
   {
     Self {
       objects: objects.into_iter().collect(),
@@ -115,20 +115,20 @@ impl<F> BorrowAction<F> {
   }
 
   /// Returns a reference to the list of objects that will be borrowed.
-  pub fn objects(&self) -> &[ObjectID] {
+  pub fn objects(&self) -> &[ObjectId] {
     &self.objects
   }
 
   /// Adds an object to the lists of objects that will be borrowed when executing
   /// this action in a proposal.
-  pub fn borrow_object(&mut self, object_id: ObjectID) {
+  pub fn borrow_object(&mut self, object_id: ObjectId) {
     self.objects.push(object_id);
   }
 
   /// Adds many objects. See [`BorrowAction::borrow_object`] for more details.
   pub fn borrow_objects<I>(&mut self, objects: I)
   where
-    I: IntoIterator<Item = ObjectID>,
+    I: IntoIterator<Item = ObjectId>,
   {
     objects.into_iter().for_each(|obj_id| self.borrow_object(obj_id));
   }
@@ -151,14 +151,14 @@ impl<F> BorrowAction<F> {
 
 impl<'i, 'c, F> ProposalBuilder<'i, 'c, BorrowAction<F>> {
   /// Adds an object to the list of objects that will be borrowed when executing this action.
-  pub fn borrow(mut self, object_id: ObjectID) -> Self {
+  pub fn borrow(mut self, object_id: ObjectId) -> Self {
     self.action.borrow_object(object_id);
     self
   }
   /// Adds many objects. See [`BorrowAction::borrow_object`] for more details.
   pub fn borrow_objects<I>(self, objects: I) -> Self
   where
-    I: IntoIterator<Item = ObjectID>,
+    I: IntoIterator<Item = ObjectId>,
   {
     objects.into_iter().fold(self, |builder, obj| builder.borrow(obj))
   }
@@ -167,7 +167,7 @@ impl<'i, 'c, F> ProposalBuilder<'i, 'c, BorrowAction<F>> {
   /// transaction has enough voting power to execute this proposal right-away.
   pub fn with_intent<F1>(self, intent_fn: F1) -> ProposalBuilder<'i, 'c, BorrowAction<F1>>
   where
-    F1: FnOnce(&mut Ptb, &HashMap<ObjectID, (Argument, IotaObjectData)>),
+    F1: FnOnce(&mut Ptb, &HashMap<ObjectId, (Argument, IotaObjectData)>),
   {
     let ProposalBuilder {
       identity,

@@ -18,10 +18,10 @@ use crate::rebased::migration::Proposal;
 use async_trait::async_trait;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::collection_types::Entry;
 use iota_interaction::types::collection_types::VecMap;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::TypeTag;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -46,12 +46,12 @@ use super::ProposalT;
 pub struct ConfigChange {
   threshold: Option<u64>,
   controllers_to_add: HashMap<IotaAddress, u64>,
-  controllers_to_remove: HashSet<ObjectID>,
-  controllers_voting_power: HashMap<ObjectID, u64>,
+  controllers_to_remove: HashSet<ObjectId>,
+  controllers_voting_power: HashMap<ObjectId, u64>,
 }
 
 impl MoveType for ConfigChange {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     TypeTag::from_str(&format!("{package}::config_proposal::Modify")).expect("valid type tag")
   }
 }
@@ -79,7 +79,7 @@ impl ProposalBuilder<'_, '_, ConfigChange> {
   }
 
   /// Removes an existing controller.
-  pub fn remove_controller(mut self, controller_id: ObjectID) -> Self {
+  pub fn remove_controller(mut self, controller_id: ObjectId) -> Self {
     self.deref_mut().remove_controller(controller_id);
     self
   }
@@ -87,14 +87,14 @@ impl ProposalBuilder<'_, '_, ConfigChange> {
   /// Removes many controllers.
   pub fn remove_multiple_controllers<I>(mut self, controllers: I) -> Self
   where
-    I: IntoIterator<Item = ObjectID>,
+    I: IntoIterator<Item = ObjectId>,
   {
     self.deref_mut().remove_multiple_controllers(controllers);
     self
   }
 
   /// Sets a new voting power for a controller.
-  pub fn update_controller(mut self, controller_id: ObjectID, voting_power: u64) -> Self {
+  pub fn update_controller(mut self, controller_id: ObjectId, voting_power: u64) -> Self {
     self.action.controllers_voting_power.insert(controller_id, voting_power);
     self
   }
@@ -102,7 +102,7 @@ impl ProposalBuilder<'_, '_, ConfigChange> {
   /// Updates many controllers' voting power.
   pub fn update_multiple_controllers<I>(mut self, controllers: I) -> Self
   where
-    I: IntoIterator<Item = (ObjectID, u64)>,
+    I: IntoIterator<Item = (ObjectId, u64)>,
   {
     let controllers_to_update = &mut self.action.controllers_voting_power;
     for (id, vp) in controllers {
@@ -135,12 +135,12 @@ impl ConfigChange {
   }
 
   /// Returns the set of controllers that will be removed.
-  pub fn controllers_to_remove(&self) -> &HashSet<ObjectID> {
+  pub fn controllers_to_remove(&self) -> &HashSet<ObjectId> {
     &self.controllers_to_remove
   }
 
   /// Returns the controllers that will be updated as the map [IotaAddress] -> [u64].
-  pub fn controllers_to_update(&self) -> &HashMap<ObjectID, u64> {
+  pub fn controllers_to_update(&self) -> &HashMap<ObjectId, u64> {
     &self.controllers_voting_power
   }
 
@@ -160,14 +160,14 @@ impl ConfigChange {
   }
 
   /// Removes an existing controller.
-  pub fn remove_controller(&mut self, controller_id: ObjectID) {
+  pub fn remove_controller(&mut self, controller_id: ObjectId) {
     self.controllers_to_remove.insert(controller_id);
   }
 
   /// Removes many controllers.
   pub fn remove_multiple_controllers<I>(&mut self, controllers: I)
   where
-    I: IntoIterator<Item = ObjectID>,
+    I: IntoIterator<Item = ObjectId>,
   {
     for controller in controllers {
       self.remove_controller(controller)
@@ -317,8 +317,8 @@ impl ProposalT for Proposal<ConfigChange> {
 struct Modify {
   threshold: Option<Number<u64>>,
   controllers_to_add: VecMap<IotaAddress, Number<u64>>,
-  controllers_to_remove: HashSet<ObjectID>,
-  controllers_to_update: VecMap<ObjectID, Number<u64>>,
+  controllers_to_remove: HashSet<ObjectId>,
+  controllers_to_update: VecMap<ObjectId, Number<u64>>,
 }
 
 impl TryFrom<Modify> for ConfigChange {

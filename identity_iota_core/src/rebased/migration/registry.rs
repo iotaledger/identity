@@ -7,10 +7,10 @@ use std::sync::LazyLock;
 
 use iota_interaction::rpc_types::EventFilter;
 use iota_interaction::rpc_types::IotaData;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::StructTag;
 use iota_interaction::types::id::ID;
 use iota_interaction::IotaClientTrait;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::StructTag;
 use phf::phf_map;
 use phf::Map;
 use product_common::core_client::CoreClientReadOnly;
@@ -28,10 +28,10 @@ static MIGRATION_REGISTRY_ON_IOTA_NETWORK: Map<&str, &str> = phf_map! {
   "6364aad5" => "0xa884c72da9971da8ec32efade0a9b05faa114770ba85f10925d0edbc3fa3edc3", // Mainnet
 };
 
-static MIGRATION_REGISTRY_ON_CUSTOM_NETWORK: LazyLock<RwLock<HashMap<String, ObjectID>>> =
+static MIGRATION_REGISTRY_ON_CUSTOM_NETWORK: LazyLock<RwLock<HashMap<String, ObjectId>>> =
   LazyLock::new(|| RwLock::new(HashMap::default()));
 
-pub(crate) async fn migration_registry_id<C>(client: &C) -> Result<ObjectID, Error>
+pub(crate) async fn migration_registry_id<C>(client: &C) -> Result<ObjectId, Error>
 where
   C: CoreClientReadOnly,
 {
@@ -61,7 +61,7 @@ where
   Ok(package_id)
 }
 
-pub(crate) fn set_migration_registry_id(chain_id: &str, id: ObjectID) {
+pub(crate) fn set_migration_registry_id(chain_id: &str, id: ObjectId) {
   MIGRATION_REGISTRY_ON_CUSTOM_NETWORK
     .blocking_write()
     .insert(chain_id.to_owned(), id);
@@ -83,7 +83,7 @@ pub enum Error {
 
 /// Lookup a legacy `alias_id` into the migration registry
 /// to get the ID of the corresponding migrated DID document, if any.
-pub async fn lookup(id_client: &IdentityClientReadOnly, alias_id: ObjectID) -> Result<Option<OnChainIdentity>, Error> {
+pub async fn lookup(id_client: &IdentityClientReadOnly, alias_id: ObjectId) -> Result<Option<OnChainIdentity>, Error> {
   let registry_id = migration_registry_id(id_client).await?;
   let dynamic_field_name = serde_json::from_value(serde_json::json!({
     "type": "0x2::object::ID",
@@ -116,13 +116,13 @@ pub async fn lookup(id_client: &IdentityClientReadOnly, alias_id: ObjectID) -> R
   }
 }
 
-async fn find_migration_registry<C>(iota_client: &C, package_id: ObjectID) -> Result<ObjectID, Error>
+async fn find_migration_registry<C>(iota_client: &C, package_id: ObjectId) -> Result<ObjectId, Error>
 where
   C: CoreClientReadOnly,
 {
   #[derive(serde::Deserialize)]
   struct MigrationRegistryCreatedEvent {
-    id: ObjectID,
+    id: ObjectId,
   }
 
   let event_filter = EventFilter::MoveEventType(

@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 use identity_iota::iota_interaction::types::base_types::IotaAddress;
-use identity_iota::iota_interaction::types::base_types::ObjectID;
+use iota_sdk_types::ObjectId;
 use js_sys::JsString;
 use js_sys::Reflect;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -78,31 +78,31 @@ impl TryFrom<&'_ HashMap<IotaAddress, u64>> for MapStringNumber {
   }
 }
 
-impl TryFrom<MapStringNumber> for HashMap<ObjectID, u64> {
+impl TryFrom<MapStringNumber> for HashMap<ObjectId, u64> {
   type Error = JsValue;
   fn try_from(value: MapStringNumber) -> Result<Self, Self::Error> {
     Ok(serde_wasm_bindgen::from_value(value.into())?)
   }
 }
 
-impl TryFrom<&'_ HashMap<ObjectID, u64>> for MapStringNumber {
+impl TryFrom<&'_ HashMap<ObjectId, u64>> for MapStringNumber {
   type Error = JsValue;
-  fn try_from(value: &'_ HashMap<ObjectID, u64>) -> Result<Self, Self::Error> {
+  fn try_from(value: &'_ HashMap<ObjectId, u64>) -> Result<Self, Self::Error> {
     let js_value = serde_wasm_bindgen::to_value(value)?;
     js_value.dyn_into()
   }
 }
 
-impl TryFrom<StringSet> for HashSet<ObjectID> {
+impl TryFrom<StringSet> for HashSet<ObjectId> {
   type Error = JsValue;
   fn try_from(value: StringSet) -> Result<Self, Self::Error> {
     Ok(serde_wasm_bindgen::from_value(value.into())?)
   }
 }
 
-impl TryFrom<&'_ HashSet<ObjectID>> for StringSet {
+impl TryFrom<&'_ HashSet<ObjectId>> for StringSet {
   type Error = JsValue;
-  fn try_from(value: &'_ HashSet<ObjectID>) -> Result<Self, Self::Error> {
+  fn try_from(value: &'_ HashSet<ObjectId>) -> Result<Self, Self::Error> {
     let js_value = serde_wasm_bindgen::to_value(value)?;
     js_value.dyn_into::<StringSet>()
   }

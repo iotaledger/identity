@@ -3,12 +3,12 @@
 
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::types::IOTA_FRAMEWORK_PACKAGE_ID;
 use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk_types::ObjectId;
 
 use crate::rebased::Error;
 
@@ -18,7 +18,7 @@ pub(crate) fn migrate_did_output(
   did_output: ObjectRef,
   creation_timestamp: Option<u64>,
   migration_registry: OwnedObjectRef,
-  package: ObjectID,
+  package: ObjectId,
 ) -> anyhow::Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
   let did_output = ptb.obj(CallArg::ImmutableOrOwned(did_output))?;

@@ -7,9 +7,9 @@ use std::str::FromStr;
 
 use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use identity_iota::iota::rebased::migration::Identity;
-use identity_iota::iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction_ts::bindings::WasmIotaClient;
+use iota_sdk_types::ObjectId;
 use product_common::core_client::CoreClientReadOnly as _;
 use wasm_bindgen::prelude::*;
 
@@ -86,7 +86,7 @@ impl WasmIdentityClientReadOnly {
     iota_identity_pkg_id: String,
   ) -> Result<WasmIdentityClientReadOnly, JsError> {
     let inner_client =
-      IdentityClientReadOnly::new_with_pkg_id(iota_client, ObjectID::from_str(&iota_identity_pkg_id)?).await?;
+      IdentityClientReadOnly::new_with_pkg_id(iota_client, ObjectId::from_str(&iota_identity_pkg_id)?).await?;
     Ok(WasmIdentityClientReadOnly(inner_client))
   }
 
@@ -97,7 +97,7 @@ impl WasmIdentityClientReadOnly {
 
   #[wasm_bindgen(js_name = tfComponentsPackageId)]
   pub fn tf_components_package_id(&self) -> String {
-    self.0.tf_components_package_id().unwrap_or(ObjectID::ZERO).to_string()
+    self.0.tf_components_package_id().unwrap_or(ObjectId::ZERO).to_string()
   }
 
   #[wasm_bindgen(js_name = packageHistory)]

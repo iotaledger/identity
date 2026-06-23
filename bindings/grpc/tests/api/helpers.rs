@@ -27,9 +27,9 @@ use iota_sdk_legacy::client::secret::stronghold::StrongholdSecretManager;
 use iota_sdk_legacy::client::stronghold::StrongholdAdapter;
 use iota_sdk_legacy::client::Password;
 use iota_sdk::types::base_types::IotaAddress;
-use iota_sdk::types::base_types::ObjectID;
 use iota_sdk::IotaClient;
 use iota_sdk::IotaClientBuilder;
+use iota_sdk_types::ObjectId;
 use jsonpath_rust::JsonPathQuery;
 use rand::distributions::Alphanumeric;
 use rand::distributions::DistString;
@@ -51,7 +51,7 @@ type MemStorage = Storage<JwkMemStore, KeyIdMemstore>;
 
 const FAUCET_ENDPOINT: &str = "http://localhost:9123/gas";
 
-static PACKAGE_ID: OnceCell<ObjectID> = OnceCell::const_new();
+static PACKAGE_ID: OnceCell<ObjectId> = OnceCell::const_new();
 
 const SCRIPT_DIR: &str = concat!(
   env!("CARGO_MANIFEST_DIR"),
@@ -334,7 +334,7 @@ async fn get_active_address() -> anyhow::Result<IotaAddress> {
     .and_then(|output| Ok(serde_json::from_slice::<IotaAddress>(&output.stdout)?))
 }
 
-async fn init(iota_client: &IotaClient) -> anyhow::Result<ObjectID> {
+async fn init(iota_client: &IotaClient) -> anyhow::Result<ObjectId> {
   let network_id = iota_client.read_api().get_chain_identifier().await?;
   let address = get_active_address().await?;
 
@@ -361,7 +361,7 @@ async fn get_cached_id(network_id: &str) -> anyhow::Result<String> {
   }
 }
 
-async fn publish_package(active_address: IotaAddress) -> anyhow::Result<ObjectID> {
+async fn publish_package(active_address: IotaAddress) -> anyhow::Result<ObjectId> {
   let output = Command::new("sh")
     .current_dir(SCRIPT_DIR)
     .arg("publish_identity_package.sh")
@@ -374,9 +374,9 @@ async fn publish_package(active_address: IotaAddress) -> anyhow::Result<ObjectID
     anyhow::bail!("Failed to publish move package: \n\n{stdout}\n\n{stderr}");
   }
 
-  let package_id: ObjectID = {
+  let package_id: ObjectId = {
     let stdout_trimmed = stdout.trim();
-    ObjectID::from_str(stdout_trimmed).with_context(|| {
+    ObjectId::from_str(stdout_trimmed).with_context(|| {
       let stderr = std::str::from_utf8(&output.stderr).unwrap();
       format!("failed to find IDENTITY_IOTA_PKG_ID in response from: '{stdout_trimmed}'; {stderr}")
     })?

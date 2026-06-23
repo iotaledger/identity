@@ -6,23 +6,23 @@ use serde::Serialize;
 use crate::rebased::Error;
 use iota_interaction::ident_str;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::base_types::SequenceNumber;
-use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
-use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::CallArg;
-use iota_interaction::types::transaction::Command;
 use iota_interaction::types::transaction::SharedObjectRef;
 use iota_interaction::MoveType;
 use iota_interaction::ProgrammableTransactionBcs;
 use iota_interaction::TypedValue;
+use iota_sdk_types::Argument;
+use iota_sdk_types::Command;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::TypeTag;
 
 fn try_to_argument<T: MoveType + Serialize>(
   content: &T,
   ptb: &mut ProgrammableTransactionBuilder,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<Argument, Error> {
   match content.get_typed_value(package) {
     TypedValue::IotaVerifiableCredential(value) => {
@@ -46,7 +46,7 @@ pub(crate) fn new_asset<T: Serialize + MoveType>(
   mutable: bool,
   transferable: bool,
   deletable: bool,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = ProgrammableTransactionBuilder::new();
   let inner = try_to_argument(inner, &mut ptb, package)?;
@@ -67,7 +67,7 @@ pub(crate) fn new_asset<T: Serialize + MoveType>(
   Ok(bcs::to_bytes(&ptb.finish())?)
 }
 
-pub(crate) fn delete<T>(asset: ObjectRef, package: ObjectID) -> Result<ProgrammableTransactionBcs, Error>
+pub(crate) fn delete<T>(asset: ObjectRef, package: ObjectId) -> Result<ProgrammableTransactionBcs, Error>
 where
   T: MoveType,
 {
@@ -91,7 +91,7 @@ where
 pub(crate) fn transfer<T: MoveType>(
   asset: ObjectRef,
   recipient: IotaAddress,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = ProgrammableTransactionBuilder::new();
   let asset = ptb
@@ -111,11 +111,11 @@ pub(crate) fn transfer<T: MoveType>(
 }
 
 pub(crate) fn make_tx(
-  proposal: (ObjectID, SequenceNumber),
+  proposal: (ObjectId, SequenceNumber),
   cap: ObjectRef,
   asset: ObjectRef,
   asset_type_param: TypeTag,
-  package: ObjectID,
+  package: ObjectId,
   function_name: &'static str,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = ProgrammableTransactionBuilder::new();
@@ -145,21 +145,21 @@ pub(crate) fn make_tx(
 }
 
 pub(crate) fn accept_proposal(
-  proposal: (ObjectID, SequenceNumber),
+  proposal: (ObjectId, SequenceNumber),
   recipient_cap: ObjectRef,
   asset: ObjectRef,
   asset_type_param: TypeTag,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   make_tx(proposal, recipient_cap, asset, asset_type_param, package, "accept")
 }
 
 pub(crate) fn conclude_or_cancel(
-  proposal: (ObjectID, SequenceNumber),
+  proposal: (ObjectId, SequenceNumber),
   sender_cap: ObjectRef,
   asset: ObjectRef,
   asset_type_param: TypeTag,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   make_tx(
     proposal,
@@ -174,7 +174,7 @@ pub(crate) fn conclude_or_cancel(
 pub(crate) fn update<T>(
   asset: ObjectRef,
   new_content: &T,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error>
 where
   T: MoveType + Serialize,

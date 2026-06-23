@@ -4,14 +4,14 @@
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::base_types::ObjectRef;
-use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::MoveType as _;
 use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk_types::Argument;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::TypeTag;
 
 use crate::rebased::iota::move_calls::utils;
 use crate::rebased::iota::move_calls::ControllerTokenRef;
@@ -24,9 +24,9 @@ use super::ProposalContext;
 pub(crate) fn propose_send(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  transfer_map: Vec<(ObjectID, IotaAddress)>,
+  transfer_map: Vec<(ObjectId, IotaAddress)>,
   expiration: Option<u64>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let ProposalContext {
     mut ptb, capability, ..
@@ -40,9 +40,9 @@ pub(crate) fn propose_send(
 pub(crate) fn execute_send(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  proposal_id: ObjectID,
+  proposal_id: ObjectId,
   objects: Vec<(ObjectRef, TypeTag)>,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
   let identity = utils::owned_ref_to_shared_object_arg(identity, &mut ptb, true)?;
@@ -59,10 +59,10 @@ pub(crate) fn execute_send(
 pub(crate) fn create_and_execute_send(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  transfer_map: Vec<(ObjectID, IotaAddress)>,
+  transfer_map: Vec<(ObjectId, IotaAddress)>,
   expiration: Option<u64>,
   objects: Vec<(ObjectRef, TypeTag)>,
-  package: ObjectID,
+  package: ObjectId,
 ) -> anyhow::Result<ProgrammableTransactionBcs, Error> {
   let ProposalContext {
     mut ptb,
@@ -81,9 +81,9 @@ pub(crate) fn create_and_execute_send(
 fn send_proposal_impl(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  transfer_map: Vec<(ObjectID, IotaAddress)>,
+  transfer_map: Vec<(ObjectId, IotaAddress)>,
   expiration: Option<u64>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> anyhow::Result<ProposalContext> {
   let mut ptb = Ptb::new();
   let capability = ControllerTokenArg::from_ref(capability, &mut ptb, package_id)?;
@@ -119,7 +119,7 @@ pub(crate) fn execute_send_impl(
   delegation_token: Argument,
   proposal_id: Argument,
   objects: Vec<(ObjectRef, TypeTag)>,
-  package: ObjectID,
+  package: ObjectId,
 ) -> anyhow::Result<()> {
   // Get the proposal's action as argument.
   let send_action = ptb.programmable_move_call(

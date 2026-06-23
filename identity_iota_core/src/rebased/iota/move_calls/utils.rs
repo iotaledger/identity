@@ -3,16 +3,16 @@
 
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::object::Owner;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::types::transaction::SharedObjectRef;
 use iota_interaction::types::IOTA_CLOCK_OBJECT_ID;
 use iota_interaction::types::IOTA_CLOCK_OBJECT_SHARED_VERSION;
 use iota_interaction::types::MOVE_STDLIB_PACKAGE_ID;
 use iota_interaction::MoveType;
+use iota_sdk_types::Argument;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::Owner;
 use serde::Serialize;
 
 use crate::rebased::Error;
@@ -31,7 +31,7 @@ pub(crate) fn get_clock_ref(ptb: &mut Ptb) -> Argument {
 pub(crate) fn get_controller_delegation(
   ptb: &mut Ptb,
   controller_cap: Argument,
-  package: ObjectID,
+  package: ObjectId,
 ) -> (Argument, Argument) {
   let Argument::Result(idx) = ptb.programmable_move_call(
     package,
@@ -51,7 +51,7 @@ pub(crate) fn put_back_delegation_token(
   controller_cap: Argument,
   delegation_token: Argument,
   borrow: Argument,
-  package: ObjectID,
+  package: ObjectId,
 ) {
   ptb.programmable_move_call(
     package,
@@ -80,7 +80,7 @@ pub(crate) fn owned_ref_to_shared_object_arg(
 pub(crate) fn option_to_move<T: MoveType + Serialize>(
   option: Option<T>,
   ptb: &mut Ptb,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<Argument, anyhow::Error> {
   let arg = if let Some(t) = option {
     let t = ptb.pure(t)?;

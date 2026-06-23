@@ -3,9 +3,9 @@
 
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk_types::ObjectId;
 
 use crate::rebased::iota::move_calls::utils;
 use crate::rebased::iota::move_calls::ControllerTokenRef;
@@ -18,7 +18,7 @@ pub(crate) fn propose_upgrade(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
   expiration: Option<u64>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
   let capability = ControllerTokenArg::from_ref(capability, &mut ptb, package_id)?;
@@ -41,8 +41,8 @@ pub(crate) fn propose_upgrade(
 pub(crate) fn execute_upgrade(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  proposal_id: ObjectID,
-  package_id: ObjectID,
+  proposal_id: ObjectId,
+  package_id: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
   let capability = ControllerTokenArg::from_ref(capability, &mut ptb, package_id)?;

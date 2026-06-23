@@ -33,18 +33,18 @@ use iota_sdk::rpc_types::IotaObjectDataOptions;
 use iota_sdk::rpc_types::IotaObjectResponse;
 use iota_sdk::rpc_types::IotaTransactionBlockEffects;
 use iota_sdk::types::base_types::IotaAddress;
-use iota_sdk::types::base_types::ObjectID;
 use iota_sdk::types::crypto::PublicKey;
 use iota_sdk::types::crypto::SignatureScheme;
-use iota_sdk::types::object::Owner;
 use iota_sdk::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::Owner;
+use iota_sdk_types::StructTag;
+use iota_sdk_types::TypeTag;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
 
 use iota_interaction::IotaClientTrait;
-use iota_sdk::types::base_types::StructTag;
-use iota_sdk::types::base_types::TypeTag;
 use iota_sdk::types::IOTA_FRAMEWORK_PACKAGE_ID;
 use iota_sdk::IotaClient;
 use iota_sdk::IotaClientBuilder;
@@ -65,7 +65,7 @@ use tokio::sync::OnceCell;
 pub type MemStorage = Storage<JwkMemStore, KeyIdMemstore>;
 pub type MemSigner<'s> = StorageSigner<'s, JwkMemStore, KeyIdMemstore>;
 
-static PACKAGE_ID: OnceCell<ObjectID> = OnceCell::const_new();
+static PACKAGE_ID: OnceCell<ObjectId> = OnceCell::const_new();
 static CLIENT: OnceCell<TestClient> = OnceCell::const_new();
 const SCRIPT_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/scripts/");
 const CACHED_PKG_ID: &str = "/tmp/iota_identity_pkg_id.txt";
@@ -97,7 +97,7 @@ pub async fn get_funded_test_client() -> anyhow::Result<TestClient> {
   TestClient::new().await
 }
 
-async fn init(iota_client: &IotaClient) -> anyhow::Result<ObjectID> {
+async fn init(iota_client: &IotaClient) -> anyhow::Result<ObjectId> {
   let network_id = iota_client.read_api().get_chain_identifier().await?;
   let address = get_active_address().await?;
 
@@ -131,7 +131,7 @@ async fn get_active_address() -> anyhow::Result<IotaAddress> {
     .and_then(|output| Ok(serde_json::from_slice::<IotaAddress>(&output.stdout)?))
 }
 
-async fn publish_package(active_address: IotaAddress) -> anyhow::Result<ObjectID> {
+async fn publish_package(active_address: IotaAddress) -> anyhow::Result<ObjectId> {
   let output = Command::new("sh")
     .current_dir(SCRIPT_DIR)
     .arg("publish_identity_package.sh")
@@ -144,9 +144,9 @@ async fn publish_package(active_address: IotaAddress) -> anyhow::Result<ObjectID
     anyhow::bail!("Failed to publish move package: \n\n{stdout}\n\n{stderr}");
   }
 
-  let package_id: ObjectID = {
+  let package_id: ObjectId = {
     let stdout_trimmed = stdout.trim();
-    ObjectID::from_str(stdout_trimmed).with_context(|| {
+    ObjectId::from_str(stdout_trimmed).with_context(|| {
       let stderr = std::str::from_utf8(&output.stderr).unwrap();
       format!("failed to find IDENTITY_IOTA_PKG_ID in response from: '{stdout_trimmed}'; {stderr}")
     })?
@@ -277,7 +277,7 @@ impl TestClient {
     Ok(())
   }
 
-  pub fn package_id(&self) -> ObjectID {
+  pub fn package_id(&self) -> ObjectId {
     self.client.package_id()
   }
 
@@ -324,7 +324,7 @@ impl TestClient {
 }
 
 impl CoreClientReadOnly for TestClient {
-  fn package_id(&self) -> ObjectID {
+  fn package_id(&self) -> ObjectId {
     self.client.package_id()
   }
 
@@ -351,7 +351,7 @@ impl CoreClient<KeytoolSigner> for TestClient {
   }
 }
 
-pub async fn get_test_coin<S>(recipient: IotaAddress, client: &IdentityClient<S>) -> anyhow::Result<ObjectID>
+pub async fn get_test_coin<S>(recipient: IotaAddress, client: &IdentityClient<S>) -> anyhow::Result<ObjectId>
 where
   S: Signer<IotaKeySignature> + OptionalSync,
 {
@@ -405,7 +405,7 @@ struct GetTestCoin {
 
 #[async_trait]
 impl Transaction for GetTestCoin {
-  type Output = ObjectID;
+  type Output = ObjectId;
 
   type Error = Error;
 

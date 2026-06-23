@@ -9,7 +9,7 @@ use identity_stronghold::StrongholdStorage;
 use iota_sdk_legacy::client::stronghold::StrongholdAdapter;
 
 use identity_iota::iota::rebased::client::IdentityClientReadOnly;
-use iota_sdk::types::base_types::ObjectID;
+use iota_sdk_types::ObjectId;
 
 #[tokio::main]
 #[tracing::instrument(err)]
@@ -21,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
 
   let identity_iota_pkg_id = std::env::var("IDENTITY_IOTA_PKG_ID")?;
 
-  let identity_pkg_id = ObjectID::from_str(&identity_iota_pkg_id)?;
+  let identity_pkg_id = ObjectId::from_str(&identity_iota_pkg_id)?;
 
   let iota_client = iota_sdk::IotaClientBuilder::default().build(api_endpoint).await?;
 

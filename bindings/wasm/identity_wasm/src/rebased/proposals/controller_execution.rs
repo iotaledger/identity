@@ -12,13 +12,13 @@ use identity_iota::iota::rebased::proposals::ControllerIntentFnT;
 use identity_iota::iota::rebased::proposals::ProposalResult;
 use identity_iota::iota::rebased::proposals::ProposalT as _;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
-use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::types::transaction::TransactionKind;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
+use iota_sdk_types::Argument;
+use iota_sdk_types::ObjectId;
 use product_common::bindings::core_client::WasmManagedCoreClientReadOnly;
 use product_common::bindings::transaction::WasmTransactionBuilder;
 use product_common::core_client::CoreClientReadOnly;
@@ -97,7 +97,7 @@ impl WasmControllerExecutionFn {
 #[derive(Clone)]
 #[wasm_bindgen(js_name = ControllerExecution, inspectable, getter_with_clone)]
 pub struct WasmControllerExecution {
-  controller_cap: ObjectID,
+  controller_cap: ObjectId,
   identity: IotaAddress,
   pub controller_exec_fn: Option<WasmControllerExecutionFn>,
 }
@@ -399,7 +399,7 @@ pub struct WasmCreateControllerExecutionProposal {
   controller_token: WasmControllerToken,
   expiration_epoch: Option<u64>,
   exec_fn: Option<WasmControllerExecutionFn>,
-  controller_cap: ObjectID,
+  controller_cap: ObjectId,
 }
 
 #[wasm_bindgen(js_class = CreateControllerExecutionProposal)]
@@ -407,7 +407,7 @@ impl WasmCreateControllerExecutionProposal {
   pub(crate) fn new(
     identity: &WasmOnChainIdentity,
     controller_token: &WasmControllerToken,
-    controller_cap: ObjectID,
+    controller_cap: ObjectId,
     exec_fn: Option<WasmControllerExecutionFn>,
     expiration_epoch: Option<u64>,
   ) -> Self {

@@ -22,10 +22,10 @@ use product_common::bindings::transaction::WasmTransactionBuilder;
 use product_common::transaction::transaction_builder::Transaction;
 
 use identity_iota::iota::rebased::Error;
-use iota_interaction::types::base_types::ObjectID;
 use iota_interaction_ts::bindings::WasmTransactionSigner;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
 use iota_interaction_ts::NativeTransactionBlockResponse;
+use iota_sdk_types::ObjectId;
 
 use js_sys::Object;
 
@@ -113,7 +113,7 @@ impl WasmIdentityClient {
       .get_identity(
         object_id
           .parse()
-          .map_err(|e| anyhow!("failed to parse ObjectID out of string: {e}"))
+          .map_err(|e| anyhow!("failed to parse ObjectId out of string: {e}"))
           .wasm_result()?,
       )
       .await
@@ -128,7 +128,7 @@ impl WasmIdentityClient {
 
   #[wasm_bindgen(js_name = tfComponentsPackageId)]
   pub fn tf_components_package_id(&self) -> String {
-    self.0.tf_components_package_id().unwrap_or(ObjectID::ZERO).to_string()
+    self.0.tf_components_package_id().unwrap_or(ObjectId::ZERO).to_string()
   }
 
   #[wasm_bindgen(js_name = packageHistory)]

@@ -7,10 +7,10 @@ use std::str::FromStr as _;
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::TypeTag;
 
 use crate::rebased::iota::move_calls::utils;
 use crate::rebased::iota::move_calls::ControllerTokenRef;
@@ -26,13 +26,13 @@ pub(crate) fn propose_config_change<I1, I2>(
   expiration: Option<u64>,
   threshold: Option<u64>,
   controllers_to_add: I1,
-  controllers_to_remove: HashSet<ObjectID>,
+  controllers_to_remove: HashSet<ObjectId>,
   controllers_to_update: I2,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error>
 where
   I1: IntoIterator<Item = (IotaAddress, u64)>,
-  I2: IntoIterator<Item = (ObjectID, u64)>,
+  I2: IntoIterator<Item = (ObjectId, u64)>,
 {
   let mut ptb = Ptb::new();
 
@@ -50,7 +50,7 @@ where
     )
   };
   let controllers_to_update = {
-    let (ids, vps): (Vec<ObjectID>, Vec<u64>) = controllers_to_update.into_iter().unzip();
+    let (ids, vps): (Vec<ObjectId>, Vec<u64>) = controllers_to_update.into_iter().unzip();
     let ids = ptb.pure(ids).map_err(rebased_err)?;
     let vps = ptb.pure(vps).map_err(rebased_err)?;
 
@@ -92,8 +92,8 @@ where
 pub(crate) fn execute_config_change(
   identity: OwnedObjectRef,
   controller_cap: ControllerTokenRef,
-  proposal_id: ObjectID,
-  package: ObjectID,
+  proposal_id: ObjectId,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
 

@@ -20,13 +20,13 @@ use identity_verification::MethodScope;
 use identity_verification::VerificationMethod;
 use iota_sdk::rpc_types::IotaObjectData;
 use iota_sdk::rpc_types::IotaTransactionBlockEffectsAPI;
-use iota_sdk::types::base_types::ObjectID;
 use iota_sdk::types::base_types::SequenceNumber;
-use iota_sdk::types::base_types::TypeTag;
-use iota_sdk::types::object::Owner;
 use iota_sdk::types::transaction::CallArg;
 use iota_sdk::types::transaction::SharedObjectRef;
 use iota_sdk::types::IOTA_FRAMEWORK_PACKAGE_ID;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::Owner;
+use iota_sdk_types::TypeTag;
 use move_core_types::ident_str;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
@@ -446,7 +446,7 @@ async fn controller_execution_works() -> anyhow::Result<()> {
         }))
         .unwrap();
 
-      let token_to_revoke = ptb.pure(ObjectID::ZERO).unwrap();
+      let token_to_revoke = ptb.pure(ObjectId::ZERO).unwrap();
 
       ptb.programmable_move_call(
         identity_client.package_id(),

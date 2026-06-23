@@ -4,11 +4,11 @@
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk_types::ObjectId;
 
 use crate::rebased::iota::move_calls::utils;
 use crate::rebased::rebased_err;
@@ -18,7 +18,7 @@ pub(crate) async fn delegate_controller_cap(
   controller_cap: ObjectRef,
   recipient: IotaAddress,
   permissions: u32,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
   let cap = ptb
@@ -42,8 +42,8 @@ pub(crate) async fn delegate_controller_cap(
 pub(crate) fn revoke_delegation_token(
   identity: OwnedObjectRef,
   controller_cap: ObjectRef,
-  delegation_token_id: ObjectID,
-  package: ObjectID,
+  delegation_token_id: ObjectId,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
   let identity = utils::owned_ref_to_shared_object_arg(identity, &mut ptb, true)?;
@@ -66,8 +66,8 @@ pub(crate) fn revoke_delegation_token(
 pub(crate) fn unrevoke_delegation_token(
   identity: OwnedObjectRef,
   controller_cap: ObjectRef,
-  delegation_token_id: ObjectID,
-  package: ObjectID,
+  delegation_token_id: ObjectId,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
   let identity = utils::owned_ref_to_shared_object_arg(identity, &mut ptb, true)?;
@@ -90,7 +90,7 @@ pub(crate) fn unrevoke_delegation_token(
 pub(crate) async fn destroy_delegation_token(
   identity: OwnedObjectRef,
   delegation_token: ObjectRef,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
   let identity = utils::owned_ref_to_shared_object_arg(identity, &mut ptb, true)?;

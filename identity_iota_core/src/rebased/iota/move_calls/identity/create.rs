@@ -3,19 +3,19 @@
 
 use iota_interaction::ident_str;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::Argument;
 use iota_interaction::OptionalSend;
 use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk_types::Argument;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::TypeTag;
 
 use crate::rebased::iota::move_calls::utils;
 use crate::rebased::Error;
 
 pub(crate) async fn new_identity(
   did_doc: Option<&[u8]>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
   let doc_arg = utils::ptb_pure(&mut ptb, "did_doc", did_doc)?;
@@ -37,7 +37,7 @@ pub(crate) async fn new_with_controllers<C>(
   did_doc: Option<&[u8]>,
   controllers: C,
   threshold: u64,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error>
 where
   C: IntoIterator<Item = (IotaAddress, u64, bool)> + OptionalSend,

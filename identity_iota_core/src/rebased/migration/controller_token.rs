@@ -14,14 +14,14 @@ use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI;
 use iota_interaction::types::base_types::IotaAddress;
-use iota_interaction::types::base_types::ObjectID;
-use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::id::UID;
-use iota_interaction::types::object::Owner;
 use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI;
 use iota_interaction::MoveType;
 use iota_interaction::OptionalSync;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::Owner;
+use iota_sdk_types::TypeTag;
 use itertools::Itertools as _;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::transaction::transaction_builder::Transaction;
@@ -50,7 +50,7 @@ pub enum ControllerToken {
 
 impl ControllerToken {
   /// Returns the ID of this [ControllerToken].
-  pub fn id(&self) -> ObjectID {
+  pub fn id(&self) -> ObjectId {
     match self {
       Self::Controller(controller) => controller.id,
       Self::Delegate(delegate) => delegate.id,
@@ -60,7 +60,7 @@ impl ControllerToken {
   /// Returns the ID of the this token's controller.
   /// For [ControllerToken::Controller] this is the same as its ID, but
   /// for [ControllerToken::Delegate] this is [DelegationToken::controller].
-  pub fn controller_id(&self) -> ObjectID {
+  pub fn controller_id(&self) -> ObjectId {
     match self {
       Self::Controller(controller) => controller.id,
       Self::Delegate(delegate) => delegate.controller,
@@ -68,7 +68,7 @@ impl ControllerToken {
   }
 
   /// Returns the ID of the object this token controls.
-  pub fn controller_of(&self) -> ObjectID {
+  pub fn controller_of(&self) -> ObjectId {
     match self {
       Self::Controller(controller) => controller.controller_of,
       Self::Delegate(delegate) => delegate.controller_of,
@@ -108,7 +108,7 @@ impl ControllerToken {
   }
 
   /// Returns the Move type of this token.
-  pub fn move_type(&self, package: ObjectID) -> TypeTag {
+  pub fn move_type(&self, package: ObjectId) -> TypeTag {
     match self {
       Self::Controller(_) => ControllerCap::move_type(package),
       Self::Delegate(_) => DelegationToken::move_type(package),
@@ -144,12 +144,12 @@ impl ControllerToken {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(from = "IotaControllerCap")]
 pub struct ControllerCap {
-  id: ObjectID,
-  controller_of: ObjectID,
+  id: ObjectId,
+  controller_of: ObjectId,
   can_delegate: bool,
 }
 
-fn deserialize_from_uid<'de, D>(deserializer: D) -> Result<ObjectID, D::Error>
+fn deserialize_from_uid<'de, D>(deserializer: D) -> Result<ObjectId, D::Error>
 where
   D: Deserializer<'de>,
 {
@@ -157,7 +157,7 @@ where
 }
 
 impl MoveType for ControllerCap {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     format!("{package}::controller::ControllerCap")
       .parse()
       .expect("valid Move type")
@@ -166,12 +166,12 @@ impl MoveType for ControllerCap {
 
 impl ControllerCap {
   /// Returns the ID of this [ControllerCap].
-  pub fn id(&self) -> ObjectID {
+  pub fn id(&self) -> ObjectId {
     self.id
   }
 
   /// Returns the ID of the object this token controls.
-  pub fn controller_of(&self) -> ObjectID {
+  pub fn controller_of(&self) -> ObjectId {
     self.controller_of
   }
 
@@ -211,7 +211,7 @@ impl From<ControllerCap> for ControllerToken {
 #[derive(Debug, Deserialize)]
 struct IotaControllerCap {
   id: UID,
-  controller_of: ObjectID,
+  controller_of: ObjectId,
   can_delegate: bool,
   #[allow(unused)]
   access_token: Referent<DelegationToken>,
@@ -239,26 +239,26 @@ struct Referent<T> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DelegationToken {
   #[serde(deserialize_with = "deserialize_from_uid")]
-  id: ObjectID,
+  id: ObjectId,
   permissions: DelegatePermissions,
-  controller: ObjectID,
-  controller_of: ObjectID,
+  controller: ObjectId,
+  controller_of: ObjectId,
 }
 
 impl DelegationToken {
   /// Returns the ID of this [DelegationToken].
-  pub fn id(&self) -> ObjectID {
+  pub fn id(&self) -> ObjectId {
     self.id
   }
 
   /// Returns the ID of the [ControllerCap] that minted
   /// this [DelegationToken].
-  pub fn controller(&self) -> ObjectID {
+  pub fn controller(&self) -> ObjectId {
     self.controller
   }
 
   /// Returns the ID of the object this token controls.
-  pub fn controller_of(&self) -> ObjectID {
+  pub fn controller_of(&self) -> ObjectId {
     self.controller_of
   }
 
@@ -275,7 +275,7 @@ impl From<DelegationToken> for ControllerToken {
 }
 
 impl MoveType for DelegationToken {
-  fn move_type(package: ObjectID) -> TypeTag {
+  fn move_type(package: ObjectId) -> TypeTag {
     format!("{package}::controller::DelegationToken")
       .parse()
       .expect("valid Move type")
@@ -388,7 +388,7 @@ impl BitXorAssign for DelegatePermissions {
 /// for a given [ControllerCap].
 #[derive(Debug, Clone)]
 pub struct DelegateToken {
-  cap_id: ObjectID,
+  cap_id: ObjectId,
   permissions: DelegatePermissions,
   recipient: IotaAddress,
 }
@@ -482,9 +482,9 @@ impl Transaction for DelegateToken {
 /// [Transaction] for revoking / unrevoking a [DelegationToken].
 #[derive(Debug, Clone)]
 pub struct DelegationTokenRevocation {
-  identity_id: ObjectID,
-  controller_cap_id: ObjectID,
-  delegation_token_id: ObjectID,
+  identity_id: ObjectId,
+  controller_cap_id: ObjectId,
+  delegation_token_id: ObjectId,
   // `true` revokes the token, `false` un-revokes it.
   revoke: bool,
 }
@@ -535,7 +535,7 @@ impl DelegationTokenRevocation {
   }
 
   /// Return the ID of the [DelegationToken] handled by this transaction.
-  pub fn token_id(&self) -> ObjectID {
+  pub fn token_id(&self) -> ObjectId {
     self.delegation_token_id
   }
 }
@@ -590,8 +590,8 @@ impl Transaction for DelegationTokenRevocation {
 /// [Transaction] for deleting a given [DelegationToken].
 #[derive(Debug, Clone)]
 pub struct DeleteDelegationToken {
-  identity_id: ObjectID,
-  delegation_token_id: ObjectID,
+  identity_id: ObjectId,
+  delegation_token_id: ObjectId,
 }
 
 impl DeleteDelegationToken {
@@ -612,7 +612,7 @@ impl DeleteDelegationToken {
   }
 
   /// Returns the ID of the [DelegationToken] to be deleted.
-  pub fn token_id(&self) -> ObjectID {
+  pub fn token_id(&self) -> ObjectId {
     self.delegation_token_id
   }
 }
@@ -694,7 +694,7 @@ pub struct NotAController {
 #[non_exhaustive]
 pub struct InsufficientControllerVotingPower {
   /// ID of the controller token.
-  pub controller_token_id: ObjectID,
+  pub controller_token_id: ObjectId,
   /// Voting power of the controller.
   pub controller_voting_power: u64,
   /// Required voting power.
@@ -707,7 +707,7 @@ pub struct InsufficientControllerVotingPower {
 #[non_exhaustive]
 pub struct InvalidControllerTokenForIdentity {
   /// The ID of the [OnChainIdentity] this operation attempted to access.
-  pub identity: ObjectID,
+  pub identity: ObjectId,
   /// The presented controller token.
   pub controller_token: ControllerToken,
 }

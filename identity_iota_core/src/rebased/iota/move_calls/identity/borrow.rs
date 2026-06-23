@@ -6,14 +6,14 @@ use std::collections::HashMap;
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::IotaObjectData;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectID;
 use iota_interaction::types::base_types::ObjectType;
-use iota_interaction::types::base_types::TypeTag;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
-use iota_interaction::types::transaction::Argument;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::MoveType as _;
 use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk_types::Argument;
+use iota_sdk_types::ObjectId;
+use iota_sdk_types::TypeTag;
 use itertools::Itertools as _;
 
 use crate::rebased::iota::move_calls::utils;
@@ -27,9 +27,9 @@ use super::ProposalContext;
 fn borrow_proposal_impl(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  objects: Vec<ObjectID>,
+  objects: Vec<ObjectId>,
   expiration: Option<u64>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> anyhow::Result<ProposalContext> {
   let mut ptb = Ptb::new();
   let capability = ControllerTokenArg::from_ref(capability, &mut ptb, package_id)?;
@@ -60,10 +60,10 @@ pub(crate) fn execute_borrow_impl<F>(
   proposal_id: Argument,
   objects: Vec<IotaObjectData>,
   intent_fn: F,
-  package: ObjectID,
+  package: ObjectId,
 ) -> anyhow::Result<()>
 where
-  F: FnOnce(&mut Ptb, &HashMap<ObjectID, (Argument, IotaObjectData)>),
+  F: FnOnce(&mut Ptb, &HashMap<ObjectId, (Argument, IotaObjectData)>),
 {
   // Get the proposal's action as argument.
   let borrow_action = ptb.programmable_move_call(
@@ -128,9 +128,9 @@ where
 pub(crate) fn propose_borrow(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  objects: Vec<ObjectID>,
+  objects: Vec<ObjectId>,
   expiration: Option<u64>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let ProposalContext {
     mut ptb, capability, ..
@@ -144,13 +144,13 @@ pub(crate) fn propose_borrow(
 pub(crate) fn execute_borrow<F>(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  proposal_id: ObjectID,
+  proposal_id: ObjectId,
   objects: Vec<IotaObjectData>,
   intent_fn: F,
-  package: ObjectID,
+  package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error>
 where
-  F: FnOnce(&mut Ptb, &HashMap<ObjectID, (Argument, IotaObjectData)>),
+  F: FnOnce(&mut Ptb, &HashMap<ObjectId, (Argument, IotaObjectData)>),
 {
   let mut ptb = Ptb::new();
   let identity = utils::owned_ref_to_shared_object_arg(identity, &mut ptb, true)?;
@@ -178,10 +178,10 @@ pub(crate) fn create_and_execute_borrow<F>(
   objects: Vec<IotaObjectData>,
   intent_fn: F,
   expiration: Option<u64>,
-  package_id: ObjectID,
+  package_id: ObjectId,
 ) -> anyhow::Result<ProgrammableTransactionBcs, Error>
 where
-  F: FnOnce(&mut Ptb, &HashMap<ObjectID, (Argument, IotaObjectData)>),
+  F: FnOnce(&mut Ptb, &HashMap<ObjectId, (Argument, IotaObjectData)>),
 {
   let ProposalContext {
     mut ptb,

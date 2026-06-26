@@ -1,10 +1,9 @@
 // Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use examples::create_did;
-use examples::random_stronghold_path;
-use examples::MemStorage;
-use examples::API_ENDPOINT;
+use examples::create_did_document;
+use examples::get_funded_client;
+use examples::get_memstorage;
 use identity_eddsa_verifier::EdDSAJwsVerifier;
 use identity_iota::core::FromJson;
 use identity_iota::core::Object;
@@ -28,16 +27,9 @@ use identity_iota::credential::Status;
 use identity_iota::credential::StatusCheck;
 use identity_iota::credential::Subject;
 use identity_iota::did::DID;
-use identity_iota::iota::IotaDocument;
 use identity_iota::storage::JwkDocumentExt;
-use identity_iota::storage::JwkMemStore;
 use identity_iota::storage::JwsSignatureOptions;
-use identity_iota::storage::KeyIdMemstore;
-use iota_sdk::client::secret::stronghold::StrongholdSecretManager;
-use iota_sdk::client::secret::SecretManager;
-use iota_sdk::client::Client;
-use iota_sdk::client::Password;
-use iota_sdk::types::block::address::Address;
+
 use serde_json::json;
 
 #[tokio::main]
@@ -46,32 +38,15 @@ async fn main() -> anyhow::Result<()> {
   // Create a Verifiable Credential.
   // ===========================================================================
 
-  // Create a new client to interact with the IOTA ledger.
-  let client: Client = Client::builder()
-    .with_primary_node(API_ENDPOINT, None)?
-    .finish()
-    .await?;
+  // create new issuer account with did document
+  let issuer_storage = get_memstorage()?;
+  let issuer_identity_client = get_funded_client(&issuer_storage).await?;
+  let (issuer_document, issuer_vm_fragment) = create_did_document(&issuer_identity_client, &issuer_storage).await?;
 
-  let mut secret_manager_issuer: SecretManager = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_1".to_owned()))
-      .build(random_stronghold_path())?,
-  );
-
-  // Create an identity for the issuer with one verification method `key-1`.
-  let storage_issuer: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-  let (_, issuer_document, fragment_issuer): (Address, IotaDocument, String) =
-    create_did(&client, &mut secret_manager_issuer, &storage_issuer).await?;
-
-  // Create an identity for the holder, in this case also the subject.
-  let mut secret_manager_alice: SecretManager = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password_2".to_owned()))
-      .build(random_stronghold_path())?,
-  );
-  let storage_alice: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-  let (_, alice_document, _): (Address, IotaDocument, String) =
-    create_did(&client, &mut secret_manager_alice, &storage_alice).await?;
+  // create new holder account with did document
+  let holder_storage = get_memstorage()?;
+  let holder_identity_client = get_funded_client(&holder_storage).await?;
+  let (holder_document, _) = create_did_document(&holder_identity_client, &holder_storage).await?;
 
   // Create a new empty status list. No credentials have been revoked yet.
   let status_list: StatusList2021 = StatusList2021::default();
@@ -89,7 +64,7 @@ async fn main() -> anyhow::Result<()> {
 
   // Create a credential subject indicating the degree earned by Alice.
   let subject: Subject = Subject::from_json_value(json!({
-    "id": alice_document.id().as_str(),
+    "id": holder_document.id().as_str(),
     "name": "Alice",
     "degree": {
       "type": "BachelorDegree",
@@ -123,8 +98,8 @@ async fn main() -> anyhow::Result<()> {
   let credential_jwt: Jwt = issuer_document
     .create_credential_jwt(
       &credential,
-      &storage_issuer,
-      &fragment_issuer,
+      &issuer_storage,
+      &issuer_vm_fragment,
       &JwsSignatureOptions::default(),
       None,
     )
@@ -133,7 +108,7 @@ async fn main() -> anyhow::Result<()> {
   let validator: JwtCredentialValidator<EdDSAJwsVerifier> =
     JwtCredentialValidator::with_signature_verifier(EdDSAJwsVerifier::default());
 
-  // The validator has no way of retriving the status list to check for the
+  // The validator has no way of retrieving the status list to check for the
   // revocation of the credential. Let's skip that pass and perform the operation manually.
   let mut validation_options = JwtCredentialValidationOptions::default();
   validation_options.status = StatusCheck::SkipUnsupported;

@@ -1,4 +1,4 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 //! Errors that may occur when working with Decentralized Identifiers.
@@ -39,6 +39,9 @@ pub enum Error {
   /// Caused by key material that is not a JSON Web Key.
   #[error("verification material format is not publicKeyJwk")]
   NotPublicKeyJwk,
+  /// Caused by key material that is not a Composite Public Key.
+  #[error("verification material format is not compositePublicKey")]
+  NotCompositePublicKey,
   /// Failed to deserialize [`MethodRef`](crate::MethodRef)
   #[error("invalid method ref; {0}")]
   InvalidMethodRef(#[from] serde_json::Error),

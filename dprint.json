@@ -12,7 +12,7 @@
   "excludes": [
     "documentation",
     "**/{node_modules,target}",
-    "bindings/wasm/{node,web}/**/*.{js,ts}"
+    "bindings/wasm/identity_wasm/{node,web}/**/*.{js,ts}"
   ],
   "plugins": [
     "https://plugins.dprint.dev/toml-0.5.1.wasm",

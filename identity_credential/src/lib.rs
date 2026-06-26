@@ -27,8 +27,12 @@ mod utils;
 #[cfg(feature = "validator")]
 pub mod validator;
 
+/// Implementation of the SD-JWT VC token specification.
+#[cfg(feature = "sd-jwt-vc")]
+pub mod sd_jwt_vc;
+
 pub use error::Error;
 pub use error::Result;
 
 #[cfg(feature = "sd-jwt")]
-pub use sd_jwt_payload;
+pub use sd_jwt as sd_jwt_payload;

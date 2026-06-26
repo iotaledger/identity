@@ -1,6 +1,6 @@
 [package]
 name = "identity_core"
-version = "1.1.1"
+version = "1.9.10-beta.1"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -8,22 +8,25 @@ keywords = ["iota", "tangle", "identity"]
 license.workspace = true
 readme = "./README.md"
 repository.workspace = true
-rust-version.workspace = true
 description = "The core traits and types for the identity-rs library."
 
 [dependencies]
-iota-crypto = { version = "0.23", default-features = false, features = ["ed25519", "random", "sha", "x25519", "std"] }
+# pin dependency of `time` and limit range, as `0.4.1` has impl for `usize: PartialOrd<_>`
+# that conflicts with `iota-sdk`s `core` impl, leading to errors in `iota-sdk` crate
+deranged = { version = ">=0.4.0, <0.4.1", default-features = false }
+iota-caip = { git = "https://github.com/iotaledger/iota-caip.git", optional = true, default-features = false, features = ["iota", "resolver"] }
 multibase = { version = "0.9", default-features = false, features = ["std"] }
+nom = "8.0.0"
+product_common.workspace = true
 serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
 strum.workspace = true
 thiserror.workspace = true
 time = { version = "0.3.23", default-features = false, features = ["std", "serde", "parsing", "formatting"] }
 url = { version = "2.4", default-features = false, features = ["serde"] }
-zeroize = { version = "1.6", default-features = false }
 
 [target.'cfg(all(target_arch = "wasm32", not(target_os = "wasi")))'.dependencies]
-js-sys = { version = "0.3.55", default-features = false }
+js-sys = { version = "0.3.55", default-features = false, optional = true }
 
 [dev-dependencies]
 proptest = { version = "1.0.0" }
@@ -35,3 +38,17 @@ quickcheck_macros = { version = "1.0" }
 # RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features --no-deps --workspace --open
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true
+
+[features]
+default = ["dep:js-sys"]
+# Enables a macro to provide a custom time (Timestamp::now_utc) implementation, see src/custom_time.rs
+custom_time = []
+# Enables the integration with IOTA Resource Locators (IRLs).
+irl = ["dep:iota-caip"]
+
+[[test]]
+name = "custom_time"
+required-features = ["custom_time"]

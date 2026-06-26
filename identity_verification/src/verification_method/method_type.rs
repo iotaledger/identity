@@ -12,6 +12,7 @@ use crate::error::Result;
 const ED25519_VERIFICATION_KEY_2018_STR: &str = "Ed25519VerificationKey2018";
 const X25519_KEY_AGREEMENT_KEY_2019_STR: &str = "X25519KeyAgreementKey2019";
 const JSON_WEB_KEY_METHOD_TYPE: &str = "JsonWebKey";
+const JSON_WEB_KEY_2020_STR: &str = "JsonWebKey2020";
 
 /// verification method types.
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
@@ -24,7 +25,11 @@ impl MethodType {
   pub const X25519_KEY_AGREEMENT_KEY_2019: Self = Self(Cow::Borrowed(X25519_KEY_AGREEMENT_KEY_2019_STR));
   /// A verification method for use with JWT verification as prescribed by the [`Jwk`](::identity_jose::jwk::Jwk)
   /// in the [`publicKeyJwk`](crate::MethodData::PublicKeyJwk) entry.
+  #[deprecated(since = "1.3.0", note = "use JSON_WEB_KEY_2020 instead")]
   pub const JSON_WEB_KEY: Self = Self(Cow::Borrowed(JSON_WEB_KEY_METHOD_TYPE));
+  /// A verification method for use with JWT verification as prescribed by the [`Jwk`](::identity_jose::jwk::Jwk)
+  /// in the [`publicKeyJwk`](crate::MethodData::PublicKeyJwk) entry.
+  pub const JSON_WEB_KEY_2020: Self = Self(Cow::Borrowed(JSON_WEB_KEY_2020_STR));
   /// Construct a custom method type.
   pub fn custom(type_: impl AsRef<str>) -> Self {
     Self(Cow::Owned(type_.as_ref().to_owned()))
@@ -57,7 +62,11 @@ impl FromStr for MethodType {
     match string {
       ED25519_VERIFICATION_KEY_2018_STR => Ok(Self::ED25519_VERIFICATION_KEY_2018),
       X25519_KEY_AGREEMENT_KEY_2019_STR => Ok(Self::X25519_KEY_AGREEMENT_KEY_2019),
-      JSON_WEB_KEY_METHOD_TYPE => Ok(Self::JSON_WEB_KEY),
+      JSON_WEB_KEY_METHOD_TYPE => Ok(
+        #[allow(deprecated)]
+        Self::JSON_WEB_KEY,
+      ),
+      JSON_WEB_KEY_2020_STR => Ok(Self::JSON_WEB_KEY_2020),
       _ => Ok(Self(Cow::Owned(string.to_owned()))),
     }
   }
@@ -74,6 +83,7 @@ mod tests {
     for method_type in [
       MethodType::ED25519_VERIFICATION_KEY_2018,
       MethodType::X25519_KEY_AGREEMENT_KEY_2019,
+      MethodType::JSON_WEB_KEY_2020,
     ] {
       let ser: Value = serde_json::to_value(method_type.clone()).unwrap();
       assert_eq!(ser.as_str().unwrap(), method_type.as_str());

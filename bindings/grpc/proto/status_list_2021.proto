@@ -1,0 +1,50 @@
+// Copyright 2020-2024 IOTA Stiftung
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+package status_list_2021;
+
+enum Purpose {
+    REVOCATION = 0;
+    SUSPENSION = 1;
+}
+
+message CreateRequest {
+    // Whether this status list will be used for revoking or suspending credentials.
+    Purpose purpose = 1;
+    // Amount of entries in the status list (a minimum of 131072 entries is required).
+    optional uint64 length = 2;
+    // The URL that identifies the credential.
+    optional string id = 3;
+    // Timestamp representing the expiration date for this credential, if it has to expire.
+    optional string expiration_date = 4;
+    // A list of credential's contexts, used to fill the credential's "@context" property.
+    // "https://www.w3.org/2018/credentials/v1" is provided by default.
+    repeated string contexts = 5;
+    // A list of credential's types, used to fill the credential's "type" property.
+    // "VerifiableCredential" is provided by default.
+    repeated string types = 6;
+    // The issuer DID URL.
+    string issuer = 7;
+}
+
+message StatusListCredential {
+    // JSON encoded `StatusList2021Credential`.
+    string credential_json = 1;
+}
+
+message UpdateRequest {
+    // JSON encoded `StatusList2021Credential`.
+    string credential_json = 1;
+    // Changes to apply to the status list represented as the map "entry-index -> bool value"
+    // where `true` means that the entry at the given index is revoked/suspended depending on
+    // the list's purpose.
+    map<uint64, bool> entries = 2;
+}
+
+service StatusList2021Svc {
+    // Creates a new `StatusList2021Credential`.
+    rpc create(CreateRequest) returns(StatusListCredential);
+    // Sets the value for a list of entries in the provided `StatusList2021Credential`.
+    rpc update(UpdateRequest) returns(StatusListCredential);
+}

@@ -1,17 +1,20 @@
 {
-    "compilerOptions": {
-        "baseUrl": ".",
-        "lib": ["ES2020", "DOM"],
-        "declaration": true,
-        "sourceMap": true,
-        "strict": true,
-        "moduleResolution": "node",
-        "noImplicitAny": true,
-        "preserveConstEnums": true,
-        "forceConsistentCasingInFileNames": true,
-        "paths": {
-            "@iota/identity-wasm/*": ["./*"]
-        }
-    },
-    "exclude": ["node_modules"]
+  "compilerOptions": {
+    "lib": [
+      "ES2020",
+      "DOM"
+    ],
+    "target": "ES2022",
+    "declaration": true,
+    "sourceMap": true,
+    "strict": true,
+    "moduleResolution": "node",
+    "noImplicitAny": true,
+    "preserveConstEnums": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "exclude": [
+    "node_modules"
+  ]
 }

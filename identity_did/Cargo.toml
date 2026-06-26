@@ -1,6 +1,6 @@
 [package]
 name = "identity_did"
-version = "1.1.1"
+version = "1.9.10-beta.1"
 authors.workspace = true
 edition = "2021"
 homepage.workspace = true
@@ -11,9 +11,10 @@ repository.workspace = true
 description = "Agnostic implementation of the Decentralized Identifiers (DID) standard."
 
 [dependencies]
-did_url = { version = "0.1", default-features = false, features = ["std", "serde"] }
+did_url_parser = { version = "0.3.0", features = ["std", "serde"] }
 form_urlencoded = { version = "1.2.0", default-features = false, features = ["alloc"] }
-identity_core = { version = "=1.1.1", path = "../identity_core" }
+identity_core = { version = "=1.9.10-beta.1", path = "../identity_core", default-features = false }
+identity_jose = { version = "=1.9.10-beta.1", path = "../identity_jose" }
 serde.workspace = true
 strum.workspace = true
 thiserror.workspace = true
@@ -27,3 +28,6 @@ serde_json.workspace = true
 # RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features --no-deps --workspace --open
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true

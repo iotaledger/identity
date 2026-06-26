@@ -3,6 +3,10 @@
 
 //! Verifiable Credential and Presentation validators.
 
+#[cfg(feature = "jpt-bbs-plus")]
+pub use self::jpt_credential_validation::*;
+#[cfg(feature = "jpt-bbs-plus")]
+pub use self::jpt_presentation_validation::*;
 pub use self::jwt_credential_validation::*;
 pub use self::jwt_presentation_validation::*;
 pub use self::options::FailFast;
@@ -11,6 +15,10 @@ pub use self::options::SubjectHolderRelationship;
 #[cfg(feature = "sd-jwt")]
 pub use self::sd_jwt::*;
 
+#[cfg(feature = "jpt-bbs-plus")]
+mod jpt_credential_validation;
+#[cfg(feature = "jpt-bbs-plus")]
+mod jpt_presentation_validation;
 mod jwt_credential_validation;
 mod jwt_presentation_validation;
 mod options;

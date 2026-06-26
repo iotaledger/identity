@@ -39,14 +39,14 @@ impl StatusList2021 {
   /// Returns a new zero-filled [`StatusList2021`] that can hold `num_entries` credential statuses.
   ///
   /// ## Notes:
-  /// - The actual length of the list will be rounded up to the closest multiple of 8 to accomodate for byte sizes.
+  /// - The actual length of the list will be rounded up to the closest multiple of 8 to accommodate for byte sizes.
   /// - `num_entries` must be at least 131,072 which corresponds to a size of 16KB.
   pub fn new(num_entries: usize) -> Result<Self, StatusListError> {
     if num_entries < MINIMUM_LIST_SIZE {
       return Err(StatusListError::InvalidListSize);
     }
 
-    let size = num_entries / 8 + (num_entries % 8 != 0) as usize;
+    let size = num_entries / 8 + (!num_entries.is_multiple_of(8) as usize);
     let store = vec![0; size];
 
     Ok(StatusList2021(store.into_boxed_slice()))

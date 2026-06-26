@@ -42,7 +42,10 @@ impl Timestamp {
   /// fractional seconds truncated.
   ///
   /// See the [`datetime` DID-core specification](https://www.w3.org/TR/did-core/#production).
-  #[cfg(not(all(target_arch = "wasm32", not(target_os = "wasi"))))]
+  #[cfg(all(
+    not(all(target_arch = "wasm32", not(target_os = "wasi"))),
+    not(feature = "custom_time")
+  ))]
   pub fn now_utc() -> Self {
     Self(truncate_fractional_seconds(OffsetDateTime::now_utc()))
   }
@@ -51,12 +54,21 @@ impl Timestamp {
   /// fractional seconds truncated.
   ///
   /// See the [`datetime` DID-core specification](https://www.w3.org/TR/did-core/#production).
-  #[cfg(all(target_arch = "wasm32", not(target_os = "wasi")))]
+  #[cfg(all(target_arch = "wasm32", not(target_os = "wasi"), not(feature = "custom_time")))]
   pub fn now_utc() -> Self {
     let milliseconds_since_unix_epoch: i64 = js_sys::Date::now() as i64;
     let seconds: i64 = milliseconds_since_unix_epoch / 1000;
     // expect is okay, we assume the current time is between 0AD and 9999AD
     Self::from_unix(seconds).expect("Timestamp failed to convert system datetime")
+  }
+
+  /// Creates a new `Timestamp` with the current date and time, normalized to UTC+00:00 with
+  /// fractional seconds truncated.
+  ///
+  /// See the [`datetime` DID-core specification](https://www.w3.org/TR/did-core/#production).
+  #[cfg(feature = "custom_time")]
+  pub fn now_utc() -> Self {
+    crate::custom_time::now_utc_custom()
   }
 
   /// Returns the `Timestamp` as an [RFC 3339](https://tools.ietf.org/html/rfc3339) `String`.

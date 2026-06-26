@@ -37,12 +37,12 @@ runs:
         fi
         echo SINCE_ARG=$SINCE_ARG
         echo SINCE_ARG=$SINCE_ARG >> $GITHUB_ENV
-    
+
     - name: Prepare Repository For Changelog Generator
       shell: bash
       run: |
         GITHUB_REPOSITORY_USER=$( echo $GITHUB_REPOSITORY | awk -F'/' '{print $1}') 
-        GITHUB_REPOSITORY_PROJECT=$( echo $GITHUB_REPOSITORY | awk -F'/' '{print $2}') 
+        GITHUB_REPOSITORY_PROJECT=$( echo $GITHUB_REPOSITORY | awk -F'/' '{print $2}')
 
         echo GITHUB_REPOSITORY_USER=$GITHUB_REPOSITORY_USER
         echo GITHUB_REPOSITORY_PROJECT=$GITHUB_REPOSITORY_PROJECT

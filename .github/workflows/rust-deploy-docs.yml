@@ -1,0 +1,48 @@
+name: Rust deploy crate docs
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run publish from (defaults to repo default)"
+        required: false
+      dry-run:
+        description: "Run in dry-run mode"
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  build:
+    name: Generate crate documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.event.repository.default_branch }}
+      - name: Generate documentation
+        uses: actions-rs/cargo@ae10961054e4aa8b4aa7dffede299aaf087aa33b # v1.0.1
+        with:
+          command: doc
+          args: --workspace --no-deps
+      - name: Upload static files as artifact
+        uses: actions/upload-pages-artifact@v3
+        if: ${{ !inputs.dry-run }}
+        with:
+          path: ./target/doc
+  deploy:
+    if: ${{ !inputs.dry-run }}
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

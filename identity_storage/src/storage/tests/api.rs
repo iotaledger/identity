@@ -399,9 +399,7 @@ mod iota_document_tests {
       },
       "meta": {
         "created": "2023-01-25T15:48:09Z",
-        "updated": "2023-01-25T15:48:09Z",
-        "governorAddress": "rms1pra642gek5g394g63uvtz5qdnrct96ga0yautvnl6k4sfjcmsp35xv6nagu",
-        "stateControllerAddress": "rms1pra642gek5g394g63uvtz5qdnrct96ga0yautvnl6k4sfjcmsp35xv6nagu"
+        "updated": "2023-01-25T15:48:09Z"
       }
     }
     "#;

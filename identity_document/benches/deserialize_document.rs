@@ -220,9 +220,9 @@ fn deserialize_json_document(c: &mut Criterion) {
     (JSON_DOC_DID_KEY, "did:key document"),
     (JSON_DOCUMENT_LARGE, "large document"),
   ] {
-    group.throughput(Throughput::Bytes(json.as_bytes().len() as u64));
+    group.throughput(Throughput::Bytes(json.len() as u64));
     group.bench_with_input(
-      BenchmarkId::from_parameter(format!("{name}, document size: {} bytes", json.as_bytes().len())),
+      BenchmarkId::from_parameter(format!("{name}, document size: {} bytes", json.len())),
       json,
       |b, json| {
         b.iter(|| {

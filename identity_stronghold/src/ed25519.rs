@@ -53,6 +53,6 @@ pub(crate) fn encode_jwk(private_key: &SecretKey, public_key: &crypto::signature
   let mut params = JwkParamsOkp::new();
   params.x = x;
   params.d = Some(d);
-  params.crv = EdCurve::Ed25519.name().to_owned();
+  params.crv = EdCurve::Ed25519.name().to_string();
   Jwk::from_params(params)
 }

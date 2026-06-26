@@ -1,8 +1,7 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2026 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
 use identity_core::common::Timestamp;
-use identity_document::verifiable::JwsVerificationOptions;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -10,15 +9,13 @@ use serde::Serialize;
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 #[serde(rename_all = "camelCase")]
-pub struct KeyBindingJWTValidationOptions {
+pub struct KeyBindingJwtValidationOptions {
   /// Validates the nonce value of the KB-JWT claims.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub nonce: Option<String>,
   /// Validates the `aud` properties in the KB-JWT claims.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub aud: Option<String>,
-  /// Options which affect the verification of the signature on the KB-JWT.
-  pub jws_options: JwsVerificationOptions,
   /// Declares that the KB-JWT is considered invalid if the `iat` value in the claims is
   /// earlier than this timestamp.
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -30,7 +27,7 @@ pub struct KeyBindingJWTValidationOptions {
   pub latest_issuance_date: Option<Timestamp>,
 }
 
-impl KeyBindingJWTValidationOptions {
+impl KeyBindingJwtValidationOptions {
   /// Constructor that sets all options to their defaults.
   pub fn new() -> Self {
     Self::default()
@@ -39,12 +36,6 @@ impl KeyBindingJWTValidationOptions {
   /// Validates the nonce value of the KB-JWT claims.
   pub fn nonce(mut self, nonce: impl Into<String>) -> Self {
     self.nonce = Some(nonce.into());
-    self
-  }
-
-  /// Set options which affect the verification of the signature on the KB-JWT.
-  pub fn jws_verifier_options(mut self, options: JwsVerificationOptions) -> Self {
-    self.jws_options = options;
     self
   }
 

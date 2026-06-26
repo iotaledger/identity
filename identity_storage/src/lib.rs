@@ -19,5 +19,5 @@ pub mod key_storage;
 pub mod storage;
 
 pub use key_id_storage::*;
-pub use key_storage::*;
+pub use key_storage::public_modules::*;
 pub use storage::*;

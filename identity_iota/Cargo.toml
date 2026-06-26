@@ -1,6 +1,6 @@
 [package]
 name = "identity_iota"
-version = "1.1.1"
+version = "1.9.10-beta.1"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -8,39 +8,52 @@ keywords = ["iota", "tangle", "identity", "did", "ssi"]
 license.workspace = true
 readme = "./README.md"
 repository.workspace = true
-rust-version.workspace = true
 description = "Framework for Self-Sovereign Identity with IOTA DID."
 
 [dependencies]
-identity_core = { version = "=1.1.1", path = "../identity_core", default-features = false }
-identity_credential = { version = "=1.1.1", path = "../identity_credential", features = ["validator"], default-features = false }
-identity_did = { version = "=1.1.1", path = "../identity_did", default-features = false }
-identity_document = { version = "=1.1.1", path = "../identity_document", default-features = false }
-identity_iota_core = { version = "=1.1.1", path = "../identity_iota_core", default-features = false }
-identity_resolver = { version = "=1.1.1", path = "../identity_resolver", default-features = false, optional = true }
-identity_storage = { version = "=1.1.1", path = "../identity_storage", default-features = false, features = ["iota-document"] }
-identity_verification = { version = "=1.1.1", path = "../identity_verification", default-features = false }
+identity_core = { version = "=1.9.10-beta.1", path = "../identity_core", default-features = false }
+identity_credential = { version = "=1.9.10-beta.1", path = "../identity_credential", features = ["validator"], default-features = false }
+identity_did = { version = "=1.9.10-beta.1", path = "../identity_did", default-features = false }
+identity_document = { version = "=1.9.10-beta.1", path = "../identity_document", default-features = false }
+identity_iota_core = { version = "=1.9.10-beta.1", path = "../identity_iota_core", default-features = false }
+identity_resolver = { version = "=1.9.10-beta.1", path = "../identity_resolver", default-features = false, optional = true }
+identity_storage = { version = "=1.9.10-beta.1", path = "../identity_storage", default-features = false, features = ["iota-document"] }
+identity_verification = { version = "=1.9.10-beta.1", path = "../identity_verification", default-features = false }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+iota_interaction.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.21", package = "iota_interaction", default-features = false }
 
 [dev-dependencies]
+# required for doc test
 anyhow = "1.0.64"
-iota-sdk = { version = "1.0", default-features = false, features = ["tls", "client"] }
+identity_iota = { version = "=1.9.10-beta.1", path = "./", features = ["memstore"] }
+iota-sdk = { git = "https://github.com/iotaledger/iota.git", package = "iota-sdk", tag = "v1.25.0" }
 rand = "0.8.5"
-tokio = { version = "1.29.0", features = ["full"] }
+secret-storage = { git = "https://github.com/iotaledger/secret-storage.git", tag = "v0.3.0" }
+tokio = { version = "1.52.2", features = ["full"] }
 
 [features]
-default = ["revocation-bitmap", "client", "iota-client", "resolver"]
+default = ["revocation-bitmap", "iota-client", "send-sync", "resolver"]
 
-# Exposes the `IotaIdentityClient` and `IotaIdentityClientExt` traits.
-client = ["identity_iota_core/client"]
+# Enables the IOTA client integration, and the `DidResolutionHandler` trait.
+iota-client = [
+  "identity_iota_core/iota-client",
+  "identity_resolver/iota",
+  "identity_storage/storage-signer",
+]
 
-# Enables the iota-client integration, the client trait implementations for it, and the `IotaClientExt` trait.
-iota-client = ["identity_iota_core/iota-client", "identity_resolver?/iota"]
+# Enables an high level integration with IOTA Gas Station.
+gas-station = ["identity_iota_core/gas-station"]
+# Replaces the generic client used in HTTP interfaces with Reqwest's HTTP Client.
+default-http-client = ["identity_iota_core/default-http-client"]
 
 # Enables revocation with `RevocationBitmap2022`.
 revocation-bitmap = [
   "identity_credential/revocation-bitmap",
   "identity_iota_core/revocation-bitmap",
-  "identity_resolver?/revocation-bitmap",
 ]
 
 # Enables revocation with `StatusList2021`.
@@ -49,8 +62,12 @@ status-list-2021 = ["revocation-bitmap", "identity_credential/status-list-2021"]
 # Enables support for the `Resolver`.
 resolver = ["dep:identity_resolver"]
 
+# Enables `Send` + `Sync` bounds for the storage and client interaction traits.
+send-sync = ["send-sync-storage", "send-sync-client", "identity_iota_core/send-sync"]
 # Enables `Send` + `Sync` bounds for the storage traits.
-send-sync-storage = ["identity_storage/send-sync-storage"]
+send-sync-storage = ["identity_storage/send-sync-storage", "identity_iota_core/send-sync-storage"]
+# Enables `Send` + `Sync` bounds for IOTA client interaction traits.
+send-sync-client = ["identity_iota_core/send-sync-client-ext"]
 
 # Enables domain linkage support.
 domain-linkage = ["identity_credential/domain-linkage"]
@@ -62,10 +79,32 @@ domain-linkage-fetch = ["identity_credential/domain-linkage-fetch"]
 memstore = ["identity_storage/memstore"]
 
 # Enables selective disclosure features.
-sd-jwt = ["identity_credential/sd-jwt"]
+sd-jwt = ["identity_credential/sd-jwt", "identity_storage/sd-jwt-signer"]
+
+# Enables selectively disclosable credentials.
+sd-jwt-vc = ["identity_credential/sd-jwt-vc"]
+
+# Enables zero knowledge selective disclosurable VCs
+jpt-bbs-plus = ["identity_storage/jpt-bbs-plus", "identity_credential/jpt-bbs-plus"]
+
+# Enables PQC
+pqc = ["identity_storage/pqc"]
+pqc-liboqs = ["identity_storage/pqc-liboqs"]
+
+# Enables PQ/T Hybrid
+hybrid = ["identity_storage/hybrid", "identity_credential/hybrid"]
+hybrid-liboqs = ["identity_storage/hybrid-liboqs", "identity_credential/hybrid"]
+# Enables integration with IOTA Keytool.
+keytool = ["identity_iota_core/keytool", "identity_storage/keytool"]
+
+# Enables the integration with IOTA Resource Locators (IRLs).
+irl = ["identity_core/irl"]
 
 [package.metadata.docs.rs]
 # To build locally:
 # RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features --no-deps --workspace --open
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true

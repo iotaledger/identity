@@ -1,6 +1,5 @@
-const rootPackage = require("../../package.json");
-
 module.exports = (options) => {
+    const rootPackage = require(`../../${options.artifact}/package.json`);
     const newPackage = {
         name: rootPackage.name,
         description: rootPackage.description,

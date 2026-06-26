@@ -155,6 +155,9 @@ jobs:
         if: ${{env.IS_RELEASE && inputs.create-github-release}}
         uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
         with:
+          # Token expires Jan 16, 2026
+          # This is needed because of https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/triggering-a-workflow#triggering-a-workflow-from-a-workflow
+          token: ${{ secrets.GH_RELEASE_PUBLISH_PAT }}
           body_path: RELEASE_CHANGELOG.md
           prerelease: ${{env.IS_PRE_RELEASE}}
           tag_name: ${{env.CURRENT_VERSION}}

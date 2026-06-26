@@ -72,7 +72,7 @@ impl<T> OrderedSet<T> {
     self.0.first()
   }
 
-  /// Returns a mutable referece to the first element in the set, or `None` if
+  /// Returns a mutable reference to the first element in the set, or `None` if
   /// the set is empty.
   ///
   /// # Warning
@@ -488,7 +488,7 @@ mod tests {
   /// Produces a strategy for generating an ordered set together with two values according to the following algorithm:
   /// 1. Call `f` to get a pair of sets (x,y).
   /// 2. Toss a coin to decide whether to pick an element from x at random, or from y (if the chosen set is empty
-  /// Default is called). 3. Repeat step 2 and let the two outcomes be denoted a and b.
+  ///    Default is called). 3. Repeat step 2 and let the two outcomes be denoted a and b.
   /// 4. Toss a coin to decide whether to swap the keys of a and b.
   /// 5. return (x,a,b)
   fn set_with_values<F, T, U>(f: F) -> impl Strategy<Value = (OrderedSet<T>, T, T)>
@@ -502,18 +502,18 @@ mod tests {
       let sets = [&x, &y];
 
       let sample = |generator: &mut TestRng| {
-        let set_idx = usize::from(generator.gen_bool(0.5));
+        let set_idx = usize::from(generator.random_bool(0.5));
         let set_range = if set_idx == 0 { 0..x.len() } else { 0..y.len() };
         if set_range.is_empty() {
           T::default()
         } else {
-          let entry_idx = generator.gen_range(set_range);
+          let entry_idx = generator.random_range(set_range);
           (sets[set_idx])[entry_idx].clone()
         }
       };
 
       let (mut a, mut b) = (sample(&mut rng), sample(&mut rng));
-      if rng.gen_bool(0.5) {
+      if rng.random_bool(0.5) {
         let key_a = a.key().clone();
         let key_b = b.key().clone();
         a.set_key(key_b);

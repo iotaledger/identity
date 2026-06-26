@@ -9,8 +9,7 @@ on:
 
 jobs:
   create-hotfix-pr:
-    # owner/repository of workflow has to be static, see https://github.community/t/env-variables-in-uses/17466
-    uses: iotaledger/identity.rs/.github/workflows/shared-create-hotfix-pr.yml@main
+    uses: './.github/workflows/shared-create-hotfix-pr.yml'
     with:
       branch: ${{ github.event.inputs.branch }}
       branch-regex: ^support\/v[0-9]+\.[0-9]+$

@@ -27,7 +27,7 @@ pub enum JwtValidationError {
     source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
     /// A message providing more context
     message: &'static str,
-    /// Specifies whether the error ocurred when trying to verify the signature of a presentation holder or
+    /// Specifies whether the error occurred when trying to verify the signature of a presentation holder or
     /// of a credential issuer.
     signer_ctx: SignerContext,
   },
@@ -48,7 +48,7 @@ pub enum JwtValidationError {
   IssuanceDate,
   /// Indicates that the credential's (resp. presentation's) signature could not be verified using
   /// the issuer's (resp. holder's) DID Document.
-  #[error("could not verify the {signer_ctx}'s signature")]
+  #[error("could not verify the {signer_ctx}'s signature; {source}")]
   #[non_exhaustive]
   Signature {
     /// Signature verification error.
@@ -94,7 +94,7 @@ pub enum JwtValidationError {
   /// Indicates that the credential's status is invalid.
   #[error("invalid credential status")]
   InvalidStatus(#[source] crate::Error),
-  /// Indicates that the the credential's service is invalid.
+  /// Indicates that the credential's service is invalid.
   #[error("service lookup error")]
   #[non_exhaustive]
   ServiceLookupError,
@@ -104,6 +104,18 @@ pub enum JwtValidationError {
   /// Indicates that the credential has been suspended.
   #[error("credential has been suspended")]
   Suspended,
+  /// Indicates that the credential's timeframe interval is not valid
+  #[cfg(feature = "jpt-bbs-plus")]
+  #[error("timeframe interval not valid")]
+  OutsideTimeframe,
+  /// Indicates that the JWP representation of an issued credential or presentation could not be decoded.
+  #[cfg(feature = "jpt-bbs-plus")]
+  #[error("could not decode jwp")]
+  JwpDecodingError(#[source] jsonprooftoken::errors::CustomError),
+  /// Indicates that the verification of the JWP has failed
+  #[cfg(feature = "jpt-bbs-plus")]
+  #[error("could not verify jwp")]
+  JwpProofVerificationError(#[source] jsonprooftoken::errors::CustomError),
 }
 
 /// Specifies whether an error is related to a credential issuer or the presentation holder.

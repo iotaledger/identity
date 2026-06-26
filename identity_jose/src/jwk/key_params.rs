@@ -1,8 +1,10 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use zeroize::Zeroize;
 
+use super::BlsCurve;
+use super::JwkParamsAkp;
 use crate::error::Error;
 use crate::error::Result;
 use crate::jwk::EcCurve;
@@ -26,6 +28,8 @@ pub enum JwkParams {
   Oct(JwkParamsOct),
   /// Octet Key Pairs parameters.
   Okp(JwkParamsOkp),
+  /// Algorithm Key Pair Type parameters
+  Akp(JwkParamsAkp),
 }
 
 impl JwkParams {
@@ -36,6 +40,7 @@ impl JwkParams {
       JwkType::Rsa => Self::Rsa(JwkParamsRsa::new()),
       JwkType::Oct => Self::Oct(JwkParamsOct::new()),
       JwkType::Okp => Self::Okp(JwkParamsOkp::new()),
+      JwkType::Akp => Self::Akp(JwkParamsAkp::new()),
     }
   }
 
@@ -46,6 +51,7 @@ impl JwkParams {
       Self::Rsa(inner) => inner.kty(),
       Self::Oct(inner) => inner.kty(),
       Self::Okp(inner) => inner.kty(),
+      Self::Akp(_) => JwkType::Akp,
     }
   }
 
@@ -58,6 +64,30 @@ impl JwkParams {
       Self::Ec(inner) => Some(Self::Ec(inner.to_public())),
       Self::Rsa(inner) => Some(Self::Rsa(inner.to_public())),
       Self::Oct(_) => None,
+      Self::Akp(inner) => Some(Self::Akp(inner.to_public())),
+    }
+  }
+
+  /// Removes all private key components.
+  /// In the case of [JwkParams::Oct], this method does nothing.
+  pub fn strip_private(&mut self) {
+    match self {
+      Self::Okp(inner) => inner.strip_private(),
+      Self::Ec(inner) => inner.strip_private(),
+      Self::Rsa(inner) => inner.strip_private(),
+      Self::Oct(_) => (),
+      Self::Akp(inner) => inner.strip_private(),
+    }
+  }
+
+  /// Returns this key with _all_ private key components unset.
+  /// In the case of [JwkParams::Oct], this method returns [None].
+  pub fn into_public(mut self) -> Option<Self> {
+    if matches!(self, JwkParams::Oct(_)) {
+      None
+    } else {
+      self.strip_private();
+      Some(self)
     }
   }
 
@@ -68,6 +98,7 @@ impl JwkParams {
       Self::Ec(value) => value.is_public(),
       Self::Rsa(value) => value.is_public(),
       Self::Oct(value) => value.is_public(),
+      Self::Akp(value) => value.is_public(),
     }
   }
 }
@@ -101,6 +132,12 @@ pub struct JwkParamsEc {
   /// [More Info](https://tools.ietf.org/html/rfc7518#section-6.2.2.1)
   #[serde(skip_serializing_if = "Option::is_none")]
   pub d: Option<String>, // ECC Private Key
+}
+
+impl Default for JwkParamsEc {
+  fn default() -> Self {
+    Self::new()
+  }
 }
 
 impl JwkParamsEc {
@@ -139,6 +176,17 @@ impl JwkParamsEc {
     self.d.is_some()
   }
 
+  /// Unsets _all_ private key components.
+  pub fn strip_private(&mut self) {
+    self.d = None;
+  }
+
+  /// Returns this key with _all_ private key components unset.
+  pub fn into_public(mut self) -> Self {
+    self.strip_private();
+    self
+  }
+
   /// Returns the [`EcCurve`] if it is of a supported type.
   pub fn try_ec_curve(&self) -> Result<EcCurve> {
     match &*self.crv {
@@ -147,6 +195,17 @@ impl JwkParamsEc {
       "P-521" => Ok(EcCurve::P521),
       "secp256k1" => Ok(EcCurve::Secp256K1),
       _ => Err(Error::KeyError("Ec Curve")),
+    }
+  }
+
+  /// Returns the [`BlsCurve`] if it is of a supported type.
+  pub fn try_bls_curve(&self) -> Result<BlsCurve> {
+    match &*self.crv {
+      "BLS12381G1" => Ok(BlsCurve::BLS12381G1),
+      "BLS12381G2" => Ok(BlsCurve::BLS12381G2),
+      "BLS48581G1" => Ok(BlsCurve::BLS48581G1),
+      "BLS48581G2" => Ok(BlsCurve::BLS48581G2),
+      _ => Err(Error::KeyError("BLS Curve")),
     }
   }
 }
@@ -238,6 +297,12 @@ pub struct JwkParamsRsaPrime {
   pub t: String, // Factor CRT Coefficient
 }
 
+impl Default for JwkParamsRsa {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl JwkParamsRsa {
   /// Creates new JWK RSA Params.
   pub const fn new() -> Self {
@@ -296,6 +361,22 @@ impl JwkParamsRsa {
       && self.dq.is_some()
       && self.qi.is_some()
   }
+
+  /// Unsets _all_ private key components.
+  pub fn strip_private(&mut self) {
+    self.d = None;
+    self.p = None;
+    self.q = None;
+    self.dp = None;
+    self.dq = None;
+    self.qi = None;
+  }
+
+  /// Returns this key with _all_ private key components unset.
+  pub fn into_public(mut self) -> Self {
+    self.strip_private();
+    self
+  }
 }
 
 impl From<JwkParamsRsa> for JwkParams {
@@ -318,6 +399,12 @@ pub struct JwkParamsOct {
   ///
   /// [More Info](https://tools.ietf.org/html/rfc7518#section-6.4.1)
   pub k: String, // Key Value
+}
+
+impl Default for JwkParamsOct {
+  fn default() -> Self {
+    Self::new()
+  }
 }
 
 impl JwkParamsOct {
@@ -369,6 +456,12 @@ pub struct JwkParamsOkp {
   pub d: Option<String>, // Private Key
 }
 
+impl Default for JwkParamsOkp {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl JwkParamsOkp {
   /// Creates new JWK OKP Params.
   pub const fn new() -> Self {
@@ -401,6 +494,17 @@ impl JwkParamsOkp {
   /// Returns `true` if _all_ private key components of the key are set, `false` otherwise.
   pub fn is_private(&self) -> bool {
     self.d.is_some()
+  }
+
+  /// Unsets _all_ private key components.
+  pub fn strip_private(&mut self) {
+    self.d = None;
+  }
+
+  /// Returns this key with _all_ private key components unset.
+  pub fn into_public(mut self) -> Self {
+    self.strip_private();
+    self
   }
 
   /// Returns the [`EdCurve`] if it is of a supported type.

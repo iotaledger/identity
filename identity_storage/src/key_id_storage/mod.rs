@@ -13,6 +13,8 @@ mod key_id_storage;
 mod key_id_storage_error;
 mod method_digest;
 
+#[cfg(feature = "keytool")]
+mod keytool;
 #[cfg(feature = "memstore")]
 mod memstore;
 

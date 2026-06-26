@@ -1,0 +1,41 @@
+name: Build and run grpc tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [ opened, synchronize, reopened, ready_for_review ]
+    branches:
+      - main
+      - 'feat/**'
+      - 'support/**'
+    paths:
+      - '.github/workflows/build-and-test.yml'
+      - '.github/actions/**'
+      - '**.rs'
+      - '**.toml'
+      - 'bindings/grpc/**'
+
+jobs:
+  check-for-run-condition:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ !github.event.pull_request || github.event.pull_request.draft == false }}
+    steps:
+      - run: |
+          # this run step does nothing, but is needed to get the job output
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out the repo
+      uses: actions/checkout@v4
+
+    - name: Build Docker image
+      uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
+      with:
+        context: .
+        file: bindings/grpc/Dockerfile
+        push: false
+        tags: iotaledger/identity-grpc:latest

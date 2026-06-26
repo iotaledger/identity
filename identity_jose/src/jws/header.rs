@@ -67,7 +67,7 @@ impl JwsHeader {
 
   /// Returns the value for the algorithm claim (alg).
   pub fn alg(&self) -> Option<JwsAlgorithm> {
-    self.alg.as_ref().copied()
+    self.alg.as_ref().cloned()
   }
 
   /// Sets a value for the algorithm claim (alg).

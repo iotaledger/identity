@@ -1,0 +1,22 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "~identity_wasm": [
+        "../web/identity_wasm",
+        "./identity_wasm.js"
+      ],
+      "@iota/iota-interaction-ts/*": [
+        "../node_modules/@iota/iota-interaction-ts/web/*",
+        "@iota/iota-interaction-ts/web/"
+      ],
+      "../lib": [
+        "."
+      ]
+    },
+    "outDir": "../web",
+    "declarationDir": "../web",
+    "module": "ES2022"
+  }
+}

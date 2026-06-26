@@ -35,8 +35,11 @@ pub enum Error {
   #[error("invalid credential status: {0}")]
   InvalidStatus(String),
   /// Caused when constructing an invalid `LinkedDomainService` or `DomainLinkageConfiguration`.
-  #[error("domain linkage error")]
+  #[error("domain linkage error: {0}")]
   DomainLinkageError(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+  /// Caused when constructing an invalid `LinkedVerifiablePresentationService`.
+  #[error("linked verifiable presentation error: {0}")]
+  LinkedVerifiablePresentationError(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
   /// Caused when attempting to encode a `Credential` containing multiple subjects as a JWT.  
   #[error("could not create JWT claim set from verifiable credential: more than one subject")]
   MoreThanOneSubjectInJwt,
@@ -68,4 +71,17 @@ pub enum Error {
   /// JSON.
   #[error("could not deserialize JWT claims set")]
   JwtClaimsSetDeserializationError(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+  /// Caused by a failure to deserialize the JPT claims set representation of a `Credential` JSON.
+  #[error("could not deserialize JWT claims set")]
+  JptClaimsSetDeserializationError(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+  /// Cause by an invalid attribute path
+  #[error("Attribute Not found")]
+  SelectiveDisclosureError,
+
+  /// Failure of an SD-JWT VC operation.
+  #[cfg(feature = "sd-jwt-vc")]
+  #[error(transparent)]
+  SdJwtVc(#[from] crate::sd_jwt_vc::Error),
 }

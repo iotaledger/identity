@@ -123,7 +123,7 @@ impl StatusList2021Credential {
   ///
   /// ## Note:
   /// - A revoked credential cannot ever be unrevoked and will lead to a
-  /// [`StatusList2021CredentialError::UnreversibleRevocation`].
+  ///   [`StatusList2021CredentialError::UnreversibleRevocation`].
   /// - Trying to set `revoked_or_suspended` to `false` for an already valid credential will have no impact.
   pub fn set_credential_status(
     &mut self,
@@ -141,6 +141,21 @@ impl StatusList2021Credential {
     credential.credential_status = Some(entry.clone().into());
 
     Ok(entry)
+  }
+
+  /// Apply `update_fn` to the status list encoded in this credential.
+  pub fn update<F>(&mut self, update_fn: F) -> Result<(), StatusList2021CredentialError>
+  where
+    F: FnOnce(&mut MutStatusList) -> Result<(), StatusList2021CredentialError>,
+  {
+    let mut encapsuled_status_list = MutStatusList {
+      status_list: self.status_list()?,
+      purpose: self.purpose(),
+    };
+    update_fn(&mut encapsuled_status_list)?;
+
+    self.subject.encoded_list = encapsuled_status_list.status_list.into_encoded_str();
+    Ok(())
   }
 
   /// Sets the `index`-th entry to `value`
@@ -164,6 +179,25 @@ impl StatusList2021Credential {
       (StatusPurpose::Suspension, true) => CredentialStatus::Suspended,
       _ => CredentialStatus::Valid,
     })
+  }
+}
+
+/// A wrapper over the [`StatusList2021`] contained in a [`StatusList2021Credential`]
+/// that allows for its mutation.
+pub struct MutStatusList {
+  status_list: StatusList2021,
+  purpose: StatusPurpose,
+}
+
+impl MutStatusList {
+  /// Sets the value of the `index`-th entry in the status list.
+  pub fn set_entry(&mut self, index: usize, value: bool) -> Result<(), StatusList2021CredentialError> {
+    let entry_status = self.status_list.get(index)?;
+    if self.purpose == StatusPurpose::Revocation && !value && entry_status {
+      return Err(StatusList2021CredentialError::UnreversibleRevocation);
+    }
+    self.status_list.set(index, value)?;
+    Ok(())
   }
 }
 
@@ -241,11 +275,11 @@ impl From<StatusList2021CredentialSubject> for Subject {
 impl StatusList2021CredentialSubject {
   /// Parse a StatusListCredentialSubject out of a credential, without copying.
   fn try_from_credential(credential: &mut Credential) -> Result<Self, StatusList2021CredentialError> {
-    let OneOrMany::One(subject) = &mut credential.credential_subject else {
+    let OneOrMany::One(mut subject) = std::mem::take(&mut credential.credential_subject) else {
       return Err(StatusList2021CredentialError::MultipleCredentialSubject);
     };
     if let Some(subject_type) = subject.properties.get("type") {
-      if !subject_type.as_str().is_some_and(|t| t == CREDENTIAL_SUBJECT_TYPE) {
+      if subject_type.as_str() != Some(CREDENTIAL_SUBJECT_TYPE) {
         return Err(StatusList2021CredentialError::InvalidProperty("credentialSubject.type"));
       }
     } else {
@@ -283,7 +317,7 @@ impl StatusList2021CredentialSubject {
       .map(std::mem::take)?;
 
     Ok(StatusList2021CredentialSubject {
-      id: std::mem::take(&mut subject.id),
+      id: subject.id,
       encoded_list,
       status_purpose,
     })
@@ -363,11 +397,17 @@ impl StatusList2021CredentialBuilder {
       .inner_builder
       .type_(CREDENTIAL_TYPE)
       .issuance_date(Timestamp::now_utc())
-      .subject(self.credential_subject.clone().into())
+      .subject(Subject {
+        id: self.credential_subject.id.clone(),
+        ..Default::default()
+      })
       .build()
-      .map(|credential| StatusList2021Credential {
-        subject: self.credential_subject,
-        inner: credential,
+      .map(|mut credential| {
+        credential.credential_subject = OneOrMany::default();
+        StatusList2021Credential {
+          subject: self.credential_subject,
+          inner: credential,
+        }
       })
   }
 }

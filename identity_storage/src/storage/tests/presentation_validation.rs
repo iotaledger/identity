@@ -3,8 +3,8 @@
 
 use identity_core::common::Duration;
 use identity_core::common::Object;
+use identity_core::common::StringOrUrl;
 use identity_core::common::Timestamp;
-use identity_core::common::Url;
 use identity_core::convert::FromJson;
 use identity_credential::credential::Credential;
 use identity_credential::credential::Jwt;
@@ -64,7 +64,7 @@ where
   let presentation_options = JwtPresentationOptions {
     expiration_date: Some(Timestamp::now_utc().checked_add(Duration::hours(10)).unwrap()),
     issuance_date: Some(Timestamp::now_utc().checked_sub(Duration::hours(10)).unwrap()),
-    audience: Some(Url::parse("did:test:123").unwrap()),
+    audience: Some(StringOrUrl::parse("did:test:123").unwrap()),
     custom_claims: Some(custom_claims),
   };
 
@@ -123,7 +123,7 @@ where
   let presentation_options = JwtPresentationOptions {
     expiration_date: Some(Timestamp::now_utc().checked_add(Duration::hours(10)).unwrap()),
     issuance_date: Some(Timestamp::now_utc().checked_sub(Duration::hours(10)).unwrap()),
-    audience: Some(Url::parse("did:test:123").unwrap()),
+    audience: Some(StringOrUrl::parse("did:test:123").unwrap()),
     custom_claims: None,
   };
 
@@ -180,7 +180,7 @@ where
   let presentation_options = JwtPresentationOptions {
     expiration_date: Some(Timestamp::now_utc().checked_add(Duration::hours(10)).unwrap()),
     issuance_date: Some(Timestamp::now_utc().checked_sub(Duration::hours(10)).unwrap()),
-    audience: Some(Url::parse("did:test:123").unwrap()),
+    audience: Some(StringOrUrl::parse("did:test:123").unwrap()),
     custom_claims: None,
   };
 

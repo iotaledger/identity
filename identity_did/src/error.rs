@@ -23,15 +23,15 @@ pub enum Error {
   Other(&'static str),
 }
 
-impl From<did_url::Error> for Error {
-  fn from(error: did_url::Error) -> Self {
+impl From<did_url_parser::Error> for Error {
+  fn from(error: did_url_parser::Error) -> Self {
     match error {
-      did_url::Error::InvalidFragment => Self::InvalidFragment,
-      did_url::Error::InvalidMethodId => Self::InvalidMethodId,
-      did_url::Error::InvalidMethodName => Self::InvalidMethodName,
-      did_url::Error::InvalidPath => Self::InvalidPath,
-      did_url::Error::InvalidQuery => Self::InvalidQuery,
-      did_url::Error::InvalidScheme => Self::InvalidScheme,
+      did_url_parser::Error::InvalidFragment => Self::InvalidFragment,
+      did_url_parser::Error::InvalidMethodId => Self::InvalidMethodId,
+      did_url_parser::Error::InvalidMethodName => Self::InvalidMethodName,
+      did_url_parser::Error::InvalidPath => Self::InvalidPath,
+      did_url_parser::Error::InvalidQuery => Self::InvalidQuery,
+      did_url_parser::Error::InvalidScheme => Self::InvalidScheme,
       error => Self::Other(error.as_str()),
     }
   }

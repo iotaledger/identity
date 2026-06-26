@@ -1,0 +1,24 @@
+// Copyright 2020-2024 IOTA Stiftung
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+package document;
+
+message CreateDIDRequest {
+    // KeyID for getting the public key from stronghold.
+    string key_id = 1;
+}
+
+message CreateDIDResponse {
+    // The created DID document, encoded as JSON.
+    string document_json = 1;
+    // The stronghold's fragment for the generated document's auth method.
+    string fragment = 2;
+    // The DID of the created document.
+    string did = 3;
+}
+
+service DocumentService {
+    /// Creates a new DID document stored on Tangle.
+    rpc create(CreateDIDRequest) returns (CreateDIDResponse);
+}

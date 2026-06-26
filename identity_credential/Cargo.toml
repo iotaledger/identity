@@ -1,6 +1,6 @@
 [package]
 name = "identity_credential"
-version = "1.1.1"
+version = "1.9.10-beta.1"
 authors = ["IOTA Stiftung"]
 edition = "2021"
 homepage.workspace = true
@@ -8,36 +8,42 @@ keywords = ["iota", "tangle", "identity"]
 license.workspace = true
 readme = "./README.md"
 repository.workspace = true
-rust-version.workspace = true
 description = "An implementation of the Verifiable Credentials standard."
 
 [dependencies]
+anyhow = { version = "1" }
+async-trait = { version = "0.1.64", default-features = false }
+bls12_381_plus = { workspace = true, optional = true }
 flate2 = { version = "1.0.28", default-features = false, features = ["rust_backend"], optional = true }
-futures = { version = "0.3", default-features = false, optional = true }
-identity_core = { version = "=1.1.1", path = "../identity_core", default-features = false }
-identity_did = { version = "=1.1.1", path = "../identity_did", default-features = false }
-identity_document = { version = "=1.1.1", path = "../identity_document", default-features = false }
-identity_verification = { version = "=1.1.1", path = "../identity_verification", default-features = false }
+futures = { version = "0.3", default-features = false, features = ["alloc"], optional = true }
+identity_core = { version = "=1.9.10-beta.1", path = "../identity_core", default-features = false }
+identity_did = { version = "=1.9.10-beta.1", path = "../identity_did", default-features = false }
+identity_document = { version = "=1.9.10-beta.1", path = "../identity_document", default-features = false }
+identity_verification = { version = "=1.9.10-beta.1", path = "../identity_verification", default-features = false }
 indexmap = { version = "2.0", default-features = false, features = ["std", "serde"] }
-itertools = { version = "0.11", default-features = false, features = ["use_std"], optional = true }
+itertools = { version = "0.11", default-features = false, features = ["use_std"] }
+json-proof-token = { workspace = true, optional = true }
+jsonschema = { version = "0.19", optional = true, default-features = false }
 once_cell = { version = "1.18", default-features = false, features = ["std"] }
-reqwest = { version = "0.11", default-features = false, features = ["default-tls", "json", "stream"], optional = true }
+reqwest = { version = "0.12", default-features = false, features = ["default-tls", "json", "stream"], optional = true }
 roaring = { version = "0.10.2", default-features = false, features = ["serde"], optional = true }
-sd-jwt-payload = { version = "0.2.1", default-features = false, features = ["sha"], optional = true }
+sd-jwt = { package = "sd-jwt-payload", version = "0.5.1", default-features = false, features = ["sha"], optional = true }
 serde.workspace = true
-serde-aux = { version = "4.3.1", default-features = false, optional = true }
+serde-aux = { version = "4.3.1", default-features = false }
 serde_json.workspace = true
 serde_repr = { version = "0.1", default-features = false, optional = true }
 strum.workspace = true
 thiserror.workspace = true
 url = { version = "2.5", default-features = false }
+zkryptium = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow = "1.0.62"
 identity_eddsa_verifier = { path = "../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
-iota-crypto = { version = "0.23", default-features = false, features = ["ed25519", "std", "random"] }
+iota-crypto = { version = "0.23.2", default-features = false, features = ["ed25519", "std", "random"] }
+josekit = "0.8"
 proptest = { version = "1.4.0", default-features = false, features = ["std"] }
-tokio = { version = "1.35.0", default-features = false, features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.52.2", default-features = false, features = ["rt-multi-thread", "macros"] }
 
 [package.metadata.docs.rs]
 # To build locally:
@@ -46,12 +52,32 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["revocation-bitmap", "validator", "credential", "presentation", "domain-linkage-fetch", "sd-jwt"]
+default = [
+  "revocation-bitmap",
+  "validator",
+  "credential",
+  "presentation",
+  "domain-linkage-fetch",
+  "sd-jwt",
+  "sd-jwt-vc",
+]
 credential = []
 presentation = ["credential"]
 revocation-bitmap = ["dep:flate2", "dep:roaring"]
-status-list-2021 = ["revocation-bitmap", "dep:serde-aux"]
-validator = ["dep:itertools", "dep:serde_repr", "credential", "presentation"]
+status-list-2021 = ["revocation-bitmap"]
+validator = ["dep:serde_repr", "credential", "presentation"]
 domain-linkage = ["validator"]
 domain-linkage-fetch = ["domain-linkage", "dep:reqwest", "dep:futures"]
-sd-jwt = ["credential", "validator", "sd-jwt-payload"]
+sd-jwt = ["credential", "validator", "dep:sd-jwt"]
+sd-jwt-vc = ["sd-jwt", "dep:jsonschema", "dep:futures"]
+jpt-bbs-plus = [
+  "credential",
+  "validator",
+  "dep:zkryptium",
+  "dep:bls12_381_plus",
+  "dep:json-proof-token",
+  "dep:futures",
+]
+hybrid = ["credential", "validator"]
+[lints]
+workspace = true

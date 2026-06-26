@@ -1,20 +1,28 @@
 [package]
 name = "identity_verification"
-version = "1.1.1"
+version = "1.9.10-beta.1"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
-rust-version.workspace = true
-description = "Verification data types and functionality for identity.rs"
+repository.workspace = true
+description = "Verification data types and functionality for IOTA Identity"
 
 [dependencies]
-identity_core = { version = "=1.1.1", path = "./../identity_core", default-features = false }
-identity_did = { version = "=1.1.1", path = "./../identity_did", default-features = false }
-identity_jose = { version = "=1.1.1", path = "./../identity_jose", default-features = false }
+identity_core = { version = "=1.9.10-beta.1", path = "./../identity_core" }
+identity_did = { version = "=1.9.10-beta.1", path = "./../identity_did", default-features = false }
+identity_jose = { version = "=1.9.10-beta.1", path = "./../identity_jose", default-features = false }
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+
+[lints]
+workspace = true
+
+[features]
+jwk-conversion = [
+  "identity_jose/jwk-conversion",
+]

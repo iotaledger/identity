@@ -192,7 +192,7 @@ pub(crate) fn encode_public_ed25519_jwk(public_key: &PublicKey) -> Jwk {
   let mut params = JwkParamsOkp::new();
   params.x = x;
   params.d = None;
-  params.crv = EdCurve::Ed25519.name().to_owned();
+  params.crv = EdCurve::Ed25519.name().to_string();
   let mut jwk = Jwk::from_params(params);
   jwk.set_alg(JwsAlgorithm::EdDSA.name());
   jwk

@@ -14,7 +14,6 @@ use crate::jwk::Jwk;
 ///
 /// [More Info](https://tools.ietf.org/html/rfc7517#section-5)
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-#[repr(transparent)]
 pub struct JwkSet {
   /// An array of JWK values.
   ///

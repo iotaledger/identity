@@ -1,7 +1,6 @@
 // Copyright 2020-2021 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-#![forbid(unsafe_code)]
 #![doc = include_str!("./../README.md")]
 #![allow(clippy::upper_case_acronyms)]
 #![warn(
@@ -19,9 +18,15 @@
 #[doc(inline)]
 pub use serde_json::json;
 
+#[forbid(unsafe_code)]
 pub mod common;
+#[forbid(unsafe_code)]
 pub mod convert;
+#[forbid(unsafe_code)]
 pub mod error;
+
+#[cfg(feature = "custom_time")]
+pub mod custom_time;
 
 pub use self::error::Error;
 pub use self::error::Result;

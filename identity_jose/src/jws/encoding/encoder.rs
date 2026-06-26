@@ -204,7 +204,7 @@ pub struct GeneralJwsEncoder<'payload, 'unprotected, STATE = ReadyState> {
 
 impl<'payload, 'unprotected> GeneralJwsEncoder<'payload, 'unprotected> {
   /// Start encoding a JWS with the General JWS JSON serialization format.
-  /// This will prepare the the signing input which must be signed as a next step. See
+  /// This will prepare the signing input which must be signed as a next step. See
   /// [`RecipientProcessingEncoder::set_signature`](RecipientProcessingEncoder::set_signature()).
   pub fn new(
     payload: &'payload [u8],

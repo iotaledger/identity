@@ -21,9 +21,11 @@ impl<'payload> MaybeEncodedPayload<'payload> {
   /// Transform payload according to the b64 extracted from the protected header.  
   /// See: https://tools.ietf.org/html/rfc7797#section-3
   pub(super) fn encode_if_b64(payload: &'payload [u8], protected_header: Option<&JwsHeader>) -> Self {
-    jwu::extract_b64(protected_header)
-      .then(|| MaybeEncodedPayload::Encoded(jwu::encode_b64(payload)))
-      .unwrap_or(MaybeEncodedPayload::NotEncoded(payload))
+    if jwu::extract_b64(protected_header) {
+      MaybeEncodedPayload::Encoded(jwu::encode_b64(payload))
+    } else {
+      MaybeEncodedPayload::NotEncoded(payload)
+    }
   }
 
   /// Represent the possibly encoded payload as a byte slice.
@@ -86,7 +88,7 @@ pub(super) struct Flatten<'payload, 'unprotected> {
   pub(super) signature: JwsSignature<'unprotected>,
 }
 
-impl<'payload, 'unprotected> Flatten<'payload, 'unprotected> {
+impl Flatten<'_, '_> {
   pub(super) fn to_json(&self) -> Result<String> {
     serde_json::to_string(&self).map_err(Error::InvalidJson)
   }
@@ -99,7 +101,7 @@ pub(super) struct General<'payload, 'unprotected> {
   pub(super) signatures: Vec<JwsSignature<'unprotected>>,
 }
 
-impl<'payload, 'unprotected> General<'payload, 'unprotected> {
+impl General<'_, '_> {
   pub(super) fn to_json(&self) -> Result<String> {
     serde_json::to_string(&self).map_err(Error::InvalidJson)
   }

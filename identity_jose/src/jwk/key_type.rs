@@ -1,4 +1,4 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use core::fmt::Display;
@@ -22,6 +22,10 @@ pub enum JwkType {
   /// Octet string key pairs.
   #[serde(rename = "OKP")]
   Okp,
+  /// Algorithm Key Pair, JSON Web Key Type for the ML-DSA and SLH-DSA Algorithm Family.
+  /// [More Info] (https://datatracker.ietf.org/doc/html/draft-ietf-cose-dilithium-06#name-algorithm-key-pair-type)
+  #[serde(rename = "AKP")]
+  Akp,
 }
 
 impl JwkType {
@@ -32,6 +36,7 @@ impl JwkType {
       Self::Rsa => "RSA",
       Self::Oct => "oct",
       Self::Okp => "OKP",
+      Self::Akp => "AKP",
     }
   }
 }

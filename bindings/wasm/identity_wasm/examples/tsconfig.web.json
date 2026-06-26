@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "outDir": "./dist/web",
+    "baseUrl": "./",
+    "lib": [
+      "ES6",
+      "dom"
+    ],
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "paths": {
+      "@iota/identity-wasm/node": [
+        "../web"
+      ]
+    }
+  },
+  "exclude": [
+    "tests"
+  ]
+}

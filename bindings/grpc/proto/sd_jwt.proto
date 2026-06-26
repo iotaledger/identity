@@ -1,0 +1,30 @@
+// Copyright 2020-2024 IOTA Stiftung
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+package sd_jwt;
+
+message KeyBindingOptions {
+    optional string nonce = 1;
+    optional string aud = 2;
+    // TODO: add JWS validation options
+    optional string earliest_issuance_date = 3;
+    optional string latest_issuance_date = 4;
+    string holder_did = 5;
+}
+
+message VerificationRequest {
+    // SD-JWT encoded credential.
+    string jwt = 1;
+    optional KeyBindingOptions kb_options = 2;
+}
+
+message VerificationResponse {
+    // JSON encoded credential, extracted from the request's SD-JWT.
+    string credential = 1;
+}
+
+service Verification {
+    // Performs all validation steps on a SD-JWT encoded credential.
+    rpc verify(VerificationRequest) returns (VerificationResponse);
+}

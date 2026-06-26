@@ -52,7 +52,7 @@ impl KeyIdStorageErrorKind {
       Self::KeyIdNotFound => "key id not found in storage",
       Self::Unavailable => "key id storage unavailable",
       Self::Unauthenticated => "authentication with the key id storage failed",
-      Self::Unspecified => "key storage operation failed",
+      Self::Unspecified => "key id storage operation failed",
       Self::RetryableIOFailure => "key id storage was unsuccessful because of an I/O failure",
       Self::SerializationError => "(de)serialization error",
     }

@@ -1,6 +1,6 @@
 [package]
 name = "identity_document"
-version = "1.1.1"
+version = "1.9.10-beta.1"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -8,14 +8,13 @@ keywords = ["iota", "tangle", "identity", "did"]
 license.workspace = true
 readme = "./README.md"
 repository.workspace = true
-rust-version.workspace = true
 description = "Method-agnostic implementation of the Decentralized Identifiers (DID) standard."
 
 [dependencies]
-did_url = { version = "0.1", default-features = false, features = ["std", "serde"] }
-identity_core = { version = "=1.1.1", path = "../identity_core" }
-identity_did = { version = "=1.1.1", path = "../identity_did" }
-identity_verification = { version = "=1.1.1", path = "../identity_verification", default-features = false }
+did_url_parser = { version = "0.2.0", features = ["std", "serde"] }
+identity_core = { version = "=1.9.10-beta.1", path = "../identity_core", default-features = false }
+identity_did = { version = "=1.9.10-beta.1", path = "../identity_did" }
+identity_verification = { version = "=1.9.10-beta.1", path = "../identity_verification", default-features = false }
 indexmap = { version = "2.0", default-features = false, features = ["std", "serde"] }
 serde.workspace = true
 serde_json.workspace = true
@@ -28,3 +27,6 @@ criterion = { version = "0.4.0", default-features = false, features = ["cargo_be
 [[bench]]
 name = "deserialize_document"
 harness = false
+
+[lints]
+workspace = true

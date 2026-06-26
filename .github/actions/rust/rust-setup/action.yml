@@ -48,7 +48,16 @@ runs:
       shell: bash
       run: |
 
-        if ! rustup self update; then
+        # self update is currently broken on Windows runners:
+        #   https://github.com/rust-lang/rustup/issues/3709
+        # so we'll skip self update for windows
+        OS=${{ inputs.os }}
+        IS_WINDOWS=false; [[ $OS =~ ^[wW]indows ]] && IS_WINDOWS=true
+        
+        if [[ $IS_WINDOWS = true ]] ;
+        then
+          echo "skipping self update on windows runner due to https://github.com/rust-lang/rustup/issues/3709"
+        elif ! rustup self update; then
             echo "rustup self update failed"
         fi
         
@@ -57,7 +66,13 @@ runs:
           rustup target add $TARGET
         fi
 
-        rustup update
+        if [[ $IS_WINDOWS = true ]] ;
+        then
+            echo "skipping self update on windows runner due to https://github.com/rust-lang/rustup/issues/3709"
+            rustup update --no-self-update
+        else
+            rustup update
+        fi
         
         TOOLCHAIN=${{ inputs.toolchain }}
         if [[ $TOOLCHAIN != 'stable' ]]; then
@@ -75,7 +90,7 @@ runs:
         rustup show
 
     - name: Cache cargo
-      uses: actions/cache@v2.1.7
+      uses: actions/cache@v4
       if: inputs.cargo-cache-enabled == 'true'
       with:
         # https://doc.rust-lang.org/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci
@@ -100,7 +115,7 @@ runs:
       shell: bash
 
     - name: Cache build target
-      uses: actions/cache@v2.1.7
+      uses: actions/cache@v4
       if: inputs.target-cache-enabled == 'true'
       with:
         path: ${{ inputs.target-cache-path }}
@@ -112,7 +127,7 @@ runs:
           ${{ inputs.os }}-target-
 
     - name: Cache sccache
-      uses: actions/cache@v2.1.7
+      uses: actions/cache@v4
       if: inputs.sccache-enabled == 'true'
       with:
           path: ${{ inputs.sccache-path }}

@@ -27,6 +27,10 @@ pub enum JwkOperation {
   DeriveKey,
   /// Derive bits not to be used as a key.
   DeriveBits,
+  /// Compute proof
+  ProofGeneration,
+  /// Verify proof
+  ProofVerification,
 }
 
 impl JwkOperation {
@@ -41,6 +45,8 @@ impl JwkOperation {
       Self::UnwrapKey => "unwrapKey",
       Self::DeriveKey => "deriveKey",
       Self::DeriveBits => "deriveBits",
+      Self::ProofGeneration => "proofGeneration",
+      Self::ProofVerification => "proofVerification",
     }
   }
 
@@ -55,6 +61,8 @@ impl JwkOperation {
       Self::UnwrapKey => Self::WrapKey,
       Self::DeriveKey => Self::DeriveKey,
       Self::DeriveBits => Self::DeriveBits,
+      Self::ProofGeneration => Self::ProofVerification,
+      Self::ProofVerification => Self::ProofGeneration,
     }
   }
 }

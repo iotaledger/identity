@@ -8,7 +8,7 @@ use core::fmt::Formatter;
 use core::str::FromStr;
 use std::hash::Hash;
 
-use did_url::DID as BaseDIDUrl;
+use did_url_parser::DID as BaseDIDUrl;
 
 use identity_core::common::KeyComparable;
 
@@ -111,14 +111,8 @@ impl CoreDID {
   ///
   /// Returns `Err` if the input is not a valid [`DID`].
   pub fn parse(input: impl AsRef<str>) -> Result<Self, Error> {
-    let base_did_url: BaseDIDUrl = BaseDIDUrl::parse(input).map_err(Error::from)?;
-    Self::try_from_base_did(base_did_url)
-  }
-
-  /// Try convert a [`BaseDIDUrl`] into a [`CoreDID`].
-  fn try_from_base_did(base_did_url: BaseDIDUrl) -> Result<Self, Error> {
-    Self::check_validity(&base_did_url)?;
-    Ok(Self(base_did_url))
+    let base_did_url = BaseDIDUrl::parse(input)?;
+    base_did_url.try_into()
   }
 
   /// Set the method name of the [`DID`].
@@ -145,9 +139,23 @@ impl CoreDID {
 
   /// Validates whether a string is a valid [`DID`] method-id.
   pub fn valid_method_id(value: &str) -> Result<(), Error> {
-    if !value.chars().all(is_char_method_id) {
-      return Err(Error::InvalidMethodId);
+    // if !value.chars().all(is_char_method_id) {
+    //   return Err(Error::InvalidMethodId);
+    // }
+    let mut chars = value.chars();
+    while let Some(c) = chars.next() {
+      match c {
+        '%' => {
+          let digits = chars.clone().take(2).collect::<String>();
+          u8::from_str_radix(&digits, 16).map_err(|_| Error::InvalidMethodId)?;
+          chars.next();
+          chars.next();
+        }
+        c if is_char_method_id(c) => (),
+        _ => return Err(Error::InvalidMethodId),
+      }
     }
+
     Ok(())
   }
 
@@ -185,7 +193,8 @@ impl TryFrom<BaseDIDUrl> for CoreDID {
   type Error = Error;
 
   fn try_from(base_did_url: BaseDIDUrl) -> Result<Self, Self::Error> {
-    Self::try_from_base_did(base_did_url)
+    Self::check_validity(&base_did_url)?;
+    Ok(Self(base_did_url))
   }
 }
 
@@ -308,6 +317,9 @@ mod tests {
     assert!(CoreDID::parse("").is_err());
     assert!(CoreDID::parse("did:").is_err());
     assert!(CoreDID::parse("dad:example:123456890").is_err());
+    assert!(CoreDID::parse("did:example:123456#key-1").is_err());
+    assert!(CoreDID::parse("did:example:123456/path/to/something/0").is_err());
+    assert!(CoreDID::parse("did:example:123456?key-id=cool-key").is_err());
   }
 
   proptest::proptest! {

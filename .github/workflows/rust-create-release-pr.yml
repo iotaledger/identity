@@ -20,8 +20,7 @@ on:
 jobs:
   create-dev-release-pr:
     if: github.event.inputs.release-type != 'main'
-    # owner/repository of workflow has to be static, see https://github.community/t/env-variables-in-uses/17466
-    uses: iotaledger/identity.rs/.github/workflows/shared-create-dev-release-pr.yml@main
+    uses: './.github/workflows/shared-create-dev-release-pr.yml'
     with:
       tag-prefix: v
       tag-postfix: -${{ github.event.inputs.release-type }}.
@@ -34,8 +33,7 @@ jobs:
       GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
   create-main-release-pr:
     if: github.event.inputs.release-type == 'main'
-    # owner/repository of workflow has to be static, see https://github.community/t/env-variables-in-uses/17466
-    uses: iotaledger/identity.rs/.github/workflows/shared-create-main-release-pr.yml@main
+    uses: './.github/workflows/shared-create-main-release-pr.yml'
     with:
       tag-prefix: v
       tag-base: ${{ github.event.inputs.version }}

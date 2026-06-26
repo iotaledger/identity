@@ -43,7 +43,7 @@ runs:
     - name: Bump Wasm bindings crate version
       shell: bash
       if: ${{inputs.release-target == 'wasm'}}
-      working-directory: bindings/wasm
+      working-directory: bindings/wasm/identity_wasm
       run: |
         cargo workspaces version --force "*" --no-git-commit --exact custom ${{ inputs.version }} -y -a
 
@@ -51,12 +51,12 @@ runs:
       uses: actions/setup-node@v2
       if: ${{inputs.release-target == 'wasm'}}
       with:
-        node-version: '16.x'
+        node-version: '20.x'
         registry-url: 'https://registry.npmjs.org'
 
     - name: Bump Wasm npm package version
       shell: bash
       if: ${{inputs.release-target == 'wasm'}}
-      working-directory: bindings/wasm
+      working-directory: bindings/wasm/identity_wasm
       run: |
         npm version ${{ inputs.version }}

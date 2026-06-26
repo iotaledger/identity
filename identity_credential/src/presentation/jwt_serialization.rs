@@ -9,6 +9,7 @@ use serde::Serialize;
 use identity_core::common::Context;
 use identity_core::common::Object;
 use identity_core::common::OneOrMany;
+use identity_core::common::StringOrUrl;
 use identity_core::common::Url;
 use serde::de::DeserializeOwned;
 
@@ -48,7 +49,7 @@ where
   jti: Option<Cow<'presentation, Url>>,
 
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub(crate) aud: Option<Url>,
+  pub(crate) aud: Option<StringOrUrl>,
 
   pub(crate) vp: InnerPresentation<'presentation, CRED, T>,
 
@@ -111,13 +112,13 @@ where
   context: Cow<'presentation, OneOrMany<Context>>,
   /// A unique `URI` that may be used to identify the `Presentation`.
   #[serde(skip_serializing_if = "Option::is_none")]
-  id: Option<Url>,
+  id: Option<StringOrUrl>,
   /// One or more URIs defining the type of the `Presentation`.
   #[serde(rename = "type")]
   types: Cow<'presentation, OneOrMany<String>>,
   /// Credential(s) expressing the claims of the `Presentation`.
   #[serde(default = "Default::default", rename = "verifiableCredential")]
-  pub(crate) verifiable_credential: Cow<'presentation, Vec<CRED>>,
+  pub(crate) verifiable_credential: Cow<'presentation, [CRED]>,
   /// The entity that generated the `Presentation`.
   #[serde(skip_serializing_if = "Option::is_none")]
   holder: Option<Url>,
@@ -136,7 +137,7 @@ where
 }
 
 #[cfg(feature = "validator")]
-impl<'presentation, CRED, T> PresentationJwtClaims<'presentation, CRED, T>
+impl<CRED, T> PresentationJwtClaims<'_, CRED, T>
 where
   CRED: ToOwned<Owned = CRED> + Serialize + DeserializeOwned + Clone,
   T: ToOwned<Owned = T> + Serialize + DeserializeOwned,
@@ -206,6 +207,30 @@ where
   }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(bound(deserialize = "C: serde::de::DeserializeOwned, T: serde::de::DeserializeOwned"))]
+pub(crate) struct JwtPresentationV2Claims<C, T> {
+  pub(crate) iat: Option<i64>,
+  pub(crate) exp: Option<i64>,
+  pub(crate) aud: Option<StringOrUrl>,
+  #[serde(flatten)]
+  pub(crate) vp: Presentation<C, T>,
+  #[serde(flatten, skip_serializing_if = "Option::is_none")]
+  pub(crate) custom: Option<Object>,
+}
+
+impl<C, T> JwtPresentationV2Claims<C, T> {
+  pub(crate) fn from_options(vp: Presentation<C, T>, options: &JwtPresentationOptions) -> Self {
+    Self {
+      vp,
+      iat: options.issuance_date.map(|ts| ts.to_unix()),
+      exp: options.expiration_date.map(|ts| ts.to_unix()),
+      aud: options.audience.clone(),
+      custom: options.custom_claims.clone(),
+    }
+  }
+}
+
 #[cfg(test)]
 mod test {
   use super::PresentationJwtClaims;
@@ -261,12 +286,12 @@ mod test {
       Object::from_json(&claims_serialized).unwrap(),
       Object::from_json(claims_json).unwrap()
     );
-    let retrieved_presentaiton: Presentation<Jwt> = PresentationJwtClaims::<'_, Jwt>::from_json(&claims_serialized)
+    let retrieved_presentation: Presentation<Jwt> = PresentationJwtClaims::<'_, Jwt>::from_json(&claims_serialized)
       .unwrap()
       .try_into_presentation()
       .unwrap();
 
-    assert_eq!(presentation, retrieved_presentaiton);
+    assert_eq!(presentation, retrieved_presentation);
   }
 
   #[test]
@@ -301,12 +326,12 @@ mod test {
     "#;
 
     let presentation: Presentation<Jwt> = Presentation::from_json(presentation_json).unwrap();
-    let retrieved_presentaiton: Presentation<Jwt> = PresentationJwtClaims::<'_, Jwt>::from_json(&claims_json)
+    let retrieved_presentation: Presentation<Jwt> = PresentationJwtClaims::<'_, Jwt>::from_json(&claims_json)
       .unwrap()
       .try_into_presentation()
       .unwrap();
 
-    assert_eq!(presentation, retrieved_presentaiton);
+    assert_eq!(presentation, retrieved_presentation);
   }
 
   #[test]

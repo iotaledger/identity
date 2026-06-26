@@ -5,6 +5,8 @@ use core::fmt::Display;
 use core::fmt::Formatter;
 
 use identity_core::convert::ToJson;
+#[cfg(feature = "jpt-bbs-plus")]
+use jsonprooftoken::jpt::claims::JptClaims;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use serde::Serialize;
@@ -17,6 +19,8 @@ use identity_core::common::Url;
 use identity_core::convert::FmtJson;
 
 use crate::credential::CredentialBuilder;
+use crate::credential::CredentialSealed;
+use crate::credential::CredentialT;
 use crate::credential::Evidence;
 use crate::credential::Issuer;
 use crate::credential::Policy;
@@ -102,9 +106,17 @@ impl<T> Credential<T> {
   }
 
   /// Returns a new `Credential` based on the `CredentialBuilder` configuration.
-  pub fn from_builder(builder: CredentialBuilder<T>) -> Result<Self> {
+  pub fn from_builder(mut builder: CredentialBuilder<T>) -> Result<Self> {
+    if builder.context.first() != Some(Self::base_context()) {
+      builder.context.insert(0, Self::base_context().clone());
+    }
+
+    if builder.types.first().map(String::as_str) != Some(Self::base_type()) {
+      builder.types.insert(0, Self::base_type().to_owned());
+    }
+
     let this: Self = Self {
-      context: builder.context.into(),
+      context: OneOrMany::Many(builder.context),
       id: builder.id,
       types: builder.types.into(),
       credential_subject: builder.subject.into(),
@@ -174,6 +186,32 @@ impl<T> Credential<T> {
       .to_json()
       .map_err(|err| Error::JwtClaimsSetSerializationError(err.into()))
   }
+
+  /// Converts the [`Credential`] into a JWT claims set in accordance with [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
+  pub fn to_jwt_claims(&self, custom_claims: Option<Object>) -> Result<serde_json::Map<String, serde_json::Value>>
+  where
+    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
+  {
+    let jwt_representation: CredentialJwtClaims<'_, T> = CredentialJwtClaims::new(self, custom_claims)?;
+    let serde_json::Value::Object(jwt_claims) = jwt_representation
+      .to_json_value()
+      .map_err(|err| Error::JwtClaimsSetSerializationError(err.into()))?
+    else {
+      unreachable!("CredentialJwtClaims always serializes to a JSON object");
+    };
+
+    Ok(jwt_claims)
+  }
+
+  ///Serializes the [`Credential`] as a JPT claims set
+  #[cfg(feature = "jpt-bbs-plus")]
+  pub fn serialize_jpt(&self, custom_claims: Option<Object>) -> Result<JptClaims>
+  where
+    T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
+  {
+    let jwt_representation: CredentialJwtClaims<'_, T> = CredentialJwtClaims::new(self, custom_claims)?;
+    Ok(jwt_representation.into())
+  }
 }
 
 impl<T> Display for Credential<T>
@@ -185,11 +223,68 @@ where
   }
 }
 
+impl<T> CredentialSealed for Credential<T> {}
+
+impl<T> CredentialT for Credential<T>
+where
+  T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
+{
+  type Properties = T;
+
+  fn base_context(&self) -> &'static Context {
+    Self::base_context()
+  }
+
+  fn type_(&self) -> &OneOrMany<String> {
+    &self.types
+  }
+
+  fn context(&self) -> &OneOrMany<Context> {
+    &self.context
+  }
+
+  fn subject(&self) -> &OneOrMany<Subject> {
+    &self.credential_subject
+  }
+
+  fn issuer(&self) -> &Issuer {
+    &self.issuer
+  }
+
+  fn valid_from(&self) -> Timestamp {
+    self.issuance_date
+  }
+
+  fn valid_until(&self) -> Option<Timestamp> {
+    self.expiration_date
+  }
+
+  fn properties(&self) -> &Self::Properties {
+    &self.properties
+  }
+
+  fn status(&self) -> Option<&Status> {
+    self.credential_status.as_ref()
+  }
+
+  fn non_transferable(&self) -> bool {
+    self.non_transferable.unwrap_or_default()
+  }
+
+  fn serialize_jwt(&self, custom_claims: Option<Object>) -> Result<String> {
+    self.serialize_jwt(custom_claims)
+  }
+}
+
 #[cfg(test)]
 mod tests {
+  use identity_core::common::OneOrMany;
+  use identity_core::common::Url;
   use identity_core::convert::FromJson;
 
+  use crate::credential::credential::BASE_CONTEXT;
   use crate::credential::Credential;
+  use crate::credential::Subject;
 
   const JSON1: &str = include_str!("../../tests/fixtures/credential-1.json");
   const JSON2: &str = include_str!("../../tests/fixtures/credential-2.json");
@@ -218,5 +313,23 @@ mod tests {
     let _credential: Credential = Credential::from_json(JSON10).unwrap();
     let _credential: Credential = Credential::from_json(JSON11).unwrap();
     let _credential: Credential = Credential::from_json(JSON12).unwrap();
+  }
+
+  #[test]
+  fn credential_with_single_context_is_list_of_contexts_with_single_item() {
+    let mut credential = Credential::builder(serde_json::Value::default())
+      .id(Url::parse("https://example.com/credentials/123").unwrap())
+      .issuer(Url::parse("https://example.com").unwrap())
+      .subject(Subject::with_id(Url::parse("https://example.com/users/123").unwrap()))
+      .build()
+      .unwrap();
+
+    assert!(matches!(credential.context, OneOrMany::Many(_)));
+    assert_eq!(credential.context.len(), 1);
+    assert!(credential.check_structure().is_ok());
+
+    // Check backward compatibility with previously created credentials.
+    credential.context = OneOrMany::One(BASE_CONTEXT.clone());
+    assert!(credential.check_structure().is_ok());
   }
 }

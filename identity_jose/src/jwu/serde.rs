@@ -24,10 +24,10 @@ pub(crate) fn parse_utf8(slice: &(impl AsRef<[u8]> + ?Sized)) -> Result<&str> {
   str::from_utf8(slice.as_ref()).map_err(Error::InvalidUtf8)
 }
 
-pub(crate) fn filter_non_empty_bytes<'a, T, U: 'a>(value: T) -> Option<&'a [u8]>
+pub(crate) fn filter_non_empty_bytes<'a, T, U>(value: T) -> Option<&'a [u8]>
 where
   T: Into<Option<&'a U>>,
-  U: AsRef<[u8]> + ?Sized,
+  U: AsRef<[u8]> + ?Sized + 'a,
 {
   value.into().map(AsRef::as_ref).filter(|value| !value.is_empty())
 }
@@ -57,8 +57,7 @@ pub(crate) fn validate_jws_headers(protected: Option<&JwsHeader>, unprotected: O
 /// Validates that the "crit" parameter satisfies the following requirements:
 /// 1. It is integrity protected.
 /// 2. It is not encoded as an empty list.
-/// 3. It does not contain any header parameters defined by the
-///  JOSE JWS/JWA specifications.
+/// 3. It does not contain any header parameters defined by the JOSE JWS/JWA specifications.
 /// 4. It's values are contained in the given `permitted` array.
 /// 5. All values in "crit" are present in at least one of the `protected` or `unprotected` headers.
 ///

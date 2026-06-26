@@ -129,7 +129,7 @@ impl From<RevocationBitmapStatus> for Status {
 }
 
 /// Attempts to convert the given index string to a u32.
-fn try_index_to_u32(index: &str, name: &str) -> Result<u32> {
+pub fn try_index_to_u32(index: &str, name: &str) -> Result<u32> {
   u32::from_str(index).map_err(|err| {
     Error::InvalidStatus(format!(
       "{name} cannot be converted to an unsigned, 32-bit integer: {err}",

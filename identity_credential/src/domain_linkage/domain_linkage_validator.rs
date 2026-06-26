@@ -9,6 +9,7 @@ use crate::domain_linkage::DomainLinkageValidationErrorCause;
 use crate::validator::FailFast;
 use crate::validator::JwtCredentialValidationOptions;
 use crate::validator::JwtCredentialValidator;
+use crate::validator::JwtCredentialValidatorUtils;
 use identity_core::common::OneOrMany;
 use identity_core::common::Url;
 use identity_did::CoreDID;
@@ -17,11 +18,10 @@ use identity_verification::jws::JwsVerifier;
 
 use crate::validator::DecodedJwtCredential;
 
+use super::DomainLinkageValidationErrorList;
 use super::DomainLinkageValidationResult;
 use crate::utils::url_only_includes_origin;
-
 /// A validator for a Domain Linkage Configuration and Credentials.
-
 pub struct JwtDomainLinkageValidator<V: JwsVerifier> {
   validator: JwtCredentialValidator<V>,
 }
@@ -38,20 +38,19 @@ impl<V: JwsVerifier> JwtDomainLinkageValidator<V> {
   /// Validates the linkage between a domain and a DID.
   /// [`DomainLinkageConfiguration`] is validated according to [DID Configuration Resource Verification](https://identity.foundation/.well-known/resources/did-configuration/#did-configuration-resource-verification).
   ///
-  /// * `issuer`: DID Document of the linked DID. Issuer of the Domain Linkage Credential included
-  /// in the Domain Linkage Configuration.
+  /// * `issuer`: DID Document of the linked DID. Issuer of the Domain Linkage Credential included in the Domain Linkage
+  ///   Configuration.
   /// * `configuration`: Domain Linkage Configuration fetched from the domain at "/.well-known/did-configuration.json".
   /// * `domain`: domain from which the Domain Linkage Configuration has been fetched.
   /// * `validation_options`: Further validation options to be applied on the Domain Linkage Credential.
   ///
   /// # Note:
   /// - Only the [JSON Web Token Proof Format](https://identity.foundation/.well-known/resources/did-configuration/#json-web-token-proof-format)
-  /// is supported.
-  /// - Only the Credential issued by `issuer` is verified.
+  ///   is supported.
+  /// - Only the Credentials issued by `issuer` are verified. All other credentials are ignored.
   ///
   /// # Errors
   ///  - Semantic structure of `configuration` is invalid.
-  ///  - `configuration` includes multiple credentials issued by `issuer`.
   ///  - Validation of the matched Domain Linkage Credential fails.
   pub fn validate_linkage<DOC: AsRef<CoreDocument>>(
     &self,
@@ -60,39 +59,97 @@ impl<V: JwsVerifier> JwtDomainLinkageValidator<V> {
     domain: &Url,
     validation_options: &JwtCredentialValidationOptions,
   ) -> DomainLinkageValidationResult {
+    let (ok_results, error_results): (Vec<_>, Vec<_>) = self
+      .validate_linkage_iter(issuer, configuration, domain, validation_options)?
+      .partition(Result::is_ok);
+
+    if !ok_results.is_empty() {
+      Ok(())
+    } else if !error_results.is_empty() {
+      let errors = error_results
+        .into_iter()
+        .map(Result::unwrap_err) // Safety: `errors` is a list of prefiltered `Err(_)`.
+        .collect();
+      Err(DomainLinkageValidationError {
+        cause: DomainLinkageValidationErrorCause::List,
+        source: Some(DomainLinkageValidationErrorList::new(errors).into()),
+      })
+    } else {
+      // this _should_ not be the case, as `validate_linkage_iter` should throw an error if no issuer matches
+      Err(DomainLinkageValidationError {
+        cause: DomainLinkageValidationErrorCause::InvalidStructure,
+        source: None,
+      })
+    }
+  }
+
+  /// Validates the linkage between a domain and a DID.
+  /// [`DomainLinkageConfiguration`] is validated according to [DID Configuration Resource Verification](https://identity.foundation/.well-known/resources/did-configuration/#did-configuration-resource-verification).
+  ///
+  /// * `issuer`: DID Document of the linked DID. Issuer of the Domain Linkage Credential included in the Domain Linkage
+  ///   Configuration.
+  /// * `configuration`: Domain Linkage Configuration fetched from the domain at "/.well-known/did-configuration.json".
+  /// * `domain`: domain from which the Domain Linkage Configuration has been fetched.
+  /// * `validation_options`: Further validation options to be applied on the Domain Linkage Credential.
+  ///
+  /// Returns an iterator, allowing to validate credentials issued by `issuer` one by one. Return values are
+  /// `DomainLinkageValidationResult`, allowing to interpret the single validations as needed (one must be valid, all
+  /// must be valid, etc.).
+  ///
+  /// # Note:
+  /// - Only the [JSON Web Token Proof Format](https://identity.foundation/.well-known/resources/did-configuration/#json-web-token-proof-format)
+  ///   is supported.
+  /// - Only the Credentials issued by `issuer` are verified.
+  ///
+  /// # Errors
+  ///  - Semantic structure of `configuration` is invalid.
+  ///  - Validation of the matched Domain Linkage Credential fails.
+  pub fn validate_linkage_iter<'a, DOC: AsRef<CoreDocument>>(
+    &'a self,
+    issuer: &'a DOC,
+    configuration: &'a DomainLinkageConfiguration,
+    domain: &'a Url,
+    validation_options: &'a JwtCredentialValidationOptions,
+  ) -> Result<impl Iterator<Item = DomainLinkageValidationResult> + use<'a, DOC, V>, DomainLinkageValidationError> {
+    // perform checks about overall structure:
+    // all issuers can be parsed
     let issuers: Vec<CoreDID> = configuration.issuers().map_err(|err| DomainLinkageValidationError {
       cause: DomainLinkageValidationErrorCause::InvalidJwt,
       source: Some(err.into()),
     })?;
-
-    // Multiple credentials for the same issuer are an error.
-    if issuers.iter().filter(|iss| *iss == issuer.as_ref().id()).count() > 1 {
+    // provided issuer can be found in credentials
+    if issuers.iter().filter(|iss| *iss == issuer.as_ref().id()).count() < 1 {
       return Err(DomainLinkageValidationError {
         cause: DomainLinkageValidationErrorCause::InvalidStructure,
         source: None,
       });
     };
 
-    // Find the index of the issuer in the JWT credentials if present.
-    let (jwt_index, _): (usize, _) = issuers
-      .iter()
-      .enumerate()
-      .find(|(_index, iss)| *iss == issuer.as_ref().id())
-      .ok_or_else(|| DomainLinkageValidationError {
-        cause: DomainLinkageValidationErrorCause::InvalidIssuer,
-        source: None,
-      })?;
-
-    // Validate the credential at the corresponding index.
-    let credential: &Jwt = configuration
+    // build iterator over filtered list of credentials
+    let validation_iter = configuration
       .linked_dids()
-      .get(jwt_index)
-      .ok_or_else(|| DomainLinkageValidationError {
-        cause: DomainLinkageValidationErrorCause::InvalidIssuer,
-        source: None,
-      })?;
+      .iter()
+      .map(|v| JwtCredentialValidatorUtils::extract_issuer_from_jwt::<CoreDID>(v).unwrap())
+      .enumerate()
+      .filter_map(|(index, iss)| {
+        if iss == *issuer.as_ref().id() {
+          Some(index)
+        } else {
+          None
+        }
+      })
+      .map(move |index| {
+        configuration
+          .linked_dids()
+          .get(index)
+          .ok_or_else(|| DomainLinkageValidationError {
+            cause: DomainLinkageValidationErrorCause::InvalidIssuer,
+            source: None,
+          })
+          .and_then(|credential| self.validate_credential(&issuer, credential, domain, validation_options))
+      });
 
-    self.validate_credential(issuer, credential, domain, validation_options)
+    Ok(validation_iter)
   }
 
   /// Validates a [Domain Linkage Credential](https://identity.foundation/.well-known/resources/did-configuration/#domain-linkage-credential).
@@ -482,23 +539,166 @@ mod tests {
   }
 
   #[test]
-  pub(crate) fn test_multiple_credentials_for_same_did() {
+  pub(crate) fn test_multiple_credential_combinations_with_validate() {
     let (document, secret_key, fragment) = generate_jwk_document_with_keys();
-    let credential: Credential = create_domain_linkage_credential(document.id());
-    let jwt: Jwt = sign_credential_jwt(&credential, &document, &fragment, &secret_key);
 
-    let configuration: DomainLinkageConfiguration = DomainLinkageConfiguration::new(vec![jwt.clone(), jwt]);
+    let credential_1: Credential = create_domain_linkage_credential(document.id());
+    let jwt_valid: Jwt = sign_credential_jwt(&credential_1, &document, &fragment, &secret_key);
 
-    let validation_result: DomainLinkageValidationResult = JWT_DOMAIN_LINKAGE_VALIDATOR_ED25519.validate_linkage(
-      &document,
-      &configuration,
-      &url_foo(),
-      &JwtCredentialValidationOptions::default(),
-    );
-    assert!(matches!(
-      validation_result.unwrap_err().cause,
-      DomainLinkageValidationErrorCause::InvalidStructure
-    ));
+    let mut credential_2: Credential = create_domain_linkage_credential(document.id());
+    if let OneOrMany::One(ref mut subject) = credential_2.credential_subject {
+      subject.id = Some(Url::parse("http://invalid.did").unwrap());
+    }
+    let jwt_invalid: Jwt = sign_credential_jwt(&credential_2, &document, &fragment, &secret_key);
+
+    let configurations: Vec<(DomainLinkageConfiguration, bool)> = vec![
+      (
+        DomainLinkageConfiguration::new(vec![jwt_valid.clone(), jwt_valid.clone()]),
+        true,
+      ),
+      (
+        DomainLinkageConfiguration::new(vec![jwt_invalid.clone(), jwt_valid.clone()]),
+        true,
+      ),
+      (
+        DomainLinkageConfiguration::new(vec![jwt_valid.clone(), jwt_invalid.clone()]),
+        true,
+      ),
+      (
+        DomainLinkageConfiguration::new(vec![jwt_invalid.clone(), jwt_invalid.clone()]),
+        false,
+      ),
+    ];
+
+    let validations: Vec<(bool, bool)> = configurations
+      .into_iter()
+      .map(|(configuration, expected)| {
+        (
+          JWT_DOMAIN_LINKAGE_VALIDATOR_ED25519
+            .validate_linkage(
+              &document,
+              &configuration,
+              &url_foo(),
+              &JwtCredentialValidationOptions::default(),
+            )
+            .is_ok(),
+          expected,
+        )
+      })
+      .collect();
+
+    for (index, (outcome, expected)) in validations.iter().enumerate() {
+      assert_eq!(outcome, expected, "testing result of test config {index}");
+    }
+  }
+
+  #[test]
+  pub(crate) fn test_multiple_credential_combinations_with_validate_iter() {
+    let (document, secret_key, fragment) = generate_jwk_document_with_keys();
+
+    let credential_1: Credential = create_domain_linkage_credential(document.id());
+    let jwt_valid: Jwt = sign_credential_jwt(&credential_1, &document, &fragment, &secret_key);
+
+    let mut credential_2: Credential = create_domain_linkage_credential(document.id());
+    if let OneOrMany::One(ref mut subject) = credential_2.credential_subject {
+      subject.id = Some(Url::parse("http://invalid.did").unwrap());
+    }
+    let jwt_invalid: Jwt = sign_credential_jwt(&credential_2, &document, &fragment, &secret_key);
+
+    let configurations: Vec<(DomainLinkageConfiguration, Vec<bool>)> = vec![
+      (
+        DomainLinkageConfiguration::new(vec![jwt_valid.clone(), jwt_valid.clone()]),
+        vec![true, true],
+      ),
+      (
+        DomainLinkageConfiguration::new(vec![jwt_invalid.clone(), jwt_valid.clone()]),
+        vec![false, true],
+      ),
+      (
+        DomainLinkageConfiguration::new(vec![jwt_valid.clone(), jwt_invalid.clone()]),
+        vec![true, false],
+      ),
+      (
+        DomainLinkageConfiguration::new(vec![jwt_invalid.clone(), jwt_invalid.clone()]),
+        vec![false, false],
+      ),
+    ];
+
+    let validations: Vec<(Vec<bool>, Vec<bool>)> = configurations
+      .into_iter()
+      .map(|(configuration, expected)| {
+        (
+          JWT_DOMAIN_LINKAGE_VALIDATOR_ED25519
+            .validate_linkage_iter(
+              &document,
+              &configuration,
+              &url_foo(),
+              &JwtCredentialValidationOptions::default(),
+            )
+            .expect("validation iterator should be creatable")
+            .map(|r| r.is_ok())
+            .collect(),
+          expected,
+        )
+      })
+      .collect();
+
+    for (index, (outcome, expected)) in validations.iter().enumerate() {
+      assert_eq!(outcome, expected, "testing result of test config {index}");
+    }
+  }
+
+  #[test]
+  pub(crate) fn test_multiple_credential_combinations_with_validate_iter_counts() {
+    let (document, secret_key, fragment) = generate_jwk_document_with_keys();
+
+    let credential_1: Credential = create_domain_linkage_credential(document.id());
+    let jwt_valid: Jwt = sign_credential_jwt(&credential_1, &document, &fragment, &secret_key);
+
+    let mut credential_2: Credential = create_domain_linkage_credential(document.id());
+    if let OneOrMany::One(ref mut subject) = credential_2.credential_subject {
+      subject.id = Some(Url::parse("http://invalid.did").unwrap());
+    }
+    let jwt_invalid: Jwt = sign_credential_jwt(&credential_2, &document, &fragment, &secret_key);
+
+    let configurations = vec![
+      (
+        DomainLinkageConfiguration::new(vec![jwt_valid.clone(), jwt_valid.clone()]),
+        (2, 0),
+      ),
+      (
+        DomainLinkageConfiguration::new(vec![jwt_invalid.clone(), jwt_valid.clone()]),
+        (1, 1),
+      ),
+      (
+        DomainLinkageConfiguration::new(vec![jwt_valid.clone(), jwt_invalid.clone()]),
+        (1, 1),
+      ),
+      (
+        DomainLinkageConfiguration::new(vec![jwt_invalid.clone(), jwt_invalid.clone()]),
+        (0, 2),
+      ),
+    ];
+
+    let validations: Vec<_> = configurations
+      .into_iter()
+      .map(|(configuration, expected)| {
+        let (oks, errors): (Vec<_>, Vec<_>) = JWT_DOMAIN_LINKAGE_VALIDATOR_ED25519
+          .validate_linkage_iter(
+            &document,
+            &configuration,
+            &url_foo(),
+            &JwtCredentialValidationOptions::default(),
+          )
+          .expect("validation iterator should be creatable")
+          .partition(Result::is_ok);
+        ((oks.len(), errors.len()), expected)
+      })
+      .collect();
+
+    for (index, (outcome, expected)) in validations.iter().enumerate() {
+      assert_eq!(outcome, expected, "testing result of test config {index}");
+    }
   }
 
   #[test]

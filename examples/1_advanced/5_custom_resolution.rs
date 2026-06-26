@@ -1,25 +1,16 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use examples::create_did;
-use examples::random_stronghold_path;
-use examples::MemStorage;
-use examples::API_ENDPOINT;
+use examples::create_did_document;
+use examples::get_funded_client;
+use examples::get_memstorage;
 use identity_iota::core::FromJson;
 use identity_iota::core::ToJson;
 use identity_iota::did::CoreDID;
 use identity_iota::did::DID;
 use identity_iota::document::CoreDocument;
-use identity_iota::iota::IotaDID;
 use identity_iota::iota::IotaDocument;
 use identity_iota::resolver::Resolver;
-use identity_iota::storage::JwkMemStore;
-use identity_iota::storage::KeyIdMemstore;
-use iota_sdk::client::secret::stronghold::StrongholdSecretManager;
-use iota_sdk::client::secret::SecretManager;
-use iota_sdk::client::Client;
-use iota_sdk::client::Password;
-use iota_sdk::types::block::address::Address;
 
 /// Demonstrates how to set up a resolver using custom handlers.
 ///
@@ -27,41 +18,28 @@ use iota_sdk::types::block::address::Address;
 /// Resolver<CoreDocument> in this example and just worked with `CoreDocument` representations throughout.
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+  // create new client to interact with chain and get funded account with keys
+  let storage = get_memstorage()?;
+  let identity_client = get_funded_client(&storage).await?;
+  // create new DID document and publish it
+  let (document, _) = create_did_document(&identity_client, &storage).await?;
+
   // Create a resolver returning an enum of the documents we are interested in and attach handlers for the "foo" and
   // "iota" methods.
   let mut resolver: Resolver<Document> = Resolver::new();
 
-  // Create a new client to interact with the IOTA ledger.
-  let client: Client = Client::builder()
-    .with_primary_node(API_ENDPOINT, None)?
-    .finish()
-    .await?;
-
   // This is a convenience method for attaching a handler for the "iota" method by providing just a client.
-  resolver.attach_iota_handler(client.clone());
+  resolver.attach_iota_handler((*identity_client).clone());
   resolver.attach_handler("foo".to_owned(), resolve_did_foo);
 
   // A fake did:foo DID for demonstration purposes.
   let did_foo: CoreDID = "did:foo:0e9c8294eeafee326a4e96d65dbeaca0".parse()?;
 
-  // Create a new secret manager backed by a Stronghold.
-  let mut secret_manager: SecretManager = SecretManager::Stronghold(
-    StrongholdSecretManager::builder()
-      .password(Password::from("secure_password".to_owned()))
-      .build(random_stronghold_path())?,
-  );
-
-  // Create a new DID for us to resolve.
-  let storage: MemStorage = MemStorage::new(JwkMemStore::new(), KeyIdMemstore::new());
-  let (_, iota_document, _): (Address, IotaDocument, String) =
-    create_did(&client, &mut secret_manager, &storage).await?;
-  let iota_did: IotaDID = iota_document.id().clone();
-
   // Resolve did_foo to get an abstract document.
   let did_foo_doc: Document = resolver.resolve(&did_foo).await?;
 
   // Resolve iota_did to get an abstract document.
-  let iota_doc: Document = resolver.resolve(&iota_did).await?;
+  let iota_doc: Document = resolver.resolve(&document.id().clone()).await?;
 
   // The Resolver is mainly meant for validating presentations, but here we will just
   // check that the resolved documents match our expectations.

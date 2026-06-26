@@ -1,0 +1,86 @@
+// Copyright 2020-2024 IOTA Stiftung
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+package domain_linkage;
+
+message ValidateDidResponse {
+    string did = 1;
+    message Domains {
+        message ValidDomain {
+            string url = 1;
+            string credential = 2;
+            string service_id = 3;
+        }
+
+        repeated ValidDomain valid = 1;
+
+        message InvalidDomain {
+            string url = 1;
+            optional string credential = 2;
+            string service_id = 3;
+            string error = 4;
+        }
+
+        repeated InvalidDomain invalid = 2;
+    }
+    Domains domains = 2;
+}
+
+message ValidateDomainResponse {
+    string domain = 1;
+    message LinkedDids {
+        message ValidDid {
+            string did = 1;
+            string credential = 2;
+            string service_id = 3;
+        }
+
+        repeated ValidDid valid = 1;
+
+        message InvalidDid {
+            optional string did = 1;
+            optional string credential = 2;
+            optional string service_id = 3;
+            string error = 4;
+        }
+
+        repeated InvalidDid invalid = 2;
+    }
+    LinkedDids linked_dids = 2;
+}
+
+message ValidateDomainRequest {
+    // domain to validate
+    string domain = 1;
+}
+
+message ValidateDomainAgainstDidConfigurationRequest {
+    // domain to validate
+    string domain = 1;
+    // already resolved domain linkage config
+    string did_configuration = 2;
+}
+
+message ValidateDidRequest {
+    // DID to validate
+    string did = 1;
+}
+
+message ValidateDidAgainstDidConfigurationsRequest {
+    // DID to validate
+    string did = 1;
+    // already resolved domain linkage configs
+    repeated ValidateDomainAgainstDidConfigurationRequest did_configurations = 2;
+}
+
+service DomainLinkage {
+    rpc validate_domain(ValidateDomainRequest) returns (ValidateDomainResponse);
+    rpc validate_domain_against_did_configuration(
+        ValidateDomainAgainstDidConfigurationRequest)
+        returns (ValidateDomainResponse);
+
+    rpc validate_did(ValidateDidRequest) returns (ValidateDidResponse);
+    rpc validate_did_against_did_configurations(
+        ValidateDidAgainstDidConfigurationsRequest) returns (ValidateDidResponse);
+}

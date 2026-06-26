@@ -17,6 +17,8 @@
   clippy::missing_errors_doc
 )]
 
+pub use iota_interaction;
+
 pub mod core {
   //! Core Traits and Types
 
@@ -40,6 +42,8 @@ pub mod credential {
   pub use identity_credential::presentation::*;
   #[cfg(feature = "revocation-bitmap")]
   pub use identity_credential::revocation::*;
+  #[cfg(feature = "sd-jwt-vc")]
+  pub use identity_credential::sd_jwt_vc;
   pub use identity_credential::validator::*;
 }
 
@@ -75,15 +79,9 @@ pub mod prelude {
   pub use identity_iota_core::IotaDID;
   pub use identity_iota_core::IotaDocument;
 
-  #[cfg(feature = "iota-client")]
-  #[cfg_attr(docsrs, doc(cfg(feature = "iota-client")))]
-  pub use identity_iota_core::IotaClientExt;
-  #[cfg(feature = "client")]
-  #[cfg_attr(docsrs, doc(cfg(feature = "client")))]
-  pub use identity_iota_core::IotaIdentityClient;
-  #[cfg(feature = "client")]
-  #[cfg_attr(docsrs, doc(cfg(feature = "client")))]
-  pub use identity_iota_core::IotaIdentityClientExt;
+  #[cfg(all(feature = "resolver", not(target_arch = "wasm32")))]
+  #[cfg_attr(docsrs, doc(cfg(all(feature = "resolver", not(target_arch = "wasm32")))))]
+  pub use identity_iota_core::DidResolutionHandler;
 
   #[cfg(feature = "resolver")]
   #[cfg_attr(docsrs, doc(cfg(feature = "resolver")))]
@@ -94,7 +92,6 @@ pub mod prelude {
 #[cfg_attr(docsrs, doc(cfg(feature = "resolver")))]
 pub mod resolver {
   //! DID resolution utilities
-
   pub use identity_resolver::*;
 }
 
@@ -105,7 +102,22 @@ pub mod verification {
 
 pub mod storage {
   //! Storage traits.
-  pub use identity_storage::*;
+  /// KeyIdStorage types and functionalities.
+  pub mod key_id_storage {
+    pub use identity_storage::key_id_storage::*;
+  }
+  /// KeyStorage types and functionalities.
+  pub mod key_storage {
+    pub use identity_storage::key_storage::public_modules::*;
+  }
+  /// Storage types and functionalities.
+  #[allow(clippy::module_inception)]
+  pub mod storage {
+    pub use identity_storage::storage::*;
+  }
+  pub use identity_storage::key_id_storage::*;
+  pub use identity_storage::key_storage::*;
+  pub use identity_storage::storage::*;
 }
 
 #[cfg(feature = "sd-jwt")]

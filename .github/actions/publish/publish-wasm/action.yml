@@ -1,14 +1,14 @@
-name: 'publish-wasm'
-description: 'Publishes Wasm bindings to npm'
+name: "publish-wasm"
+description: "Publishes Wasm bindings to npm"
 inputs:
   tag:
-    description: 'Which npm tag to publish under e.g. `dev`, will default to `latest`'
+    description: "Which npm tag to publish under e.g. `dev`, will default to `latest`"
     required: false
-  npm-token:
-    description: 'used for authenticating towards npm'
-    required: true
   input-artifact-name:
     description: "Name used for the input Wasm build artifact"
+    required: true
+  working-directory:
+    description: "Directory to publish from"
     required: true
   dry-run:
     description: "'true' = only log potential result; 'false' = publish'"
@@ -18,22 +18,20 @@ runs:
   using: "composite"
   steps:
     - name: Set up Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v5
       with:
-        node-version: '16.x'
-        registry-url: 'https://registry.npmjs.org'
+        node-version: "lts/*"
+        registry-url: "https://registry.npmjs.org"
 
     - name: Download bindings/wasm artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.input-artifact-name }}
-        path: bindings/wasm
+        path: bindings/wasm/identity_wasm
 
     - name: Publish WASM bindings to NPM
       shell: sh
-      env:
-        NODE_AUTH_TOKEN: ${{ inputs.npm-token }}
-      working-directory: bindings/wasm
+      working-directory: ${{ inputs.working-directory }}
       # will publish 'latest' tag if no tag is passed
       run: |
         echo "dry-run: '${{ inputs.dry-run }}'"

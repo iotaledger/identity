@@ -15,7 +15,7 @@ use crate::common::Url;
 /// A reference to a JSON-LD context
 ///
 /// [More Info](https://www.w3.org/TR/vc-data-model/#contexts)
-#[derive(Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Eq, Deserialize, Serialize, Hash)]
 #[serde(untagged)]
 pub enum Context {
   /// A JSON-LD context expressed as a Url.

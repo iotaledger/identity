@@ -89,7 +89,7 @@ where
   let mut revocation_bitmap: RevocationBitmap = RevocationBitmap::try_from(&*service)?;
   f(&mut revocation_bitmap);
 
-  std::mem::swap(service.service_endpoint_mut(), &mut revocation_bitmap.to_endpoint()?);
+  *service.service_endpoint_mut() = revocation_bitmap.to_endpoint()?;
 
   Ok(())
 }

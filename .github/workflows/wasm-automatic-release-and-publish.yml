@@ -11,10 +11,9 @@ on:
 jobs:
   call-create-release-workflow:
     if: github.event.pull_request.merged == true
-    # owner/repository of workflow has to be static, see https://github.community/t/env-variables-in-uses/17466
-    uses: iotaledger/identity.rs/.github/workflows/shared-release.yml@main
+    uses: './.github/workflows/shared-release.yml'
     with:
-      changelog-config-path: ./bindings/wasm/.github_changelog_generator
+      changelog-config-path: ./bindings/wasm/identity_wasm/.github_changelog_generator
       pre-release-tag-regex: ^wasm-v[0-9]+\.[0-9]+\.[0-9]+-(?<pre_release>\w+)\.\d+$
       main-release-tag-regex: ^wasm-v[0-9]+\.[0-9]+\.[0-9]+$
       create-github-release: false
@@ -25,9 +24,9 @@ jobs:
   build-wasm: 
     needs: call-create-release-workflow
     if: ${{ needs.call-create-release-workflow.outputs.is-release }}
-    # owner/repository of workflow has to be static, see https://github.community/t/env-variables-in-uses/17466
-    uses: iotaledger/identity.rs/.github/workflows/shared-build-wasm.yml@main
+    uses: './.github/workflows/shared-build-wasm.yml'
     with:
+      run-unit-tests: false
       output-artifact-name: identity-wasm-bindings-build
 
   release-wasm:

@@ -10,7 +10,7 @@ use std::cmp::Ordering;
 use std::hash::Hash;
 use std::hash::Hasher;
 
-use did_url::DID as BaseDIDUrl;
+use did_url_parser::DID as BaseDIDUrl;
 
 use identity_core::common::KeyComparable;
 use identity_core::common::Url;
@@ -96,7 +96,7 @@ impl RelativeDIDUrl {
     self.path = value
       .filter(|s| !s.is_empty())
       .map(|s| {
-        if s.starts_with('/') && s.chars().all(is_char_path) {
+        if s.starts_with('/') && is_valid_url_segment(s, is_char_path) {
           Ok(s.to_owned())
         } else {
           Err(Error::InvalidPath)
@@ -138,7 +138,7 @@ impl RelativeDIDUrl {
       .map(|mut s| {
         // Ignore leading '?' during validation.
         s = s.strip_prefix('?').unwrap_or(s);
-        if s.is_empty() || !s.chars().all(is_char_query) {
+        if s.is_empty() || !is_valid_url_segment(s, is_char_query) {
           return Err(Error::InvalidQuery);
         }
         Ok(format!("?{s}"))
@@ -188,7 +188,7 @@ impl RelativeDIDUrl {
       .map(|mut s| {
         // Ignore leading '#' during validation.
         s = s.strip_prefix('#').unwrap_or(s);
-        if s.is_empty() || !s.chars().all(is_char_fragment) {
+        if s.is_empty() || !is_valid_url_segment(s, is_char_fragment) {
           return Err(Error::InvalidFragment);
         }
         Ok(format!("#{s}"))
@@ -519,8 +519,7 @@ impl KeyComparable for DIDUrl {
 #[inline(always)]
 #[rustfmt::skip]
 pub(crate) const fn is_char_path(ch: char) -> bool {
-  // Allow percent encoding or not?
-  is_char_method_id(ch) || matches!(ch, '~' | '!' | '$' | '&' | '\'' | '(' | ')' | '*' | '+' | ',' | ';' | '=' | '@' | '/' /* | '%' */)
+  is_char_method_id(ch) || matches!(ch, '~' | '!' | '$' | '&' | '\'' | '(' | ')' | '*' | '+' | ',' | ';' | '=' | '@' | '/')
 }
 
 /// Checks whether a character satisfies DID Url query constraints.
@@ -533,6 +532,33 @@ pub(crate) const fn is_char_query(ch: char) -> bool {
 #[inline(always)]
 pub(crate) const fn is_char_fragment(ch: char) -> bool {
   is_char_path(ch) || ch == '?'
+}
+
+pub(crate) fn is_valid_percent_encoded_char(s: &str) -> bool {
+  let mut chars = s.chars();
+  let Some('%') = chars.next() else { return false };
+  s.len() >= 3 && chars.take(2).all(|c| c.is_ascii_hexdigit())
+}
+
+pub(crate) fn is_valid_url_segment<F>(segment: &str, char_predicate: F) -> bool
+where
+  F: Fn(char) -> bool,
+{
+  let mut chars = segment.char_indices();
+  while let Some((i, c)) = chars.next() {
+    if c == '%' {
+      if !is_valid_percent_encoded_char(&segment[i..]) {
+        return false;
+      }
+      // skip the two HEX digits
+      chars.next();
+      chars.next();
+    } else if !char_predicate(c) {
+      return false;
+    }
+  }
+
+  true
 }
 
 #[cfg(test)]
@@ -639,6 +665,10 @@ mod tests {
     assert!(relative_url.path().is_none());
     assert!(relative_url.set_path(None).is_ok());
     assert!(relative_url.path().is_none());
+
+    // Percent encoded path.
+    assert!(relative_url.set_path(Some("/p%AAth")).is_ok());
+    assert_eq!(relative_url.path().unwrap(), "/p%AAth");
   }
 
   #[rustfmt::skip]
@@ -697,6 +727,10 @@ mod tests {
     assert_eq!(relative_url.query().unwrap(), "query");
     assert!(relative_url.set_query(Some("name=value&name2=value2&3=true")).is_ok());
     assert_eq!(relative_url.query().unwrap(), "name=value&name2=value2&3=true");
+
+    // With percent encoded char.
+    assert!(relative_url.set_query(Some("qu%EEry")).is_ok());
+    assert_eq!(relative_url.query().unwrap(), "qu%EEry");
   }
 
   #[rustfmt::skip]
@@ -745,6 +779,10 @@ mod tests {
     assert!(relative_url.fragment().is_none());
     assert!(relative_url.set_fragment(None).is_ok());
     assert!(relative_url.fragment().is_none());
+
+    // Percent encoded fragment.
+    assert!(relative_url.set_fragment(Some("fr%AAgm%EEnt")).is_ok());
+    assert_eq!(relative_url.fragment().unwrap(), "fr%AAgm%EEnt");
   }
 
   #[rustfmt::skip]

@@ -118,22 +118,22 @@ jobs:
           echo OPTIONAL_ARG=$OPTIONAL_ARG
           echo OPTIONAL_ARG=$OPTIONAL_ARG >> $GITHUB_ENV
 
-      - name: Run Changelog Generator
-        uses: './.github/actions/release/changelog-generator'
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          changelog-path: ${{ inputs.changelog-path }}
-          changelog-config-path: ${{ inputs.changelog-config-path }}
-          future-release: ${{ env.HOTFIX_TAG }} 
-          optional-arg: ${{env.OPTIONAL_ARG}}
+      # - name: Run Changelog Generator
+      #   uses: './.github/actions/release/changelog-generator'
+      #   with:
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     changelog-path: ${{ inputs.changelog-path }}
+      #     changelog-config-path: ${{ inputs.changelog-config-path }}
+      #     future-release: ${{ env.HOTFIX_TAG }} 
+      #     optional-arg: ${{env.OPTIONAL_ARG}}
 
-      - name: Check Changelog For Modification
-        run: |
-          git add .
-          if [[ $(git diff --stat --staged) == '' ]]; then
-            echo 'repository unmodified'
-            exit 1
-          fi
+      # - name: Check Changelog For Modification
+      #   run: |
+      #     git add .
+      #     if [[ $(git diff --stat --staged) == '' ]]; then
+      #       echo 'repository unmodified'
+      #       exit 1
+      #     fi
 
       - name: Import GPG key
         id: import-gpg

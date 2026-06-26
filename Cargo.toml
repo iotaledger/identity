@@ -1,3 +1,11 @@
+[workspace.package]
+authors = ["IOTA Stiftung"]
+edition = "2021"
+homepage = "https://www.iota.org"
+license = "Apache-2.0"
+repository = "https://github.com/iotaledger/identity"
+rust-version = "1.65"
+
 [workspace]
 resolver = "2"
 members = [
@@ -12,22 +20,36 @@ members = [
   "identity_verification",
   "identity_stronghold",
   "identity_jose",
+  "identity_ecdsa_verifier",
   "identity_eddsa_verifier",
+  "identity_pqc_verifier",
   "examples",
 ]
 
-exclude = ["bindings/wasm"]
+exclude = ["bindings/wasm/identity_wasm", "bindings/grpc"]
 
 [workspace.dependencies]
+bls12_381_plus = { version = "0.8.17" }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.21", package = "iota_interaction" }
+iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.21", package = "iota_interaction_ts" }
+iota-sdk-types = { git = "https://github.com/iotaledger/iota-rust-sdk.git", rev = "35a27488b887e28e844a1e46d7edb78605871155", default-features = false }
+product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.21", package = "product_common" }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-thiserror = { version = "1.0", default-features = false }
-strum = { version = "0.25", default-features = false, features = ["std", "derive"] }
 serde_json = { version = "1.0", default-features = false }
+oqs = { version = "0.10", default-features = false, features = ["sigs", "std", "vendored"] }
+strum = { version = "0.25", default-features = false, features = ["std", "derive"] }
+thiserror = { version = "1.0", default-features = false }
+json-proof-token = { version = "0.4" }
+zkryptium = { version = "0.2.2", default-features = false, features = ["bbsplus"] }
 
-[workspace.package]
-authors = ["IOTA Stiftung"]
-edition = "2021"
-homepage = "https://www.iota.org"
-license = "Apache-2.0"
-repository = "https://github.com/iotaledger/identity.rs"
-rust-version = "1.65"
+[workspace.lints.clippy]
+result_large_err = "allow"
+large_enum_variant = "allow"
+
+[profile.release.package.iota_interaction_ts]
+opt-level = 's'
+# Enabling debug for profile.release may lead to more helpful logged call stacks.
+# TODO: Clarify if 'debug = true' facilitates error analysis via console logs.
+#       If not, remove the next line
+#       If yes, describe the helping effect in the comment above
+# debug = true

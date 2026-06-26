@@ -3,6 +3,8 @@
 
 use std::borrow::Cow;
 
+#[cfg(feature = "jpt-bbs-plus")]
+use jsonprooftoken::jpt::claims::JptClaims;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -25,12 +27,25 @@ use crate::credential::Subject;
 use crate::Error;
 use crate::Result;
 
+/// A JWT representing a Verifiable Credential.
+#[derive(Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct JwtCredential(CredentialJwtClaims<'static>);
+
+#[cfg(feature = "validator")]
+impl TryFrom<JwtCredential> for Credential {
+  type Error = Error;
+  fn try_from(value: JwtCredential) -> std::result::Result<Self, Self::Error> {
+    value.0.try_into_credential()
+  }
+}
+
 /// Implementation of JWT Encoding/Decoding according to [VC Data Model v1.1](https://www.w3.org/TR/vc-data-model/#json-web-token).
 ///
 /// This type is opinionated in the following ways:
 /// 1. Serialization tries to duplicate as little as possible between the required registered claims and the `vc` entry.
 /// 2. Only allows serializing/deserializing claims "exp, iss, nbf &/or iat, jti, sub and vc". Other custom properties
-/// must be set in the `vc` entry.
+///    must be set in the `vc` entry.
 #[derive(Serialize, Deserialize)]
 pub(crate) struct CredentialJwtClaims<'credential, T = Object>
 where
@@ -65,7 +80,7 @@ impl<'credential, T> CredentialJwtClaims<'credential, T>
 where
   T: ToOwned<Owned = T> + Serialize + DeserializeOwned,
 {
-  pub(super) fn new(credential: &'credential Credential<T>, custom: Option<Object>) -> Result<Self> {
+  pub(crate) fn new(credential: &'credential Credential<T>, custom: Option<Object>) -> Result<Self> {
     let Credential {
       context,
       id,
@@ -100,6 +115,8 @@ where
         credential_subject: InnerCredentialSubject::new(subject),
         issuance_date: None,
         expiration_date: None,
+        valid_from: None,
+        valid_until: None,
         issuer: None,
         credential_schema: Cow::Borrowed(credential_schema),
         credential_status: credential_status.as_ref().map(Cow::Borrowed),
@@ -116,7 +133,7 @@ where
 }
 
 #[cfg(feature = "validator")]
-impl<'credential, T> CredentialJwtClaims<'credential, T>
+impl<T> CredentialJwtClaims<'_, T>
 where
   T: ToOwned<Owned = T> + Serialize + DeserializeOwned,
 {
@@ -129,7 +146,8 @@ where
       .vc
       .issuer
       .as_ref()
-      .map(|value| value == issuer_from_claims)
+      // See https://www.w3.org/TR/vc-jose-cose/#iss
+      .map(|value| value.url() == issuer_from_claims.url())
       .unwrap_or(true)
     {
       return Err(Error::InconsistentCredentialJwtClaims("inconsistent issuer"));
@@ -198,12 +216,11 @@ where
       jti,
       sub,
       vc,
-      custom: _,
+      ..
     } = self;
 
     let InnerCredential {
       context,
-      id: _,
       types,
       credential_subject,
       credential_status,
@@ -214,9 +231,7 @@ where
       non_transferable,
       properties,
       proof,
-      issuance_date: _,
-      issuer: _,
-      expiration_date: _,
+      ..
     } = vc;
 
     Ok(Credential {
@@ -333,6 +348,12 @@ where
   /// A timestamp of when the `Credential` should no longer be considered valid.
   #[serde(rename = "expirationDate", skip_serializing_if = "Option::is_none")]
   expiration_date: Option<Timestamp>,
+  /// A timestamp of when the `Credential` becomes valid.
+  #[serde(rename = "validFrom", skip_serializing_if = "Option::is_none")]
+  valid_from: Option<Timestamp>,
+  /// A timestamp of when the `Credential` should no longer be considered valid.
+  #[serde(rename = "validUntil", skip_serializing_if = "Option::is_none")]
+  valid_until: Option<Timestamp>,
   /// Information used to determine the current status of the `Credential`.
   #[serde(default, rename = "credentialStatus", skip_serializing_if = "Option::is_none")]
   credential_status: Option<Cow<'credential, Status>>,
@@ -358,6 +379,57 @@ where
   /// Proof(s) used to verify a `Credential`
   #[serde(skip_serializing_if = "Option::is_none")]
   proof: Option<Cow<'credential, Proof>>,
+}
+
+#[cfg(feature = "jpt-bbs-plus")]
+impl<'credential, T> From<CredentialJwtClaims<'credential, T>> for JptClaims
+where
+  T: ToOwned + Serialize,
+  <T as ToOwned>::Owned: DeserializeOwned,
+{
+  fn from(item: CredentialJwtClaims<'credential, T>) -> Self {
+    let CredentialJwtClaims {
+      exp,
+      iss,
+      issuance_date,
+      jti,
+      sub,
+      vc,
+      custom,
+    } = item;
+
+    let mut claims = JptClaims::new();
+
+    if let Some(exp) = exp {
+      claims.set_exp(exp);
+    }
+
+    claims.set_iss(iss.url().to_string());
+
+    if let Some(iat) = issuance_date.iat {
+      claims.set_iat(iat);
+    }
+
+    if let Some(nbf) = issuance_date.nbf {
+      claims.set_nbf(nbf);
+    }
+
+    if let Some(jti) = jti {
+      claims.set_jti(jti.to_string());
+    }
+
+    if let Some(sub) = sub {
+      claims.set_sub(sub.to_string());
+    }
+
+    claims.set_claim(Some("vc"), vc, true);
+
+    if let Some(custom) = custom {
+      claims.set_claim(None, custom, true);
+    }
+
+    claims
+  }
 }
 
 #[cfg(test)]

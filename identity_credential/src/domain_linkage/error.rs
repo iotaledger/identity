@@ -14,6 +14,28 @@ pub struct DomainLinkageValidationError {
   pub source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
+/// List of errors caused by failures to verify a Domain Linkage configuration or credential.
+#[derive(Debug, thiserror::Error)]
+pub struct DomainLinkageValidationErrorList {
+  /// set of errors
+  pub errors: Vec<DomainLinkageValidationError>,
+}
+
+/// A set of errors coming from validating multiple domain linkage credentials.
+impl DomainLinkageValidationErrorList {
+  /// Create new set of domain linkage validation errors.
+  pub fn new(errors: Vec<DomainLinkageValidationError>) -> Self {
+    Self { errors }
+  }
+}
+
+// Implement for `Error` trait.
+impl std::fmt::Display for DomainLinkageValidationErrorList {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{:?}", self.errors)
+  }
+}
+
 impl std::fmt::Display for DomainLinkageValidationError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{}", self.cause)
@@ -69,4 +91,7 @@ pub enum DomainLinkageValidationErrorCause {
   /// Caused by an invalid semantic structure of the Domain Linkage Configuration.
   #[error("invalid semantic structure of the domain linkage configuration")]
   InvalidStructure,
+  /// List of errors stemming from multiple validations.
+  #[error("one or more validations failed")]
+  List,
 }

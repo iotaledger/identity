@@ -1,0 +1,23 @@
+// Copyright 2020-2024 IOTA Stiftung
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+package utils;
+
+message DataSigningRequest {
+    // Raw data that will be signed.
+    bytes data = 1;
+    // Signing key's ID.
+    string key_id = 2;
+}
+
+message DataSigningResponse {
+    // Raw data signature.
+    bytes signature = 1;
+}
+
+// Service that handles signing operations on raw data.
+service Signing {
+    rpc sign(DataSigningRequest) returns (DataSigningResponse);
+}
+

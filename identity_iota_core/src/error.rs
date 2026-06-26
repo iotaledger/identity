@@ -17,25 +17,12 @@ pub enum Error {
   /// Caused by an invalid DID document.
   #[error("invalid document")]
   InvalidDoc(#[source] identity_document::Error),
-  #[cfg(feature = "iota-client")]
-  /// Caused by a client failure during publishing.
-  #[error("DID update: {0}")]
-  DIDUpdateError(&'static str, #[source] Option<Box<iota_sdk::client::error::Error>>),
-  #[cfg(feature = "iota-client")]
   /// Caused by a client failure during resolution.
-  #[error("DID resolution failed")]
-  DIDResolutionError(#[source] iota_sdk::client::error::Error),
-  #[cfg(feature = "iota-client")]
-  /// Caused by an error when building a basic output.
-  #[error("basic output build error")]
-  BasicOutputBuildError(#[source] iota_sdk::types::block::Error),
+  #[error("DID resolution failed; {0}")]
+  DIDResolutionError(String),
   /// Caused by an invalid network name.
   #[error("\"{0}\" is not a valid network name in the context of the `iota` did method")]
   InvalidNetworkName(String),
-  #[cfg(feature = "iota-client")]
-  /// Caused by a failure to retrieve the token supply.
-  #[error("unable to obtain the token supply from the client")]
-  TokenSupplyError(#[source] iota_sdk::client::Error),
   /// Caused by a mismatch of the DID's network and the network the client is connected with.
   #[error("unable to resolve a `{expected}` DID on network `{actual}`")]
   NetworkMismatch {
@@ -44,10 +31,6 @@ pub enum Error {
     /// The network the client is connected with.
     actual: String,
   },
-  #[cfg(feature = "iota-client")]
-  /// Caused by an error when fetching protocol parameters from a node.
-  #[error("could not fetch protocol parameters")]
-  ProtocolParametersError(#[source] iota_sdk::client::Error),
   /// Caused by an attempt to read state metadata that does not adhere to the IOTA DID method specification.
   #[error("invalid state metadata {0}")]
   InvalidStateMetadata(&'static str),
@@ -55,14 +38,6 @@ pub enum Error {
   /// Caused by a failure during (un)revocation of credentials.
   #[error("credential revocation error")]
   RevocationError(#[source] identity_credential::revocation::RevocationError),
-  #[cfg(feature = "client")]
-  /// Caused by an error when building an alias output.
-  #[error("alias output build error")]
-  AliasOutputBuildError(#[source] crate::block::Error),
-  #[cfg(feature = "iota-client")]
-  /// Caused by retrieving an output that is expected to be an alias output but is not.
-  #[error("output with id `{0}` is not an alias output")]
-  NotAnAliasOutput(iota_sdk::types::block::output::OutputId),
   /// Caused by an error when constructing an output id.
   #[error("conversion to an OutputId failed: {0}")]
   OutputIdConversionError(String),

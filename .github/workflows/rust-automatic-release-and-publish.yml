@@ -10,8 +10,7 @@ on:
 jobs:
   call-create-release-workflow:
     if: github.event.pull_request.merged == true
-    # owner/repository of workflow has to be static, see https://github.community/t/env-variables-in-uses/17466
-    uses: iotaledger/identity.rs/.github/workflows/shared-release.yml@main
+    uses: './.github/workflows/shared-release.yml'
     with:
       changelog-config-path: ./.github/.github_changelog_generator
       pre-release-tag-regex: ^v[0-9]+\.[0-9]+\.[0-9]+-(?<pre_release>\w+)\.\d+$

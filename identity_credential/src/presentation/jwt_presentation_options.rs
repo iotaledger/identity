@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use identity_core::common::Object;
+use identity_core::common::StringOrUrl;
 use serde::Deserialize;
 use serde::Serialize;
 
 use identity_core::common::Timestamp;
-use identity_core::common::Url;
 
 /// Options to be set in the JWT claims of a verifiable presentation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -20,7 +20,7 @@ pub struct JwtPresentationOptions {
   pub issuance_date: Option<Timestamp>,
   /// Sets the audience for presentation (`aud` property in JWT claims).
   /// Default: `None`.
-  pub audience: Option<Url>,
+  pub audience: Option<StringOrUrl>,
   /// Custom claims that can be used to set additional claims on the resulting JWT.
   pub custom_claims: Option<Object>,
 }
@@ -39,7 +39,7 @@ impl JwtPresentationOptions {
   }
 
   /// Sets the audience for presentation (`aud` property in JWT claims).
-  pub fn audience(mut self, audience: Url) -> Self {
+  pub fn audience(mut self, audience: StringOrUrl) -> Self {
     self.audience = Some(audience);
     self
   }

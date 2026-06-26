@@ -3,7 +3,7 @@ IOTA Identity - Core
 
 The core types and utilities for IOTA identity.
 
-The types and traits exposed by this crate are mainly intended to be used by the other crates constituting the [IOTA Identity Framework](https://wiki.iota.org/identity.rs/introduction).
+The types and traits exposed by this crate are mainly intended to be used by the other crates constituting the [IOTA Identity Framework](https://docs.iota.org/iota-identity).
 
 ## Common Data Types
 

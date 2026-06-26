@@ -1,0 +1,15 @@
+// Copyright 2020-2024 IOTA Stiftung
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+package health_check;
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+    string status = 1;
+}
+
+service HealthCheck {
+    rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+}

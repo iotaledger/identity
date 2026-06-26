@@ -1,4 +1,4 @@
-// Copyright 2020-2023 IOTA Stiftung
+// Copyright 2020-2025 IOTA Stiftung, Fondazione LINKS
 // SPDX-License-Identifier: Apache-2.0
 
 use crypto::hashes::sha::SHA256;
@@ -13,6 +13,7 @@ use crate::jwk::EcxCurve;
 use crate::jwk::EdCurve;
 use crate::jwk::JwkOperation;
 use crate::jwk::JwkParams;
+use crate::jwk::JwkParamsAkp;
 use crate::jwk::JwkParamsEc;
 use crate::jwk::JwkParamsOct;
 use crate::jwk::JwkParamsOkp;
@@ -261,6 +262,9 @@ impl Jwk {
       (JwkType::Okp, value @ JwkParams::Okp(_)) => {
         self.set_params_unchecked(value);
       }
+      (JwkType::Akp, value @ JwkParams::Akp(_)) => {
+        self.set_params_unchecked(value);
+      }
       (_, _) => {
         return Err(Error::InvalidParam("`params` type does not match `kty`"));
       }
@@ -339,6 +343,22 @@ impl Jwk {
     }
   }
 
+  /// Returns the [`JwkParamsAkp`] in this JWK if it is of type `Akp`.
+  pub fn try_akp_params(&self) -> Result<&JwkParamsAkp> {
+    match self.params() {
+      JwkParams::Akp(params) => Ok(params),
+      _ => Err(Error::KeyError("Akp")),
+    }
+  }
+
+  /// Returns a mutable reference to the [`JwkParamsAkp`] in this JWK if it is of type `Akp`.
+  pub fn try_akp_params_mut(&mut self) -> Result<&mut JwkParamsAkp> {
+    match self.params_mut() {
+      JwkParams::Akp(params) => Ok(params),
+      _ => Err(Error::KeyError("Akp")),
+    }
+  }
+
   // ===========================================================================
   // Thumbprint
   // ===========================================================================
@@ -387,6 +407,9 @@ impl Jwk {
       JwkParams::Okp(JwkParamsOkp { crv, x, .. }) => {
         format!(r#"{{"crv":"{crv}","kty":"{kty}","x":"{x}"}}"#)
       }
+      JwkParams::Akp(JwkParamsAkp { public, .. }) => {
+        format!(r#"{{"kty":"{kty}","pub":"{public}"}}"#)
+      }
     }
   }
 
@@ -395,9 +418,9 @@ impl Jwk {
   // ===========================================================================
 
   /// Checks if the `alg` claim of the JWK is equal to `expected`.
-  pub fn check_alg(&self, expected: &str) -> Result<()> {
+  pub fn check_alg(&self, expected: impl AsRef<str>) -> Result<()> {
     match self.alg() {
-      Some(value) if value == expected => Ok(()),
+      Some(value) if value == expected.as_ref() => Ok(()),
       Some(_) => Err(Error::InvalidClaim("alg")),
       None => Ok(()),
     }
@@ -439,6 +462,7 @@ impl Jwk {
       JwkParams::Rsa(params) => params.is_private(),
       JwkParams::Oct(_) => true,
       JwkParams::Okp(params) => params.is_private(),
+      JwkParams::Akp(params) => params.is_private(),
     }
   }
 
@@ -466,6 +490,24 @@ impl Jwk {
 
     Some(public)
   }
+
+  /// Removes all private key components.
+  /// In the case of [JwkParams::Oct], this method does nothing.
+  #[inline(always)]
+  pub fn strip_private(&mut self) {
+    self.params_mut().strip_private();
+  }
+
+  /// Returns this key with _all_ private key components unset.
+  /// In the case of [JwkParams::Oct], this method returns [None].
+  pub fn into_public(mut self) -> Option<Self> {
+    if matches!(&self.params, JwkParams::Oct(_)) {
+      None
+    } else {
+      self.params.strip_private();
+      Some(self)
+    }
+  }
 }
 
 impl Zeroize for Jwk {
@@ -477,5 +519,29 @@ impl Zeroize for Jwk {
 impl Drop for Jwk {
   fn drop(&mut self) {
     self.zeroize();
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use identity_core::convert::FromJson;
+
+  use super::Jwk;
+
+  #[test]
+  fn into_public_and_to_public_return_the_same() {
+    let priv_jwk = Jwk::from_json_slice(
+      r#"
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "d": "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+      }
+    "#,
+    )
+    .unwrap();
+
+    assert_eq!(priv_jwk.to_public(), priv_jwk.into_public());
   }
 }

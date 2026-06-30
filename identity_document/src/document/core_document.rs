@@ -1645,13 +1645,12 @@ mod tests {
     assert!(doc.is_ok());
   }
 
-  #[test]
-  fn deserialize_relative_did_url() {
-    const ID: &str = "did:example:123";
-    const AUTHENTICATION: &str = "#key-1";
-    // The verification method types here are really Ed25519VerificationKey2020, changed to be compatible
-    // with the current version of this library.
-    let json_document = r###"{
+  mod method_ref {
+    use super::*;
+
+    // The verification method types here are really Ed25519VerificationKey2020, changed to be
+    // compatible with the current version of this library.
+    const JSON_DOCUMENT: &str = r###"{
       "@context": [
         "https://www.w3.org/ns/did/v1",
         "https://w3id.org/security/suites/ed25519-2020/v1"
@@ -1666,57 +1665,57 @@ mod tests {
         }
       ],
       "authentication": [
-        "#key-1"
-      ]
-    }"###;
-    let doc_result: std::result::Result<CoreDocument, Box<dyn std::error::Error>> =
-      CoreDocument::from_json(&json_document).map_err(Into::into);
-
-    assert!(doc_result.is_ok());
-    let doc = doc_result.unwrap();
-    assert_eq!(
-      doc.authentication().first(),
-      Some(&MethodRef::RelativeRefer(
-        DIDUrl::from_str(&format!("{ID}{AUTHENTICATION}")).unwrap()
-      )),
-    );
-
-    let re_serialized = serde_json::to_string(&doc).unwrap();
-    dbg!(&re_serialized);
-  }
-
-  #[test]
-  fn serialize_relative_did_url() {
-    const AUTHENTICATION: &str = "#key-1";
-    // The verification method types here are really Ed25519VerificationKey2020, changed to be compatible
-    // with the current version of this library.
-    let json_document = r###"{
-      "@context": [
-        "https://www.w3.org/ns/did/v1",
-        "https://w3id.org/security/suites/ed25519-2020/v1"
-      ],
-      "id": "did:example:123",
-      "verificationMethod": [
         {
-          "id": "did:example:1234#key1",
-          "controller": "did:example:1234",
+          "id": "did:example:123#embedded-key",
+          "controller": "did:example:123",
           "type": "Ed25519VerificationKey2018",
           "publicKeyBase58": "3M5RCDjPTWPkKSN3sxUmmMqHbmRPegYP1tjcKyrDbt9J"
-        }
-      ],
-      "authentication": [
+        },
+        "did:example:1234#key1",
         "#key-1"
       ]
     }"###;
-    let doc_result: std::result::Result<CoreDocument, Box<dyn std::error::Error>> =
-      CoreDocument::from_json(&json_document).map_err(Into::into);
-    assert!(doc_result.is_ok());
-    let doc = doc_result.unwrap();
 
-    let re_serialized = serde_json::to_string(&doc).unwrap();
-    let plain_json: serde_json::Value = serde_json::from_str(&re_serialized).unwrap();
+    #[test]
+    fn deserialize_method_ref_types() {
+      let deserialized: CoreDocument = CoreDocument::from_json(JSON_DOCUMENT).unwrap();
+      let auth: Vec<&MethodRef> = deserialized.authentication().iter().collect();
 
-    assert_eq!(plain_json["authentication"][0].as_str(), Some(AUTHENTICATION),);
+      assert!(matches!(
+        auth[0],
+        MethodRef::Embed(m) if m.id() == &DIDUrl::from_str("did:example:123#embedded-key").unwrap()
+      ));
+      assert_eq!(auth[1], &MethodRef::Refer(DIDUrl::from_str("did:example:1234#key1").unwrap()));
+      assert_eq!(auth[2], &MethodRef::RelativeRefer(DIDUrl::from_str("did:example:123#key-1").unwrap()));
+    }
+
+    #[test]
+    fn relative_refer_to_string() {
+      let doc: CoreDocument = CoreDocument::from_json(JSON_DOCUMENT).unwrap();
+      let auth: Vec<&MethodRef> = doc.authentication().iter().collect();
+
+      assert_eq!(auth[0].id().to_string(), "did:example:123#embedded-key");
+      assert_eq!(auth[1].id().to_string(), "did:example:1234#key1");
+      // url() strips the DID prefix, recovering the original relative reference
+      let MethodRef::RelativeRefer(did_url) = auth[2] else {
+        panic!("expected RelativeRefer");
+      };
+      assert_eq!(did_url.to_string(), "did:example:123#key-1");
+      assert_eq!(did_url.url().to_string(), "#key-1");
+    }
+
+    #[test]
+    fn serialize_method_ref_types() {
+      let deserialized: CoreDocument = CoreDocument::from_json(JSON_DOCUMENT).unwrap();
+      let serialized: serde_json::Value =
+        serde_json::from_str(&serde_json::to_string(&deserialized).unwrap()).unwrap();
+      let auth = &serialized["authentication"];
+
+      assert!(auth[0].is_object());
+      assert_eq!(auth[0]["id"].as_str(), Some("did:example:123#embedded-key"));
+      assert_eq!(auth[1].as_str(), Some("did:example:1234#key1"));
+      assert_eq!(auth[2].as_str(), Some("#key-1"));
+    }
   }
 
   #[test]

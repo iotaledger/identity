@@ -8,6 +8,7 @@ import {
     EdCurve,
     Jwk,
     JwkType,
+    MethodRef,
     MethodRelationship,
     MethodScope,
     MethodType,
@@ -312,6 +313,66 @@ describe("CoreDocument", function() {
             assert.deepStrictEqual(removed.toJSON(), resolved.toJSON());
             assert.deepStrictEqual(doc.resolveService(fragment1), undefined);
             assert.deepStrictEqual(doc.service().length, 0);
+        });
+    });
+    describe("#fromJSON / MethodRef types", function() {
+        const JSON_DOCUMENT = {
+            "@context": [
+                "https://www.w3.org/ns/did/v1",
+                "https://w3id.org/security/suites/ed25519-2020/v1",
+            ],
+            "id": "did:example:123",
+            "verificationMethod": [{
+                "id": "did:example:1234#key1",
+                "controller": "did:example:1234",
+                "type": "Ed25519VerificationKey2018",
+                "publicKeyBase58": "3M5RCDjPTWPkKSN3sxUmmMqHbmRPegYP1tjcKyrDbt9J",
+            }],
+            "authentication": [
+                {
+                    "id": "did:example:123#embedded-key",
+                    "controller": "did:example:123",
+                    "type": "Ed25519VerificationKey2018",
+                    "publicKeyBase58": "3M5RCDjPTWPkKSN3sxUmmMqHbmRPegYP1tjcKyrDbt9J",
+                },
+                "did:example:1234#key1",
+                "#key-1",
+            ],
+        };
+
+        it("deserializes all three MethodRef types", () => {
+            const auth = CoreDocument.fromJSON(JSON_DOCUMENT).authentication();
+
+            assert.strictEqual(auth[0].type, "embedded");
+            assert.strictEqual(auth[0].asVerificationMethod()!.id().toString(), "did:example:123#embedded-key");
+
+            assert.strictEqual(auth[1].type, "refer");
+            assert.strictEqual(auth[1].toString(), "did:example:1234#key1");
+
+            assert.strictEqual(auth[2].type, "relativeRefer");
+            assert.strictEqual(auth[2].toString(), "#key-1");
+            assert.strictEqual(auth[2].asDIDUrl()!.toString(), "did:example:123#key-1");
+        });
+
+        it("extracts relative reference string from RelativeRefer", () => {
+            const auth: MethodRef[] = CoreDocument.fromJSON(JSON_DOCUMENT).authentication();
+
+            assert.strictEqual(auth[0].asVerificationMethod()!.id().toString(), "did:example:123#embedded-key");
+            assert.strictEqual(auth[1].asDIDUrl()!.toString(), "did:example:1234#key1");
+            // asDIDUrl() returns the resolved absolute URL; toString() returns the original relative reference
+            assert.strictEqual(auth[2].asDIDUrl()!.toString(), "did:example:123#key-1");
+            assert.strictEqual(auth[2].toString(), "#key-1");
+        });
+
+        it("serializes all three MethodRef types correctly", () => {
+            const auth = CoreDocument.fromJSON(JSON_DOCUMENT).toJSON().authentication;
+
+            assert.strictEqual(typeof auth[0], "object");
+            assert.strictEqual(auth[0].id, "did:example:123#embedded-key");
+
+            assert.strictEqual(auth[1], "did:example:1234#key1");
+
+            assert.strictEqual(auth[2], "#key-1");
         });
     });
     describe("#properties", function() {

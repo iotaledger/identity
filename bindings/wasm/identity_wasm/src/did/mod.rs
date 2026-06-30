@@ -9,6 +9,7 @@ mod wasm_core_did;
 mod wasm_core_document;
 mod wasm_did_jwk_document_ext;
 mod wasm_did_url;
+mod wasm_method_ref;
 
 pub use self::jws_verification_options::*;
 pub use self::service::IService;
@@ -23,5 +24,6 @@ pub use self::wasm_core_document::PromiseJws;
 pub use self::wasm_core_document::PromiseJwt;
 pub use self::wasm_core_document::WasmCoreDocument;
 pub use self::wasm_did_url::WasmDIDUrl;
+pub use self::wasm_method_ref::WasmMethodRef;
 pub use did_compositejwk::*;
 pub use did_jwk::*;

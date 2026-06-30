@@ -1685,8 +1685,14 @@ mod tests {
         auth[0],
         MethodRef::Embed(m) if m.id() == &DIDUrl::from_str("did:example:123#embedded-key").unwrap()
       ));
-      assert_eq!(auth[1], &MethodRef::Refer(DIDUrl::from_str("did:example:1234#key1").unwrap()));
-      assert_eq!(auth[2], &MethodRef::RelativeRefer(DIDUrl::from_str("did:example:123#key-1").unwrap()));
+      assert_eq!(
+        auth[1],
+        &MethodRef::Refer(DIDUrl::from_str("did:example:1234#key1").unwrap())
+      );
+      assert_eq!(
+        auth[2],
+        &MethodRef::RelativeRefer(DIDUrl::from_str("did:example:123#key-1").unwrap())
+      );
     }
 
     #[test]
@@ -1707,8 +1713,7 @@ mod tests {
     #[test]
     fn serialize_method_ref_types() {
       let deserialized: CoreDocument = CoreDocument::from_json(JSON_DOCUMENT).unwrap();
-      let serialized: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&deserialized).unwrap()).unwrap();
+      let serialized: serde_json::Value = serde_json::from_str(&serde_json::to_string(&deserialized).unwrap()).unwrap();
       let auth = &serialized["authentication"];
 
       assert!(auth[0].is_object());

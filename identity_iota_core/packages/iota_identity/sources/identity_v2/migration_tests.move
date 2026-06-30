@@ -19,7 +19,10 @@ const CONTROLLER_C: address = @0x3;
 //    - Controller A: address 0x1, weight 1;
 //    - Controller B: address 0x2, weight 1;
 //    - Controller C: address 0x3, weight 2;
-fun make_identity(clock: &Clock, ctx: &mut TxContext) {
+/// Creates an identity with 3 controllers threshold is 2:
+///    - Controller A: address 0x1, weight 1;
+///    - Controller B: address 0x2, weight 1;
+///    - Controller C: address 0x3, weight 2;
     identity::new_with_controllers(
         option::some(b"DID"),
         vec_map::from_keys_values(

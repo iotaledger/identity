@@ -6,9 +6,9 @@ use std::str::FromStr as _;
 
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::TypeTag;
 
@@ -31,13 +31,13 @@ pub(crate) fn propose_config_change<I1, I2>(
   package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error>
 where
-  I1: IntoIterator<Item = (IotaAddress, u64)>,
+  I1: IntoIterator<Item = (Address, u64)>,
   I2: IntoIterator<Item = (ObjectId, u64)>,
 {
   let mut ptb = Ptb::new();
 
   let controllers_to_add = {
-    let (addresses, vps): (Vec<IotaAddress>, Vec<u64>) = controllers_to_add.into_iter().unzip();
+    let (addresses, vps): (Vec<Address>, Vec<u64>) = controllers_to_add.into_iter().unzip();
     let addresses = ptb.pure(addresses).map_err(rebased_err)?;
     let vps = ptb.pure(vps).map_err(rebased_err)?;
 

@@ -13,14 +13,14 @@ use async_trait::async_trait;
 use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::id::UID;
-use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI;
 use iota_interaction::MoveType;
 use iota_interaction::OptionalSync;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::Owner;
+use iota_sdk_types::ProgrammableTransaction;
 use iota_sdk_types::TypeTag;
 use itertools::Itertools as _;
 use product_common::core_client::CoreClientReadOnly;
@@ -186,7 +186,7 @@ impl ControllerCap {
   /// and send it to `recipient`.
   pub fn delegate(
     &self,
-    recipient: IotaAddress,
+    recipient: Address,
     permissions: Option<DelegatePermissions>,
   ) -> Option<TransactionBuilder<DelegateToken>> {
     if !self.can_delegate {
@@ -230,7 +230,7 @@ impl From<IotaControllerCap> for ControllerCap {
 #[derive(Debug, Deserialize)]
 #[allow(unused)]
 struct Referent<T> {
-  id: IotaAddress,
+  id: Address,
   value: Option<T>,
 }
 
@@ -390,20 +390,20 @@ impl BitXorAssign for DelegatePermissions {
 pub struct DelegateToken {
   cap_id: ObjectId,
   permissions: DelegatePermissions,
-  recipient: IotaAddress,
+  recipient: Address,
 }
 
 impl DelegateToken {
   /// Creates a new [DelegateToken] transaction that will create a new [DelegationToken] with all permissions
   /// for `controller_cap` and send it to `recipient`.
-  pub fn new(controller_cap: &ControllerCap, recipient: IotaAddress) -> Self {
+  pub fn new(controller_cap: &ControllerCap, recipient: Address) -> Self {
     Self::new_with_permissions(controller_cap, recipient, DelegatePermissions::default())
   }
 
   /// Same as [DelegateToken::new] but permissions for the new token can be specified.
   pub fn new_with_permissions(
     controller_cap: &ControllerCap,
-    recipient: IotaAddress,
+    recipient: Address,
     permissions: DelegatePermissions,
   ) -> Self {
     Self {
@@ -681,7 +681,7 @@ impl Transaction for DeleteDelegationToken {
 #[non_exhaustive]
 pub struct NotAController {
   /// The address that attempted to access an Identity.
-  pub address: IotaAddress,
+  pub address: Address,
   /// The identity that tried to be accessed.
   pub identity: IotaDID,
 }

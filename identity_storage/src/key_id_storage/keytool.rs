@@ -3,8 +3,8 @@
 
 use async_trait::async_trait;
 use identity_verification::jwu::encode_b64;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::KeytoolStorage;
+use iota_sdk_types::Address;
 
 use crate::KeyId;
 
@@ -34,7 +34,7 @@ impl KeyIdStorage for KeytoolStorage {
       .get_key_by_alias(&alias)
       .map_err(|e| KeyIdStorageError::new(KeyIdStorageErrorKind::RetryableIOFailure).with_source(e))?
       .ok_or(KeyIdStorageErrorKind::KeyIdNotFound)?;
-    let address = IotaAddress::from(&pk);
+    let address = Address::from(&pk);
 
     Ok(KeyId::new(address.to_string()))
   }

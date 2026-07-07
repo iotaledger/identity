@@ -7,8 +7,8 @@ use std::str::FromStr;
 
 use identity_iota::iota::rebased::client::IdentityClientReadOnly;
 use identity_iota::iota::rebased::migration::Identity;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction_ts::bindings::WasmIotaClient;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
 use product_common::core_client::CoreClientReadOnly as _;
 use wasm_bindgen::prelude::*;
@@ -142,7 +142,7 @@ impl WasmIdentityClientReadOnly {
   /// @throws {Error} when the passed `address` string is not a valid IOTA address.
   #[wasm_bindgen(js_name = didsControlledBy)]
   pub async fn dids_controlled_by(&self, address: &str) -> Result<Vec<WasmIotaDID>, js_sys::Error> {
-    let address = IotaAddress::from_str(address).map_err(|e| js_sys::Error::new(&format!("{e:#}")))?;
+    let address = Address::from_str(address).map_err(|e| js_sys::Error::new(&format!("{e:#}")))?;
     let dids = self
       .0
       .dids_controlled_by(address)

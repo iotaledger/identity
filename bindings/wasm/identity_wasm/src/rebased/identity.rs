@@ -9,10 +9,10 @@ use identity_iota::iota::rebased::migration::IdentityBuilder;
 use identity_iota::iota::rebased::migration::OnChainIdentity;
 use identity_iota::iota::rebased::Error as RebasedError;
 use identity_iota::iota::IotaDocument;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
 use iota_interaction_ts::wasm_error::WasmError;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
 use js_sys::Object;
 use product_common::bindings::core_client::WasmManagedCoreClientReadOnly;
@@ -131,9 +131,7 @@ impl WasmOnChainIdentity {
     address: &str,
     client: &WasmIdentityClient,
   ) -> Result<Option<WasmControllerToken>> {
-    let address = address
-      .parse::<IotaAddress>()
-      .map_err(|e| JsError::new(&e.to_string()))?;
+    let address = address.parse::<Address>().map_err(|e| JsError::new(&e.to_string()))?;
     let maybe_controller_token = self
       .0
       .read()

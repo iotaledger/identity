@@ -11,8 +11,8 @@ use identity_iota::verification::jws::JwsAlgorithm;
 use identity_iota::verification::MethodScope;
 use identity_storage::JwkDocumentExt as _;
 use identity_storage::KeyType;
-use iota_sdk::types::base_types::IotaAddress;
 use iota_sdk::types::crypto::SignatureScheme;
+use iota_sdk_types::Address;
 
 /// This examples showcases how the Identity library can leverage IOTA Keytool
 /// for all operations that require access to any key-material.
@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
   // We generate a new Ed25519 key handled by the keytool, that we will use to interact with the ledger
   // throughout this example.
   let (pk, _alias) = keytool.generate_key(SignatureScheme::ED25519)?;
-  let address = IotaAddress::from(&pk);
+  let address = Address::from(&pk);
   println!("Created new address {address}!");
 
   // Let's request some funds for our new address.

@@ -10,9 +10,9 @@ use std::collections::VecDeque;
 
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::CallArg;
-use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_sdk_types::Argument;
 use iota_sdk_types::Command;
+use iota_sdk_types::ProgrammableTransaction;
 
 pub(crate) fn ptb_merge_tx_with_inputs_replacement(
   ptb: &mut Ptb,
@@ -109,10 +109,10 @@ where
 mod tests {
   use super::*;
   use iota_interaction::ident_str;
-  use iota_interaction::types::base_types::IotaAddress;
   use iota_interaction::types::transaction::SharedObjectRef;
   use iota_interaction::types::IOTA_FRAMEWORK_PACKAGE_ID;
   use iota_interaction::IOTA_COIN_TYPE;
+  use iota_sdk_types::Address;
   use iota_sdk_types::ObjectId;
 
   /// Returns a PTB with a single call to `0x2::coin::zero`, together with its result.
@@ -134,7 +134,7 @@ mod tests {
     let mut ptb = Ptb::new();
     let pt = {
       let (mut ptb, coin) = empty_iota_coin_ptb();
-      ptb.transfer_arg(IotaAddress::random(), coin);
+      ptb.transfer_arg(Address::random(), coin);
       ptb.finish()
     };
 
@@ -144,7 +144,7 @@ mod tests {
 
   #[test]
   fn merging_pt_with_replacements_works() {
-    let recipient = IotaAddress::random();
+    let recipient = Address::random();
     let object_to_replace = CallArg::Shared(SharedObjectRef {
       object_id: ObjectId::random(),
       initial_shared_version: 0.into(),

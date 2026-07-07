@@ -17,9 +17,9 @@ use product_common::transaction::transaction_builder::TransactionBuilder;
 use crate::rebased::migration::Proposal;
 use async_trait::async_trait;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::collection_types::Entry;
 use iota_interaction::types::collection_types::VecMap;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::TypeTag;
 use serde::Deserialize;
@@ -45,7 +45,7 @@ use super::ProposalT;
 #[serde(try_from = "Modify")]
 pub struct ConfigChange {
   threshold: Option<u64>,
-  controllers_to_add: HashMap<IotaAddress, u64>,
+  controllers_to_add: HashMap<Address, u64>,
   controllers_to_remove: HashSet<ObjectId>,
   controllers_voting_power: HashMap<ObjectId, u64>,
 }
@@ -64,7 +64,7 @@ impl ProposalBuilder<'_, '_, ConfigChange> {
   }
 
   /// Makes address `address` a new controller with voting power `voting_power`.
-  pub fn add_controller(mut self, address: IotaAddress, voting_power: u64) -> Self {
+  pub fn add_controller(mut self, address: Address, voting_power: u64) -> Self {
     self.deref_mut().add_controller(address, voting_power);
     self
   }
@@ -72,7 +72,7 @@ impl ProposalBuilder<'_, '_, ConfigChange> {
   /// Adds multiple controllers. See [`ProposalBuilder::add_controller`].
   pub fn add_multiple_controllers<I>(mut self, controllers: I) -> Self
   where
-    I: IntoIterator<Item = (IotaAddress, u64)>,
+    I: IntoIterator<Item = (Address, u64)>,
   {
     self.deref_mut().add_multiple_controllers(controllers);
     self
@@ -129,8 +129,8 @@ impl ConfigChange {
     self.threshold
   }
 
-  /// Returns the controllers that will be added, as the map [IotaAddress] -> [u64].
-  pub fn controllers_to_add(&self) -> &HashMap<IotaAddress, u64> {
+  /// Returns the controllers that will be added, as the map [Address] -> [u64].
+  pub fn controllers_to_add(&self) -> &HashMap<Address, u64> {
     &self.controllers_to_add
   }
 
@@ -139,20 +139,20 @@ impl ConfigChange {
     &self.controllers_to_remove
   }
 
-  /// Returns the controllers that will be updated as the map [IotaAddress] -> [u64].
+  /// Returns the controllers that will be updated as the map [Address] -> [u64].
   pub fn controllers_to_update(&self) -> &HashMap<ObjectId, u64> {
     &self.controllers_voting_power
   }
 
   /// Adds a controller.
-  pub fn add_controller(&mut self, address: IotaAddress, voting_power: u64) {
+  pub fn add_controller(&mut self, address: Address, voting_power: u64) {
     self.controllers_to_add.insert(address, voting_power);
   }
 
   /// Adds many controllers.
   pub fn add_multiple_controllers<I>(&mut self, controllers: I)
   where
-    I: IntoIterator<Item = (IotaAddress, u64)>,
+    I: IntoIterator<Item = (Address, u64)>,
   {
     for (addr, vp) in controllers {
       self.add_controller(addr, vp)
@@ -316,7 +316,7 @@ impl ProposalT for Proposal<ConfigChange> {
 #[derive(Debug, Deserialize)]
 struct Modify {
   threshold: Option<Number<u64>>,
-  controllers_to_add: VecMap<IotaAddress, Number<u64>>,
+  controllers_to_add: VecMap<Address, Number<u64>>,
   controllers_to_remove: HashSet<ObjectId>,
   controllers_to_update: VecMap<ObjectId, Number<u64>>,
 }

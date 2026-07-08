@@ -16,7 +16,7 @@ iota-sdk = { git = "https://github.com/iotaledger/iota.git", tag = "v1.26.1" }
 iota-sdk-legacy = { package = "iota-sdk", version = "1.0", default-features = false, features = ["tls", "client", "stronghold"] }
 iota-sdk-types.workspace = true
 json-proof-token.workspace = true
-notarization = { git = "https://github.com/iotaledger/notarization.git", tag = "v0.1.24", features = ["irl"] }
+notarization = { git = "https://github.com/iotaledger/notarization.git", branch = "feat/iota-v1.26.1-upstream-merge", features = ["irl"] }
 product_common = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1.26.1-upstream-merge", package = "product_common", features = ["core-client", "transaction"] }
 rand = "0.8.5"
 sd-jwt = { package = "sd-jwt-payload", version = "0.5.1", default-features = false, features = ["sha"] }

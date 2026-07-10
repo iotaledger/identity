@@ -120,7 +120,7 @@ impl WasmControllerCap {
   /// If this token can be delegated, this function will return
   /// a {@link DelegationToken} Transaction that will mint a new {@link DelegationToken}
   /// and send it to `recipient`.
-  #[wasm_bindgen]
+  #[wasm_bindgen(unchecked_return_type = "TransactionBuilder<DelegationToken>")]
   pub fn delegate(
     &self,
     recipient: &str,
@@ -195,8 +195,13 @@ impl WasmDelegateToken {
   }
 
   #[wasm_bindgen(js_name = buildProgrammableTransaction)]
-  pub async fn build_programmable_transaction(&self, client: &WasmIdentityClientReadOnly) -> Result<Vec<u8>> {
-    let pt = self.0.build_programmable_transaction(&client.0).await.wasm_result()?;
+  pub async fn build_programmable_transaction(&self, client: &WasmCoreClientReadOnly) -> Result<Vec<u8>> {
+    let managed_client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
+    let pt = self
+      .0
+      .build_programmable_transaction(&managed_client)
+      .await
+      .wasm_result()?;
     bcs::to_bytes(&pt).wasm_result()
   }
 
@@ -204,10 +209,11 @@ impl WasmDelegateToken {
   pub async fn apply(
     self,
     wasm_effects: &WasmIotaTransactionBlockEffects,
-    client: &WasmIdentityClientReadOnly,
+    client: &WasmCoreClientReadOnly,
   ) -> Result<WasmDelegationToken> {
+    let managed_client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
     let mut effects = wasm_effects.clone().into();
-    let apply_result = self.0.apply(&mut effects, &client.0).await;
+    let apply_result = self.0.apply(&mut effects, &managed_client).await;
     let rem_wasm_effects = WasmIotaTransactionBlockEffects::from(&effects);
     Object::assign(wasm_effects, &rem_wasm_effects);
 
@@ -295,8 +301,13 @@ impl WasmDeleteDelegationToken {
   }
 
   #[wasm_bindgen(js_name = buildProgrammableTransaction)]
-  pub async fn build_programmable_transaction(&self, client: &WasmIdentityClientReadOnly) -> Result<Vec<u8>> {
-    let pt = self.0.build_programmable_transaction(&client.0).await.wasm_result()?;
+  pub async fn build_programmable_transaction(&self, client: &WasmCoreClientReadOnly) -> Result<Vec<u8>> {
+    let managed_client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
+    let pt = self
+      .0
+      .build_programmable_transaction(&managed_client)
+      .await
+      .wasm_result()?;
     bcs::to_bytes(&pt).wasm_result()
   }
 
@@ -304,10 +315,11 @@ impl WasmDeleteDelegationToken {
   pub async fn apply(
     self,
     wasm_effects: &WasmIotaTransactionBlockEffects,
-    client: &WasmIdentityClientReadOnly,
+    client: &WasmCoreClientReadOnly,
   ) -> Result<()> {
+    let managed_client = WasmManagedCoreClientReadOnly::from_wasm(client)?;
     let mut effects = wasm_effects.clone().into();
-    let apply_result = self.0.apply(&mut effects, &client.0).await;
+    let apply_result = self.0.apply(&mut effects, &managed_client).await;
     let rem_wasm_effects = WasmIotaTransactionBlockEffects::from(&effects);
     Object::assign(wasm_effects, &rem_wasm_effects);
 

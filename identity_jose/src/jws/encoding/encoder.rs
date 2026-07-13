@@ -104,9 +104,9 @@ impl<'payload> CompactJwsEncoder<'payload> {
   pub fn into_jws(self, signature: &[u8]) -> String {
     let signature = jwu::encode_b64(signature);
     if let Some(payload) = self.processed_payload {
-      format!("{}.{}.{}", self.protected_header, payload, &signature)
+      format!("{}.{}.{}", self.protected_header, payload, signature)
     } else {
-      format!("{}..{}", self.protected_header, &signature)
+      format!("{}..{}", self.protected_header, signature)
     }
   }
 }

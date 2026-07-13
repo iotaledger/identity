@@ -110,11 +110,11 @@ impl TryFrom<&Status> for RevocationTimeframeStatus {
     // serialize into String to ensure macros work properly
     // see [issue](https://github.com/iddm/serde-aux/issues/34#issuecomment-1508207530) in `serde-aux`
     let json_status: String = serde_json::to_string(&status)
-      .map_err(|err| Self::Error::InvalidStatus(format!("failed to read `Status`; {}", &err.to_string())))?;
+      .map_err(|err| Self::Error::InvalidStatus(format!("failed to read `Status`; {}", err.to_string())))?;
     serde_json::from_str(&json_status).map_err(|err| {
       Self::Error::InvalidStatus(format!(
         "failed to convert `Status` to `RevocationTimeframeStatus`; {}",
-        &err.to_string(),
+        err.to_string(),
       ))
     })
   }
@@ -157,7 +157,7 @@ impl TryFrom<Status> for VerifierRevocationTimeframeStatus {
     Ok(Self((&status).try_into().map_err(|err: Error| {
       Self::Error::InvalidStatus(format!(
         "failed to convert `Status` to `VerifierRevocationTimeframeStatus`; {}",
-        &err.to_string()
+        err.to_string()
       ))
     })?))
   }

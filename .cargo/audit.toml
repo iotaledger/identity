@@ -9,4 +9,6 @@ ignore = [
   "RUSTSEC-2023-0065", # temporary ignore until fix is provided
   "RUSTSEC-2023-0071", # temporary ignore until fix is provided
   "RUSTSEC-2024-0437", # temporary ignore until fix is provided
+  "RUSTSEC-2026-0194", # should be fixed by next IOTA version
+  "RUSTSEC-2026-0195", # should be fixed by next IOTA version
 ]

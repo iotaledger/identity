@@ -3,11 +3,11 @@
 
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
 
 use crate::rebased::iota::move_calls::utils;
@@ -16,7 +16,7 @@ use crate::rebased::Error;
 
 pub(crate) async fn delegate_controller_cap(
   controller_cap: ObjectRef,
-  recipient: IotaAddress,
+  recipient: Address,
   permissions: u32,
   package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {

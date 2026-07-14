@@ -11,14 +11,14 @@ use identity_iota::iota::rebased::proposals::ControllerExecution;
 use identity_iota::iota::rebased::proposals::ControllerIntentFnT;
 use identity_iota::iota::rebased::proposals::ProposalResult;
 use identity_iota::iota::rebased::proposals::ProposalT as _;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
-use iota_interaction::types::transaction::ProgrammableTransaction;
-use iota_interaction::types::transaction::TransactionKind;
 use iota_interaction_ts::bindings::WasmIotaTransactionBlockEffects;
 use iota_interaction_ts::core_client::WasmCoreClientReadOnly;
+use iota_sdk_types::transaction::TransactionKind;
+use iota_sdk_types::Address;
 use iota_sdk_types::Argument;
 use iota_sdk_types::ObjectId;
+use iota_sdk_types::ProgrammableTransaction;
 use product_common::bindings::core_client::WasmManagedCoreClientReadOnly;
 use product_common::bindings::transaction::WasmTransactionBuilder;
 use product_common::core_client::CoreClientReadOnly;
@@ -98,7 +98,7 @@ impl WasmControllerExecutionFn {
 #[wasm_bindgen(js_name = ControllerExecution, inspectable, getter_with_clone)]
 pub struct WasmControllerExecution {
   controller_cap: ObjectId,
-  identity: IotaAddress,
+  identity: Address,
   pub controller_exec_fn: Option<WasmControllerExecutionFn>,
 }
 

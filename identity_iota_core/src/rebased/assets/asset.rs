@@ -17,17 +17,17 @@ use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::base_types::SequenceNumber;
 use iota_interaction::types::id::UID;
-use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::IotaClientTrait;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;
 use iota_interaction::MoveType;
 use iota_interaction::OptionalSync;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::Owner;
+use iota_sdk_types::ProgrammableTransaction;
 use iota_sdk_types::StructTag;
 use iota_sdk_types::TypeTag;
 use product_common::core_client::CoreClientReadOnly;
@@ -48,8 +48,8 @@ pub struct AuthenticatedAsset<T> {
     bound(deserialize = "T: for<'a> Deserialize<'a>")
   )]
   inner: T,
-  owner: IotaAddress,
-  origin: IotaAddress,
+  owner: Address,
+  origin: Address,
   mutable: bool,
   transferable: bool,
   deletable: bool,
@@ -124,7 +124,7 @@ impl<T: MoveType + Send + Sync> AuthenticatedAsset<T> {
   /// * Returns an [`Error::InvalidConfig`] if this asset is not transferable.
   pub fn transfer(
     self,
-    recipient: IotaAddress,
+    recipient: Address,
     client: &IdentityClientReadOnly,
   ) -> Result<TransactionBuilder<TransferAsset<T>>, Error> {
     if !self.transferable {
@@ -239,7 +239,7 @@ where
   }
 }
 
-/// Proposal for the transfer of an [`AuthenticatedAsset`]'s ownership from one [`IotaAddress`] to another.
+/// Proposal for the transfer of an [`AuthenticatedAsset`]'s ownership from one [`Address`] to another.
 ///
 /// # Detailed Workflow
 /// A [`TransferProposal`] is a **shared** _Move_ object that represents a request to transfer ownership
@@ -256,9 +256,9 @@ pub struct TransferProposal {
   id: UID,
   asset_id: ObjectId,
   sender_cap_id: ObjectId,
-  sender_address: IotaAddress,
+  sender_address: Address,
   recipient_cap_id: ObjectId,
-  recipient_address: IotaAddress,
+  recipient_address: Address,
   done: bool,
 }
 
@@ -380,12 +380,12 @@ impl TransferProposal {
   }
 
   /// Returns this [`TransferProposal`]'s `sender`'s address.
-  pub fn sender(&self) -> IotaAddress {
+  pub fn sender(&self) -> Address {
     self.sender_address
   }
 
   /// Returns this [`TransferProposal`]'s `recipient`'s address.
-  pub fn recipient(&self) -> IotaAddress {
+  pub fn recipient(&self) -> Address {
     self.recipient_address
   }
 
@@ -622,14 +622,14 @@ where
 #[derive(Debug)]
 pub struct TransferAsset<T> {
   asset: AuthenticatedAsset<T>,
-  recipient: IotaAddress,
+  recipient: Address,
   cached_ptb: OnceCell<ProgrammableTransaction>,
   package: ObjectId,
 }
 
 impl<T: MoveType + Send + Sync> TransferAsset<T> {
   /// Returns a [Transaction] to transfer `asset` to `recipient`.
-  pub fn new(asset: AuthenticatedAsset<T>, recipient: IotaAddress, client: &IdentityClientReadOnly) -> Self {
+  pub fn new(asset: AuthenticatedAsset<T>, recipient: Address, client: &IdentityClientReadOnly) -> Self {
     Self {
       asset,
       recipient,

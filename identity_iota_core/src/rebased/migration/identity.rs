@@ -10,10 +10,10 @@ use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
 use crate::rebased::proposals::AccessSubIdentityBuilder;
 use iota_interaction::rpc_types::IotaObjectResponseError;
-use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::IotaKeySignature;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;
 use iota_interaction::OptionalSync;
+use iota_sdk_types::ProgrammableTransaction;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
@@ -40,8 +40,8 @@ use iota_interaction::rpc_types::IotaParsedMoveObject;
 use iota_interaction::rpc_types::IotaPastObjectResponse;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::id::UID;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::Owner;
 use iota_sdk_types::StructTag;
@@ -178,7 +178,7 @@ impl OnChainIdentity {
   /// [None] is returned if `address` doesn't own a valid [ControllerToken].
   pub async fn get_controller_token_for_address(
     &self,
-    address: IotaAddress,
+    address: Address,
     client: &(impl CoreClientReadOnly + OptionalSync),
   ) -> Result<Option<ControllerToken>, Error> {
     let maybe_controller_cap = client
@@ -596,7 +596,7 @@ impl From<OnChainIdentity> for IotaDocument {
 pub struct IdentityBuilder {
   did_doc: IotaDocument,
   threshold: Option<u64>,
-  controllers: HashMap<IotaAddress, (u64, bool)>,
+  controllers: HashMap<Address, (u64, bool)>,
 }
 
 impl IdentityBuilder {
@@ -613,14 +613,14 @@ impl IdentityBuilder {
   }
 
   /// Gives `address` the capability to act as a controller with voting power `voting_power`.
-  pub fn controller(mut self, address: IotaAddress, voting_power: u64) -> Self {
+  pub fn controller(mut self, address: Address, voting_power: u64) -> Self {
     self.controllers.insert(address, (voting_power, false));
     self
   }
 
   /// Gives `address` the capability to act as a controller with voting power `voting_power` and
   /// the ability to delegate its access to third parties.
-  pub fn controller_with_delegation(mut self, address: IotaAddress, voting_power: u64) -> Self {
+  pub fn controller_with_delegation(mut self, address: Address, voting_power: u64) -> Self {
     self.controllers.insert(address, (voting_power, true));
     self
   }
@@ -634,7 +634,7 @@ impl IdentityBuilder {
   /// Sets multiple controllers in a single step. See [`IdentityBuilder::controller`].
   pub fn controllers<I>(self, controllers: I) -> Self
   where
-    I: IntoIterator<Item = (IotaAddress, u64)>,
+    I: IntoIterator<Item = (Address, u64)>,
   {
     controllers
       .into_iter()
@@ -647,7 +647,7 @@ impl IdentityBuilder {
   /// A `true` value as the tuple's third value means the controller *CAN* delegate its access.
   pub fn controllers_with_delegation<I>(self, controllers: I) -> Self
   where
-    I: IntoIterator<Item = (IotaAddress, u64, bool)>,
+    I: IntoIterator<Item = (Address, u64, bool)>,
   {
     controllers.into_iter().fold(self, |builder, (addr, vp, can_delegate)| {
       if can_delegate {

@@ -8,13 +8,13 @@ use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::id::UID;
-use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::types::STARDUST_PACKAGE_ID;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;
 use iota_interaction::OptionalSync;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
+use iota_sdk_types::ProgrammableTransaction;
 use iota_sdk_types::TypeTag;
 
 use product_common::core_client::CoreClientReadOnly;
@@ -46,17 +46,17 @@ pub struct UnmigratedAlias {
   pub id: UID,
 
   /// The last State Controller address assigned before the migration.
-  pub legacy_state_controller: Option<IotaAddress>,
+  pub legacy_state_controller: Option<Address>,
   /// A counter increased by 1 every time the alias was state transitioned.
   pub state_index: u32,
   /// State metadata that can be used to store additional information.
   pub state_metadata: Option<Vec<u8>>,
 
   /// The sender feature.
-  pub sender: Option<IotaAddress>,
+  pub sender: Option<Address>,
 
   /// The immutable issuer feature.
-  pub immutable_issuer: Option<IotaAddress>,
+  pub immutable_issuer: Option<Address>,
   /// The immutable metadata feature.
   pub immutable_metadata: Option<Vec<u8>>,
 }

@@ -12,7 +12,7 @@ use serde::Deserialize;
 use tokio::process::Command;
 
 use crate::rebased::Error;
-use iota_interaction::types::base_types::IotaAddress;
+use iota_sdk_types::Address;
 
 const FUND_WITH_ACTIVE_ADDRESS_FUNDING_TX_BUDGET: u64 = 5_000_000;
 const FUND_WITH_ACTIVE_ADDRESS_FUNDING_VALUE: u64 = 500_000_000;
@@ -51,7 +51,7 @@ fn unpack_command_output(output: &Output, task: &str) -> anyhow::Result<String> 
 /// Notice, that this is a setting mostly intended for internal test use and must be used with care.
 /// For details refer to `identity_iota_core`'s README.md.
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn request_funds(address: &IotaAddress) -> anyhow::Result<()> {
+pub async fn request_funds(address: &Address) -> anyhow::Result<()> {
   let fund_with_active_address = std::env::var("IOTA_IDENTITY_FUND_WITH_ACTIVE_ADDRESS")
     .map(|v| !v.is_empty() && v.to_lowercase() == "true")
     .unwrap_or(false);

@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use iota_interaction::ident_str;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::OptionalSend;
 use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk_types::Address;
 use iota_sdk_types::Argument;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::TypeTag;
@@ -40,7 +40,7 @@ pub(crate) async fn new_with_controllers<C>(
   package_id: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error>
 where
-  C: IntoIterator<Item = (IotaAddress, u64, bool)> + OptionalSend,
+  C: IntoIterator<Item = (Address, u64, bool)> + OptionalSend,
 {
   use itertools::Either;
   use itertools::Itertools as _;
@@ -56,7 +56,7 @@ where
       }
     });
 
-  let mut make_vec_map = |controllers: Vec<(IotaAddress, u64)>| -> Result<Argument, Error> {
+  let mut make_vec_map = |controllers: Vec<(Address, u64)>| -> Result<Argument, Error> {
     let (ids, vps): (Vec<_>, Vec<_>) = controllers.into_iter().unzip();
     let ids = ptb.pure(ids).map_err(|e| Error::InvalidArgument(e.to_string()))?;
     let vps = ptb.pure(vps).map_err(|e| Error::InvalidArgument(e.to_string()))?;

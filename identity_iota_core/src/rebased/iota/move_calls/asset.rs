@@ -5,7 +5,6 @@ use serde::Serialize;
 
 use crate::rebased::Error;
 use iota_interaction::ident_str;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::base_types::SequenceNumber;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
@@ -14,6 +13,7 @@ use iota_interaction::types::transaction::SharedObjectRef;
 use iota_interaction::MoveType;
 use iota_interaction::ProgrammableTransactionBcs;
 use iota_interaction::TypedValue;
+use iota_sdk_types::Address;
 use iota_sdk_types::Argument;
 use iota_sdk_types::Command;
 use iota_sdk_types::ObjectId;
@@ -90,7 +90,7 @@ where
 
 pub(crate) fn transfer<T: MoveType>(
   asset: ObjectRef,
-  recipient: IotaAddress,
+  recipient: Address,
   package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = ProgrammableTransactionBuilder::new();

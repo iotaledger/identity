@@ -18,7 +18,7 @@ pub use update_did::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use identity_iota::iota_interaction::types::base_types::IotaAddress;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
 use js_sys::JsString;
 use js_sys::Reflect;
@@ -63,16 +63,16 @@ impl From<(String, String)> for StringCouple {
   }
 }
 
-impl TryFrom<MapStringNumber> for HashMap<IotaAddress, u64> {
+impl TryFrom<MapStringNumber> for HashMap<Address, u64> {
   type Error = JsValue;
   fn try_from(value: MapStringNumber) -> Result<Self, Self::Error> {
     Ok(serde_wasm_bindgen::from_value(value.into())?)
   }
 }
 
-impl TryFrom<&'_ HashMap<IotaAddress, u64>> for MapStringNumber {
+impl TryFrom<&'_ HashMap<Address, u64>> for MapStringNumber {
   type Error = JsValue;
-  fn try_from(value: &'_ HashMap<IotaAddress, u64>) -> Result<Self, Self::Error> {
+  fn try_from(value: &'_ HashMap<Address, u64>) -> Result<Self, Self::Error> {
     let js_value = serde_wasm_bindgen::to_value(value)?;
     js_value.dyn_into()
   }

@@ -24,14 +24,14 @@ use iota_interaction::rpc_types::IotaObjectData;
 use iota_interaction::rpc_types::IotaObjectDataFilter;
 use iota_interaction::rpc_types::IotaObjectResponseQuery;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::crypto::PublicKey;
-use iota_interaction::types::transaction::ProgrammableTransaction;
 #[cfg(not(target_arch = "wasm32"))]
 use iota_interaction::IotaClient;
 #[cfg(target_arch = "wasm32")]
 use iota_interaction_ts::bindings::WasmIotaClient as IotaClient;
+use iota_sdk_types::Address;
+use iota_sdk_types::ProgrammableTransaction;
 use iota_sdk_types::StructTag;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
@@ -205,10 +205,10 @@ where
     self.public_key.as_ref().expect("public_key is set")
   }
 
-  /// Returns the [IotaAddress] wrapped by this client.
+  /// Returns the [Address] wrapped by this client.
   #[inline(always)]
-  pub fn address(&self) -> IotaAddress {
-    IotaAddress::from(self.public_key())
+  pub fn address(&self) -> Address {
+    Address::from(self.public_key())
   }
 
   /// Returns the list of **all** unique DIDs the address wrapped by this client can access as a controller.
@@ -442,8 +442,8 @@ impl<S> CoreClient<S> for IdentityClient<S>
 where
   S: Signer<IotaKeySignature> + OptionalSync,
 {
-  fn sender_address(&self) -> IotaAddress {
-    IotaAddress::from(self.public_key())
+  fn sender_address(&self) -> Address {
+    Address::from(self.public_key())
   }
 
   fn signer(&self) -> &S {
@@ -471,13 +471,13 @@ pub fn get_sender_public_key(sender_public_jwk: &Jwk) -> Result<Vec<u8>, Error> 
 #[derive(Debug, Clone)]
 pub struct PublishDidDocument {
   did_document: IotaDocument,
-  controller: IotaAddress,
+  controller: Address,
   cached_ptb: OnceCell<ProgrammableTransaction>,
 }
 
 impl PublishDidDocument {
   /// Creates a new [PublishDidDocument] transaction.
-  pub fn new(did_document: IotaDocument, controller: IotaAddress) -> Self {
+  pub fn new(did_document: IotaDocument, controller: Address) -> Self {
     Self {
       did_document,
       controller,

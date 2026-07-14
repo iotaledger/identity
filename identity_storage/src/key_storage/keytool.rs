@@ -6,10 +6,10 @@ use identity_verification::jwk::FromJwk as _;
 use identity_verification::jwk::Jwk;
 use identity_verification::jwk::ToJwk as _;
 use identity_verification::jws::JwsAlgorithm;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::crypto::IotaKeyPair;
 use iota_interaction::types::crypto::SignatureScheme;
 use iota_interaction::KeytoolStorage;
+use iota_sdk_types::Address;
 
 use super::JwkGenOutput;
 use super::JwkStorage;
@@ -36,7 +36,7 @@ impl JwkStorage for KeytoolStorage {
       .generate_key(key_scheme)
       .map_err(|e| KeyStorageError::new(KeyStorageErrorKind::Unspecified).with_source(e))?;
 
-    let address = IotaAddress::from(&pk);
+    let address = Address::from(&pk);
     let mut jwk = pk
       .to_jwk()
       .map_err(|e| KeyStorageError::new(KeyStorageErrorKind::Unspecified).with_source(e))?;
@@ -56,7 +56,7 @@ impl JwkStorage for KeytoolStorage {
       .insert_key(sk)
       .map_err(|e| KeyStorageError::new(KeyStorageErrorKind::RetryableIOFailure).with_source(e))?;
 
-    let address = IotaAddress::from(&pk);
+    let address = Address::from(&pk);
     Ok(KeyId::new(address.to_string()))
   }
 

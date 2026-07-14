@@ -24,7 +24,6 @@ use identity_storage::Storage;
 use identity_storage::StorageSigner;
 use identity_verification::VerificationMethod;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI;
-use iota_interaction::types::transaction::ProgrammableTransaction;
 use iota_interaction::IotaKeySignature;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI;
 use iota_interaction::OptionalSync;
@@ -32,12 +31,13 @@ use iota_interaction_rust::IotaClientAdapter;
 use iota_sdk::rpc_types::IotaObjectDataOptions;
 use iota_sdk::rpc_types::IotaObjectResponse;
 use iota_sdk::rpc_types::IotaTransactionBlockEffects;
-use iota_sdk::types::base_types::IotaAddress;
 use iota_sdk::types::crypto::PublicKey;
 use iota_sdk::types::crypto::SignatureScheme;
 use iota_sdk::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::Owner;
+use iota_sdk_types::ProgrammableTransaction;
 use iota_sdk_types::StructTag;
 use iota_sdk_types::TypeTag;
 use product_common::core_client::CoreClient;
@@ -120,7 +120,7 @@ async fn get_cached_id(network_id: &str) -> anyhow::Result<String> {
   }
 }
 
-async fn get_active_address() -> anyhow::Result<IotaAddress> {
+async fn get_active_address() -> anyhow::Result<Address> {
   Command::new("iota")
     .arg("client")
     .arg("active-address")
@@ -128,10 +128,10 @@ async fn get_active_address() -> anyhow::Result<IotaAddress> {
     .output()
     .await
     .context("Failed to execute command")
-    .and_then(|output| Ok(serde_json::from_slice::<IotaAddress>(&output.stdout)?))
+    .and_then(|output| Ok(serde_json::from_slice::<Address>(&output.stdout)?))
 }
 
-async fn publish_package(active_address: IotaAddress) -> anyhow::Result<ObjectId> {
+async fn publish_package(active_address: Address) -> anyhow::Result<ObjectId> {
   let output = Command::new("sh")
     .current_dir(SCRIPT_DIR)
     .arg("publish_identity_package.sh")
@@ -189,7 +189,7 @@ struct GasObjectHelper {
   nanos_balance: u64,
 }
 
-async fn get_balance(address: IotaAddress) -> anyhow::Result<u64> {
+async fn get_balance(address: Address) -> anyhow::Result<u64> {
   let output = Command::new("iota")
     .arg("client")
     .arg("gas")
@@ -230,7 +230,7 @@ impl TestClient {
     Self::new_from_address(active_address).await
   }
 
-  pub async fn new_from_address(address: IotaAddress) -> anyhow::Result<Self> {
+  pub async fn new_from_address(address: Address) -> anyhow::Result<Self> {
     let api_endpoint = std::env::var("API_ENDPOINT").unwrap_or_else(|_| IOTA_LOCAL_NETWORK_URL.to_string());
     let client = IotaClientBuilder::default().build(&api_endpoint).await?;
     let package_id = PACKAGE_ID.get_or_try_init(|| init(&client)).await.copied()?;
@@ -342,7 +342,7 @@ impl CoreClient<KeytoolSigner> for TestClient {
     self.client.signer()
   }
 
-  fn sender_address(&self) -> IotaAddress {
+  fn sender_address(&self) -> Address {
     self.client.sender_address()
   }
 
@@ -351,7 +351,7 @@ impl CoreClient<KeytoolSigner> for TestClient {
   }
 }
 
-pub async fn get_test_coin<S>(recipient: IotaAddress, client: &IdentityClient<S>) -> anyhow::Result<ObjectId>
+pub async fn get_test_coin<S>(recipient: Address, client: &IdentityClient<S>) -> anyhow::Result<ObjectId>
 where
   S: Signer<IotaKeySignature> + OptionalSync,
 {
@@ -362,7 +362,7 @@ where
     .map(|tx_output| tx_output.output)
 }
 
-pub async fn make_address(key_type: SignatureScheme) -> anyhow::Result<IotaAddress> {
+pub async fn make_address(key_type: SignatureScheme) -> anyhow::Result<Address> {
   if !matches!(
     key_type,
     SignatureScheme::ED25519 | SignatureScheme::Secp256k1 | SignatureScheme::Secp256r1
@@ -400,7 +400,7 @@ pub async fn make_address(key_type: SignatureScheme) -> anyhow::Result<IotaAddre
 }
 
 struct GetTestCoin {
-  recipient: IotaAddress,
+  recipient: Address,
 }
 
 #[async_trait]

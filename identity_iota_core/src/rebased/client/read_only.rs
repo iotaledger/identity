@@ -18,9 +18,9 @@ use identity_did::DID;
 use iota_interaction::rpc_types::IotaObjectDataFilter;
 use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaObjectResponseQuery;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::IotaClientTrait;
 use iota_interaction::MoveType;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::StructTag;
 use iota_sdk_types::TypeTag;
@@ -240,7 +240,7 @@ impl IdentityClientReadOnly {
   /// ```
   pub(crate) fn streamed_dids_controlled_by(
     &self,
-    address: IotaAddress,
+    address: Address,
   ) -> impl Stream<Item = Result<IotaDID, QueryControlledDidsError>> + use<'_> {
     // Create a filter that matches objects of type ControllerCap or DelegationToken with any package ID in history.
     let all_struct_tags = history_type_tags::<ControllerCap>(&self.package_history)
@@ -320,7 +320,7 @@ impl IdentityClientReadOnly {
   /// # Ok(())
   /// # }
   /// ```
-  pub async fn dids_controlled_by(&self, address: IotaAddress) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
+  pub async fn dids_controlled_by(&self, address: Address) -> Result<Vec<IotaDID>, QueryControlledDidsError> {
     self.streamed_dids_controlled_by(address).try_collect().await
   }
 }
@@ -331,7 +331,7 @@ impl IdentityClientReadOnly {
 #[non_exhaustive]
 pub struct QueryControlledDidsError {
   /// The queried address.
-  pub address: IotaAddress,
+  pub address: Address,
   source: Box<dyn std::error::Error + Send + Sync>,
 }
 

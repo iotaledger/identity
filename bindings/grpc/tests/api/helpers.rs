@@ -26,7 +26,7 @@ use identity_iota::iota::rebased::transaction::Transaction;
 use iota_sdk_legacy::client::secret::stronghold::StrongholdSecretManager;
 use iota_sdk_legacy::client::stronghold::StrongholdAdapter;
 use iota_sdk_legacy::client::Password;
-use iota_sdk::types::base_types::IotaAddress;
+use iota_sdk_types::Address;
 use iota_sdk::IotaClient;
 use iota_sdk::IotaClientBuilder;
 use iota_sdk_types::ObjectId;
@@ -125,7 +125,7 @@ impl TestServer {
 pub async fn create_did<K, I>(
   client: &IdentityClientReadOnly,
   storage: &Storage<K, I>,
-) -> anyhow::Result<(IotaAddress, IotaDocument, KeyId, String)>
+) -> anyhow::Result<(Address, IotaDocument, KeyId, String)>
 where
   K: JwkStorage,
   I: KeyIdStorage,
@@ -179,7 +179,7 @@ where
 }
 
 /// Generates a new Ed25519 key pair
-pub async fn get_address<I, K>(storage: &Storage<K, I>) -> anyhow::Result<(IotaAddress, KeyId, Jwk)>
+pub async fn get_address<I, K>(storage: &Storage<K, I>) -> anyhow::Result<(Address, KeyId, Jwk)>
 where
   K: JwkStorage,
   I: KeyIdStorage,
@@ -198,11 +198,11 @@ where
 
   let address = Ed25519PublicKey::from_bytes(&pub_key_bytes)?;
 
-  Ok((IotaAddress::from(&address), key_id, pub_key_jwt))
+  Ok((Address::from(&address), key_id, pub_key_jwt))
 }
 
 /// Requests funds from the faucet for the given `address`.
-async fn request_faucet_funds(address: IotaAddress, faucet_endpoint: &str) -> anyhow::Result<()> {
+async fn request_faucet_funds(address: Address, faucet_endpoint: &str) -> anyhow::Result<()> {
   let output = Command::new("iota")
     .arg("client")
     .arg("faucet")
@@ -228,7 +228,7 @@ async fn request_faucet_funds(address: IotaAddress, faucet_endpoint: &str) -> an
 
 pub struct Entity<K, I> {
   storage: Storage<K, I>,
-  did: Option<(IotaAddress, IotaDocument, KeyId, String)>,
+  did: Option<(Address, IotaDocument, KeyId, String)>,
 }
 
 pub fn random_password(len: usize) -> Password {
@@ -323,7 +323,7 @@ pub fn make_stronghold() -> StrongholdAdapter {
     .expect("Failed to create temporary stronghold")
 }
 
-async fn get_active_address() -> anyhow::Result<IotaAddress> {
+async fn get_active_address() -> anyhow::Result<Address> {
   Command::new("iota")
     .arg("client")
     .arg("active-address")
@@ -331,7 +331,7 @@ async fn get_active_address() -> anyhow::Result<IotaAddress> {
     .output()
     .await
     .context("Failed to execute command")
-    .and_then(|output| Ok(serde_json::from_slice::<IotaAddress>(&output.stdout)?))
+    .and_then(|output| Ok(serde_json::from_slice::<Address>(&output.stdout)?))
 }
 
 async fn init(iota_client: &IotaClient) -> anyhow::Result<ObjectId> {
@@ -361,7 +361,7 @@ async fn get_cached_id(network_id: &str) -> anyhow::Result<String> {
   }
 }
 
-async fn publish_package(active_address: IotaAddress) -> anyhow::Result<ObjectId> {
+async fn publish_package(active_address: Address) -> anyhow::Result<ObjectId> {
   let output = Command::new("sh")
     .current_dir(SCRIPT_DIR)
     .arg("publish_identity_package.sh")

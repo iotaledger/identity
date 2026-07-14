@@ -3,12 +3,12 @@
 
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::IotaAddress;
 use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::MoveType as _;
 use iota_interaction::ProgrammableTransactionBcs;
+use iota_sdk_types::Address;
 use iota_sdk_types::Argument;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::TypeTag;
@@ -24,7 +24,7 @@ use super::ProposalContext;
 pub(crate) fn propose_send(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  transfer_map: Vec<(ObjectId, IotaAddress)>,
+  transfer_map: Vec<(ObjectId, Address)>,
   expiration: Option<u64>,
   package_id: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
@@ -59,7 +59,7 @@ pub(crate) fn execute_send(
 pub(crate) fn create_and_execute_send(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  transfer_map: Vec<(ObjectId, IotaAddress)>,
+  transfer_map: Vec<(ObjectId, Address)>,
   expiration: Option<u64>,
   objects: Vec<(ObjectRef, TypeTag)>,
   package: ObjectId,
@@ -81,7 +81,7 @@ pub(crate) fn create_and_execute_send(
 fn send_proposal_impl(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
-  transfer_map: Vec<(ObjectId, IotaAddress)>,
+  transfer_map: Vec<(ObjectId, Address)>,
   expiration: Option<u64>,
   package_id: ObjectId,
 ) -> anyhow::Result<ProposalContext> {

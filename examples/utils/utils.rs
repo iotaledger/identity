@@ -21,7 +21,6 @@ use identity_storage::KeyIdStorage;
 use identity_storage::KeyType;
 use identity_storage::StorageSigner;
 use identity_stronghold::StrongholdStorage;
-use iota_sdk::types::base_types::IotaAddress;
 use iota_sdk::IotaClient;
 use iota_sdk::IotaClientBuilder;
 use iota_sdk::IOTA_DEVNET_URL;
@@ -29,6 +28,7 @@ use iota_sdk::IOTA_LOCAL_NETWORK_URL;
 use iota_sdk::IOTA_TESTNET_URL;
 use iota_sdk_legacy::client::secret::stronghold::StrongholdSecretManager;
 use iota_sdk_legacy::client::Password;
+use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
 use notarization::NotarizationClient;
 use notarization::NotarizationClientReadOnly;
@@ -129,7 +129,7 @@ where
     .await?;
   let public_key_jwk = generate.jwk.to_public().expect("public components should be derivable");
   let signer = StorageSigner::new(storage, generate.key_id, public_key_jwk);
-  let sender_address = IotaAddress::from(&Signer::public_key(&signer).await?);
+  let sender_address = Address::from(&Signer::public_key(&signer).await?);
 
   request_funds(&sender_address).await?;
 

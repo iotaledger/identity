@@ -589,7 +589,7 @@ where
   // Undo key generation
   if let Err(err) = <K as JwkStorage>::delete(storage.key_storage(), key_id).await {
     Error::UndoOperationFailed {
-      message: format!("unable to delete stray key with id: {}", &key_id),
+      message: format!("unable to delete stray key with id: {}", key_id),
       source: Box::new(source_error),
       undo_error: Some(Box::new(Error::KeyStorageError(err))),
     }

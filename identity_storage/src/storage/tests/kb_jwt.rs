@@ -52,13 +52,13 @@ async fn setup_test() -> anyhow::Result<(Setup<IotaDocument, IotaDocument>, Cred
   let issuer_signer =
     StorageSigner::new_from_vm_fragment(&setup.issuer_storage, &setup.issuer_doc, &setup.issuer_method_fragment)
       .await?;
-  let holder_kid = format!("{}#{}", setup.subject_doc.id(), &setup.subject_method_fragment);
+  let holder_kid = format!("{}#{}", setup.subject_doc.id(), setup.subject_method_fragment);
   let mut sd_jwt = SdJwtBuilder::new(credential.to_jwt_claims(None)?)?
     .make_concealable("/vc/credentialSubject/degree/type")?
     .make_concealable("/vc/credentialSubject/degree/name")?
     .header(
       "kid",
-      format!("{}#{}", setup.issuer_doc.id(), &setup.issuer_method_fragment),
+      format!("{}#{}", setup.issuer_doc.id(), setup.issuer_method_fragment),
     )
     .require_key_binding(RequiredKeyBinding::Kid(holder_kid.clone()))
     .finish(&issuer_signer, "EdDSA")

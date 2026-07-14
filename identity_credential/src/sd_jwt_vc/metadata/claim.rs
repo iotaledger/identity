@@ -45,14 +45,14 @@ impl ClaimMetadata {
     if self.sd.unwrap_or_default() == ClaimDisclosability::Always && interested_claims.is_ok() {
       return Err(Error::Validation(anyhow!(
         "claim or claims with path {} must always be disclosable",
-        &self.path
+        self.path
       )));
     }
 
     if self.sd.unwrap_or_default() == ClaimDisclosability::Never && interested_claims.is_err() {
       return Err(Error::Validation(anyhow!(
         "claim or claims with path {} must never be disclosable",
-        &self.path
+        self.path
       )));
     }
 

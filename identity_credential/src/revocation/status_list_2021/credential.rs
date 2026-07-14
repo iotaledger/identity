@@ -62,7 +62,7 @@ pub struct StatusList2021Credential {
 
 impl Display for StatusList2021Credential {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", &self.inner)
+    write!(f, "{}", self.inner)
   }
 }
 

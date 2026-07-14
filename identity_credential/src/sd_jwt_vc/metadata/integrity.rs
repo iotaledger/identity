@@ -92,7 +92,7 @@ impl AsRef<str> for IntegrityMetadata {
 
 impl Display for IntegrityMetadata {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", &self.0)
+    write!(f, "{}", self.0)
   }
 }
 

@@ -175,7 +175,7 @@ async fn resolve_unparsable() {
         .source()
         .unwrap()
         .downcast_ref::<DIDError>()
-        .unwrap_or_else(|| panic!("{:?}", &err)),
+        .unwrap_or_else(|| panic!("{:?}", err)),
       &DIDError::InvalidMethodName
     ));
 

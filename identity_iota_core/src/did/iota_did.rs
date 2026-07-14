@@ -491,11 +491,11 @@ mod tests {
       // Too many segments
       format!("did:method:main:test:{VALID_OBJECT_ID_STR}"),
       // Tag is not prefixed
-      format!("did:method:{}", &VALID_OBJECT_ID_STR.strip_prefix("0x").unwrap()),
+      format!("did:method:{}", VALID_OBJECT_ID_STR.strip_prefix("0x").unwrap()),
       // Tag is too long
       format!(
         "did:method:{}",
-        &VALID_OBJECT_ID_STR.chars().chain("a".chars()).collect::<String>()
+        VALID_OBJECT_ID_STR.chars().chain("a".chars()).collect::<String>()
       ),
       // Tag is too short (omit last character)
       format!("did:method:main:{}", &VALID_OBJECT_ID_STR[..65]),

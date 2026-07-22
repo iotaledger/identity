@@ -367,6 +367,10 @@ public fun destroy_delegation_token<V>(self: &mut Multicontroller<V>, token: Del
 public fun delete<V>(self: Multicontroller<V>): V {
     assert!(self.active_proposals.is_empty(), ECannotDelete);
 
+    self.force_delete() 
+}
+
+public(package) fun force_delete<V>(self: Multicontroller<V>): V {
     let Multicontroller {
         controlled_value,
         proposals,

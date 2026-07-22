@@ -2,15 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 module iota_identity::identity {
+    use iota::authenticator_function::AuthenticatorFunctionRefV1;
     use iota::clock::Clock;
+    use iota::dynamic_field as df;
     use iota::transfer::Receiving;
     use iota::vec_map::{Self, VecMap};
+    use iota_identity::aa_migration::{Self, AAMigrationProposal};
+    use iota_identity::aa_migration_registry::AAMigrationRegistry;
     use iota_identity::access_sub_entity_proposal::{Self, AccessSubEntity};
     use iota_identity::borrow_proposal::{Self, Borrow};
     use iota_identity::config_proposal;
     use iota_identity::controller::{DelegationToken, ControllerCap};
     use iota_identity::controller_proposal::{Self, ControllerExecution};
     use iota_identity::delete_proposal::{Self, Delete};
+    use iota_identity::identity_config::new as new_config;
+    use iota_identity::identity_v2::{Self, IdentityV2};
     use iota_identity::multicontroller::{Self, Multicontroller, Action};
     use iota_identity::transfer_proposal::{Self, Send};
     use iota_identity::update_value_proposal::{Self, UpdateValue};
@@ -29,6 +35,8 @@ module iota_identity::identity {
     const ECannotDelete: u64 = 5;
     /// Identity had been deleted.
     const EDeletedIdentity: u64 = 6;
+    #[error(code = 7)]
+    const EThresholdNotReached: vector<u8> = b"Not enough voting power to execute proposal";
 
     const PACKAGE_VERSION: u64 = 0;
 
@@ -679,6 +687,10 @@ module iota_identity::identity {
     /// set to `true`.
     public fun delete(self: Identity) {
         assert!(self.deleted && self.did_doc.controllers().is_empty(), ECannotDelete);
+        self.force_delete();
+    }
+
+    public(package) fun force_delete(self: Identity) {
         let Identity {
             id,
             did_doc,
@@ -686,6 +698,71 @@ module iota_identity::identity {
         } = self;
         object::delete(id);
         did_doc.delete();
+    }
+
+    public struct AAMigrationKey has copy, drop, store {}
+
+    /// Proposes or approves a migration to the AA-based implementation of this Identity object.
+    public fun propose_or_approve_aa_migration(
+        self: &mut Identity,
+        cap: &mut ControllerCap,
+        ctx: &mut TxContext,
+    ) {
+        assert!(!self.deleted, EDeletedIdentity);
+        let (token, borrow) = cap.borrow();
+        self.did_doc.assert_is_member(&token);
+
+        let proposal: &mut AAMigrationProposal = if (df::exists_(&self.id, AAMigrationKey {})) {
+            df::borrow_mut(&mut self.id, AAMigrationKey {})
+        } else {
+            let proposal = aa_migration::new();
+            df::add(&mut self.id, AAMigrationKey {}, proposal);
+            df::borrow_mut(&mut self.id, AAMigrationKey {})
+        };
+
+        proposal.insert_controller(ctx.sender(), self.did_doc.voting_power(token.controller()));
+        cap.put_back(token, borrow);
+    }
+
+    public fun execute_aa_migration(
+        mut self: Identity,
+        mut cap: ControllerCap,
+        migration_registry: &mut AAMigrationRegistry,
+        auth_fn: AuthenticatorFunctionRefV1<IdentityV2>,
+        ctx: &mut TxContext,
+    ) {
+        self.propose_or_approve_aa_migration(&mut cap, ctx);
+        let proposal: AAMigrationProposal = df::remove(&mut self.id, AAMigrationKey {});
+
+        let total_weights = proposal.weights().fold!(0, |acc, w| acc + w);
+        assert!(total_weights >= self.did_doc.threshold(), EThresholdNotReached);
+
+        let mut permissions = vector::empty();
+        proposal.controllers().do_ref!(|_| permissions.push_back(std::u64::max_value!()));
+        let config = new_config(
+            proposal.controllers(),
+            proposal.weights(),
+            permissions,
+            self.did_doc.threshold(),
+        );
+
+        let did_doc = identity_v2::new_did_document(
+            *self.did_doc.value().borrow(),
+            self.created,
+            self.updated,
+            self.deleted_did,
+        );
+        let new_identity_id = identity_v2::new_from_parts(
+            did_doc,
+            config,
+            option::some(self.id().to_inner()),
+            auth_fn,
+            ctx,
+        );
+        migration_registry.insert(self.id().to_inner(), new_identity_id);
+
+        cap.delete();
+        self.force_delete();
     }
 
     public(package) fun uid_mut(self: &mut Identity): &mut UID {

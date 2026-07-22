@@ -1,0 +1,7 @@
+{
+    "id": "https://example.com/credentials/status/3#94567",
+    "type": "InvalidType",
+    "statusPurpose": "revocation",
+    "statusListIndex": "94567",
+    "statusListCredential": "https://example.com/credentials/status/3"
+}

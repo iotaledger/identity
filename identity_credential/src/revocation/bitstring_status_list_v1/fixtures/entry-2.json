@@ -1,0 +1,7 @@
+{
+    "id": "https://example.com/credentials/status/4#23452",
+    "type": "BitstringStatusListEntry",
+    "statusPurpose": "suspension",
+    "statusListIndex": "23452",
+    "statusListCredential": "https://example.com/credentials/status/4"
+}

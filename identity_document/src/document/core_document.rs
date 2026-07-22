@@ -36,7 +36,7 @@ use identity_verification::MethodRelationship;
 use identity_verification::MethodScope;
 use identity_verification::VerificationMethod;
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[rustfmt::skip]
 pub(crate) struct CoreDocumentData
 {
@@ -90,6 +90,7 @@ impl CoreDocumentData {
       .map(|method_ref| match method_ref {
         MethodRef::Embed(_) => (method_ref.id(), true),
         MethodRef::Refer(_) => (method_ref.id(), false),
+        MethodRef::RelativeRefer(_) => (method_ref.id(), false),
       })
     {
       if let Some(previous) = method_identifiers.insert(id, is_embedded) {
@@ -223,6 +224,73 @@ impl CoreDocumentData {
       properties: current_data.properties,
     })
   }
+
+  /// Try parsing given [`serde_json::Value`] into set of [`MethodRef`](identity_verification::MethodRef).
+  fn try_parse_method_ref_set<E>(
+    id: &CoreDID,
+    value: &Option<serde_json::Value>,
+  ) -> std::result::Result<OrderedSet<MethodRef>, E>
+  where
+    E: serde::de::Error,
+  {
+    let set = match value {
+      // array with values (expected format if present)
+      Some(serde_json::Value::Array(array_value)) => array_value
+        .iter()
+        .map(|entry| MethodRef::try_from_value(entry, id).map_err(serde::de::Error::custom))
+        .collect::<std::result::Result<_, E>>()?,
+      // rely on serde_json to generate error message for other formats
+      Some(non_array_value) => serde_json::from_value(non_array_value.clone()).map_err(serde::de::Error::custom)?,
+      // fallback if omitted
+      None => OrderedSet::default(),
+    };
+    Ok(set)
+  }
+}
+
+impl<'de> serde::Deserialize<'de> for CoreDocumentData {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    /// Helper struct, that resembles [`CoreDocumentData`] structure except that
+    /// `OrderedSet<MethodRef>` fields are represented as [`serde_json::Value`] for parsing.
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub(crate) struct CoreDocumentDataInner {
+      pub(crate) id: CoreDID,
+      pub(crate) controller: Option<OneOrSet<CoreDID>>,
+      #[serde(default = "Default::default")]
+      pub(crate) also_known_as: OrderedSet<Url>,
+      #[serde(default = "Default::default")]
+      pub(crate) verification_method: OrderedSet<VerificationMethod>,
+      pub(crate) authentication: Option<serde_json::Value>,
+      pub(crate) assertion_method: Option<serde_json::Value>,
+      pub(crate) key_agreement: Option<serde_json::Value>,
+      pub(crate) capability_delegation: Option<serde_json::Value>,
+      pub(crate) capability_invocation: Option<serde_json::Value>,
+      #[serde(default = "Default::default")]
+      pub(crate) service: OrderedSet<Service>,
+      #[serde(flatten)]
+      pub(crate) properties: Object,
+    }
+
+    let data = CoreDocumentDataInner::deserialize(deserializer)?;
+
+    Ok(CoreDocumentData {
+      id: data.id.clone(),
+      controller: data.controller,
+      also_known_as: data.also_known_as,
+      verification_method: data.verification_method,
+      authentication: Self::try_parse_method_ref_set(&data.id, &data.authentication)?,
+      assertion_method: Self::try_parse_method_ref_set(&data.id, &data.assertion_method)?,
+      key_agreement: Self::try_parse_method_ref_set(&data.id, &data.key_agreement)?,
+      capability_delegation: Self::try_parse_method_ref_set(&data.id, &data.capability_delegation)?,
+      capability_invocation: Self::try_parse_method_ref_set(&data.id, &data.capability_invocation)?,
+      service: data.service,
+      properties: data.properties,
+    })
+  }
 }
 
 /// A DID Document.
@@ -236,7 +304,7 @@ pub struct CoreDocument
   pub(crate) data: CoreDocumentData, 
 }
 
-//Forward serialization to inner
+// Forward serialization to inner
 impl Serialize for CoreDocument {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
@@ -252,6 +320,7 @@ macro_rules! method_ref_mut_helper {
     match $doc.data.$method.query_mut($query.into())? {
       MethodRef::Embed(method) => Some(method),
       MethodRef::Refer(ref did) => $doc.data.verification_method.query_mut(did),
+      MethodRef::RelativeRefer(ref did) => $doc.data.verification_method.query_mut(did),
     }
   };
 }
@@ -655,6 +724,7 @@ impl CoreDocument {
       match method {
         MethodRef::Embed(method) => Some(method),
         MethodRef::Refer(_) => None,
+        MethodRef::RelativeRefer(_) => None,
       }
     }
 
@@ -738,7 +808,7 @@ impl CoreDocument {
   /// # Warning
   ///
   /// Incorrect use of this method can lead to distinct document resources being identified by the same DID URL.
-  // NOTE: This method demonstrates unexpected behaviour in the edge cases where the document contains methods
+  // NOTE: This method demonstrates unexpected behavior in the edge cases where the document contains methods
   // whose ids are of the form <did different from this document's>#<fragment>.
   pub fn resolve_method_mut<'query, 'me, Q>(
     &'me mut self,
@@ -786,6 +856,7 @@ impl CoreDocument {
     match method_ref {
       MethodRef::Embed(method) => Some(method),
       MethodRef::Refer(did) => self.data.verification_method.query(did),
+      MethodRef::RelativeRefer(did) => self.data.verification_method.query(did),
     }
   }
 
@@ -815,6 +886,7 @@ impl CoreDocument {
     match method {
       Some(MethodRef::Embed(method)) => Some(method),
       Some(MethodRef::Refer(did)) => self.data.verification_method.query(&did.to_string()),
+      Some(MethodRef::RelativeRefer(did)) => self.data.verification_method.query(&did.to_string()),
       None => self.data.verification_method.query(query),
     }
   }
@@ -845,6 +917,7 @@ impl CoreDocument {
     match method {
       Some(MethodRef::Embed(method)) => Some(method),
       Some(MethodRef::Refer(did)) => self.data.verification_method.query_mut(&did.to_string()),
+      Some(MethodRef::RelativeRefer(did)) => self.data.verification_method.query_mut(&did.to_string()),
       None => self.data.verification_method.query_mut(query),
     }
   }
@@ -1080,6 +1153,8 @@ impl CoreDocument {
 
 #[cfg(test)]
 mod tests {
+  use std::str::FromStr;
+
   use identity_core::convert::FromJson;
   use identity_core::convert::ToJson;
   use identity_did::DID;
@@ -1568,6 +1643,84 @@ mod tests {
     // Print debug representation if the test fails.
     dbg!(&doc);
     assert!(doc.is_ok());
+  }
+
+  mod method_ref {
+    use super::*;
+
+    // The verification method types here are really Ed25519VerificationKey2020, changed to be
+    // compatible with the current version of this library.
+    const JSON_DOCUMENT: &str = r###"{
+      "@context": [
+        "https://www.w3.org/ns/did/v1",
+        "https://w3id.org/security/suites/ed25519-2020/v1"
+      ],
+      "id": "did:example:123",
+      "verificationMethod": [
+        {
+          "id": "did:example:1234#key1",
+          "controller": "did:example:1234",
+          "type": "Ed25519VerificationKey2018",
+          "publicKeyBase58": "3M5RCDjPTWPkKSN3sxUmmMqHbmRPegYP1tjcKyrDbt9J"
+        }
+      ],
+      "authentication": [
+        {
+          "id": "did:example:123#embedded-key",
+          "controller": "did:example:123",
+          "type": "Ed25519VerificationKey2018",
+          "publicKeyBase58": "3M5RCDjPTWPkKSN3sxUmmMqHbmRPegYP1tjcKyrDbt9J"
+        },
+        "did:example:1234#key1",
+        "#key-1"
+      ]
+    }"###;
+
+    #[test]
+    fn deserialize_method_ref_types() {
+      let deserialized: CoreDocument = CoreDocument::from_json(JSON_DOCUMENT).unwrap();
+      let auth: Vec<&MethodRef> = deserialized.authentication().iter().collect();
+
+      assert!(matches!(
+        auth[0],
+        MethodRef::Embed(m) if m.id() == &DIDUrl::from_str("did:example:123#embedded-key").unwrap()
+      ));
+      assert_eq!(
+        auth[1],
+        &MethodRef::Refer(DIDUrl::from_str("did:example:1234#key1").unwrap())
+      );
+      assert_eq!(
+        auth[2],
+        &MethodRef::RelativeRefer(DIDUrl::from_str("did:example:123#key-1").unwrap())
+      );
+    }
+
+    #[test]
+    fn relative_refer_to_string() {
+      let doc: CoreDocument = CoreDocument::from_json(JSON_DOCUMENT).unwrap();
+      let auth: Vec<&MethodRef> = doc.authentication().iter().collect();
+
+      assert_eq!(auth[0].id().to_string(), "did:example:123#embedded-key");
+      assert_eq!(auth[1].id().to_string(), "did:example:1234#key1");
+      // url() strips the DID prefix, recovering the original relative reference
+      let MethodRef::RelativeRefer(did_url) = auth[2] else {
+        panic!("expected RelativeRefer");
+      };
+      assert_eq!(did_url.to_string(), "did:example:123#key-1");
+      assert_eq!(did_url.url().to_string(), "#key-1");
+    }
+
+    #[test]
+    fn serialize_method_ref_types() {
+      let deserialized: CoreDocument = CoreDocument::from_json(JSON_DOCUMENT).unwrap();
+      let serialized: serde_json::Value = serde_json::from_str(&serde_json::to_string(&deserialized).unwrap()).unwrap();
+      let auth = &serialized["authentication"];
+
+      assert!(auth[0].is_object());
+      assert_eq!(auth[0]["id"].as_str(), Some("did:example:123#embedded-key"));
+      assert_eq!(auth[1].as_str(), Some("did:example:1234#key1"));
+      assert_eq!(auth[2].as_str(), Some("#key-1"));
+    }
   }
 
   #[test]

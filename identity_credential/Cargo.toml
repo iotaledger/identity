@@ -13,6 +13,7 @@ description = "An implementation of the Verifiable Credentials standard."
 [dependencies]
 anyhow = { version = "1" }
 async-trait = { version = "0.1.64", default-features = false }
+bitvec = "1.1.1"
 bls12_381_plus = { workspace = true, optional = true }
 flate2 = { version = "1.0.28", default-features = false, features = ["rust_backend"], optional = true }
 futures = { version = "0.3", default-features = false, features = ["alloc"], optional = true }
@@ -24,6 +25,7 @@ indexmap = { version = "2.0", default-features = false, features = ["std", "serd
 itertools = { version = "0.11", default-features = false, features = ["use_std"] }
 json-proof-token = { workspace = true, optional = true }
 jsonschema = { version = "0.19", optional = true, default-features = false }
+multibase = "0.9.3"
 once_cell = { version = "1.18", default-features = false, features = ["std"] }
 reqwest = { version = "0.12", default-features = false, features = ["default-tls", "json", "stream"], optional = true }
 roaring = { version = "0.10.2", default-features = false, features = ["serde"], optional = true }

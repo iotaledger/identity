@@ -15,8 +15,8 @@
 //!
 //! ```
 //! use identity_core::common::Url;
-//! use identity_credential::revocation::bitstring_status_list_v1::entry::BitstringStatusListEntryBuilder;
-//! use identity_credential::revocation::bitstring_status_list_v1::entry::StatusPurpose;
+//! use identity_credential::revocation::bitstring_status_list_v1::BitstringStatusListEntryBuilder;
+//! use identity_credential::revocation::bitstring_status_list_v1::StatusPurpose;
 //!
 //! let entry = BitstringStatusListEntryBuilder::new()
 //!   .status_purpose(StatusPurpose::Revocation)
@@ -29,13 +29,10 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
-use std::borrow::Cow;
 use std::sync::LazyLock;
 
-use identity_core::common::Object;
 use identity_core::common::OneOrMany;
 use identity_core::common::Url;
-use serde::de::Error as _;
 use serde::de::Unexpected;
 use serde::Deserialize;
 use serde::Deserializer;
@@ -43,9 +40,16 @@ use serde::Serialize;
 use serde::Serializer;
 use serde_json::Value;
 
+use crate::credential::Status;
+use crate::revocation::bitstring_status_list_v1::StatusMessage;
+use crate::revocation::bitstring_status_list_v1::StatusPurpose;
+
 /// Value of the `type` property, as defined in [Bitstring Status List Entry](https://www.w3.org/TR/vc-bitstring-status-list/#bitstringstatuslistentry).
-pub const TYPE: &str = "BitstringStatusListEntry";
-static DEFAULT_STATUS_MESSAGE: LazyLock<[StatusMessage; 2]> =
+pub const ENTRY_TYPE: &str = "BitstringStatusListEntry";
+/// The greatest `statusSize` an entry may declare: a status is read into a `usize`, and the number
+/// of values it can take — `2^statusSize` — must itself be representable.
+const MAXIMUM_STATUS_SIZE: usize = usize::BITS as usize - 1;
+static DEFAULT_STATUS_MESSAGES: LazyLock<[StatusMessage; 2]> =
   LazyLock::new(|| [StatusMessage::new(0, "unset"), StatusMessage::new(1, "set")]);
 
 /// A single entry in a [Bitstring Status List](https://www.w3.org/TR/vc-bitstring-status-list/).
@@ -53,6 +57,7 @@ static DEFAULT_STATUS_MESSAGE: LazyLock<[StatusMessage; 2]> =
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct BitstringStatusListEntry {
+  #[serde(skip_serializing_if = "Option::is_none")]
   id: Option<Url>,
   #[serde(rename = "type")]
   type_: &'static str,
@@ -100,7 +105,7 @@ impl BitstringStatusListEntry {
   /// status.
   pub fn status_message(&self) -> &[StatusMessage] {
     if self.status_message.is_empty() {
-      DEFAULT_STATUS_MESSAGE.as_slice()
+      DEFAULT_STATUS_MESSAGES.as_slice()
     } else {
       &self.status_message
     }
@@ -115,76 +120,6 @@ impl BitstringStatusListEntry {
   /// about the status.
   pub fn status_reference(&self) -> &[Url] {
     self.status_reference.as_slice()
-  }
-}
-
-/// The purpose of the status list entry, which describes what the bit encodes (e.g. revocation or suspension).
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-#[serde(rename_all = "lowercase", untagged)]
-pub enum StatusPurpose {
-  /// Used to signal that an updated verifiable credential is available via the credential's refresh service feature.
-  /// This status does not invalidate the verifiable credential and is not reversible
-  Refresh,
-  /// Used to cancel the validity of a verifiable credential. This status is not reversible.
-  Revocation,
-  /// Used to temporarily prevent the acceptance of a verifiable credential. This status is reversible.
-  Suspension,
-  /// Used to convey an arbitrary message related to the status of the verifiable credential.
-  Message,
-  /// Arbitrary status purpose.
-  Custom(String),
-}
-
-impl StatusPurpose {
-  /// Returns the string representation of the status purpose.
-  pub fn as_str(&self) -> &str {
-    match self {
-      StatusPurpose::Refresh => "refresh",
-      StatusPurpose::Revocation => "revocation",
-      StatusPurpose::Suspension => "suspension",
-      StatusPurpose::Message => "message",
-      StatusPurpose::Custom(custom) => custom.as_str(),
-    }
-  }
-}
-
-impl<'a, T> From<T> for StatusPurpose
-where
-  T: Into<Cow<'a, str>>,
-{
-  fn from(value: T) -> Self {
-    let value = value.into();
-    match value.as_ref() {
-      "refresh" => StatusPurpose::Refresh,
-      "revocation" => StatusPurpose::Revocation,
-      "suspension" => StatusPurpose::Suspension,
-      "message" => StatusPurpose::Message,
-      _ => StatusPurpose::Custom(value.to_string()),
-    }
-  }
-}
-
-/// A status message associated with a status list entry.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-pub struct StatusMessage {
-  /// Status ID.
-  #[serde(serialize_with = "serialize_status_message")]
-  pub status: usize,
-  /// Status debug information.
-  pub message: String,
-  /// Arbitrary addicitional properties.
-  #[serde(flatten)]
-  pub properties: Object,
-}
-
-impl StatusMessage {
-  /// Returns a new [StatusMessage] with the provided `status` and `message`.
-  pub fn new(status: usize, message: impl Into<String>) -> Self {
-    Self {
-      status,
-      message: message.into(),
-      properties: Object::new(),
-    }
   }
 }
 
@@ -236,7 +171,7 @@ impl BitstringStatusListEntryBuilder {
   }
 
   /// Sets the custom messages of this entry.
-  /// The messages will be assigned a stutus based on their position, starting from `0x0` to `0x<N - 1>`
+  /// The messages will be assigned a status based on their position, starting from `0x0` to `0x<N - 1>`
   /// where N is the length of the given list.
   pub fn ordered_messages(mut self, messages: impl IntoIterator<Item = String>) -> Self {
     self.status_message = messages
@@ -260,7 +195,10 @@ impl BitstringStatusListEntryBuilder {
   ///   must be a power of 2 greater than 1.
   pub fn build(self) -> Result<BitstringStatusListEntry, BuilderError> {
     let status_size = match self.status_message.len() {
+      // `statusSize` defaults to 1 and the specification does not require it to accompany
+      // `statusMessage`, so a "set" / "unset" entry can leave it out altogether.
       0 | 2 => None,
+      // A single message would make for a zero-bit status.
       len if len > 1 && len.is_power_of_two() => Some(len.trailing_zeros() as usize),
       invalid_len => return Err(BuilderError::InvalidStatusMessagesCount(invalid_len)),
     };
@@ -274,7 +212,7 @@ impl BitstringStatusListEntryBuilder {
 
     Ok(BitstringStatusListEntry {
       id: self.id,
-      type_: TYPE,
+      type_: ENTRY_TYPE,
       status_purpose,
       status_list_index,
       status_list_credential,
@@ -293,48 +231,8 @@ pub enum BuilderError {
   #[error("missing required field `{0}`")]
   MissingField(&'static str),
   /// Invalid number of messages.
-  #[error("invalid number of status messages, expected a power of two, got {0}")]
+  #[error("invalid number of status messages, expected a power of two greater than 1, got {0}")]
   InvalidStatusMessagesCount(usize),
-}
-
-impl<'de> Deserialize<'de> for StatusMessage {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-  where
-    D: Deserializer<'de>,
-  {
-    let mut properties = Object::deserialize(deserializer)?;
-    let Value::String(status) = properties
-      .remove("status")
-      .ok_or_else(|| D::Error::missing_field("status"))?
-    else {
-      return Err(D::Error::invalid_type(
-        Unexpected::Other("non-string"),
-        &"hex-encoded integer",
-      ));
-    };
-    let status = usize::from_str_radix(status.trim_start_matches("0x"), 16)
-      .map_err(|_| D::Error::invalid_value(Unexpected::Str(&status), &"hex-encoded integer"))?;
-
-    let message = properties
-      .remove("message")
-      .ok_or_else(|| D::Error::missing_field("message"))?
-      .as_str()
-      .ok_or_else(|| D::Error::invalid_type(Unexpected::Other("non-string"), &"string"))?
-      .to_owned();
-
-    Ok(Self {
-      status,
-      message,
-      properties,
-    })
-  }
-}
-
-fn serialize_status_message<S>(status: &usize, serializer: S) -> Result<S::Ok, S::Error>
-where
-  S: Serializer,
-{
-  serializer.serialize_str(&format!("{status:#x}"))
 }
 
 fn serialize_number_as_string<S>(value: &usize, serializer: S) -> Result<S::Ok, S::Error>
@@ -351,12 +249,12 @@ impl<'de> Deserialize<'de> for BitstringStatusListEntry {
   {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
-    struct Helper<'a> {
+    struct Helper {
       id: Option<Url>,
       #[serde(rename = "type")]
-      type_: &'a str,
+      type_: String,
       status_purpose: StatusPurpose,
-      status_list_index: &'a str,
+      status_list_index: String,
       status_list_credential: Url,
       status_size: Option<usize>,
       #[serde(default)]
@@ -368,48 +266,49 @@ impl<'de> Deserialize<'de> for BitstringStatusListEntry {
     let helper = Helper::deserialize(deserializer)?;
 
     // Property type must be equal to "BitstringStatusListEntry".
-    if helper.type_ != TYPE {
-      return Err(serde::de::Error::invalid_value(Unexpected::Str(helper.type_), &TYPE));
+    if helper.type_ != ENTRY_TYPE {
+      return Err(serde::de::Error::invalid_value(
+        Unexpected::Str(&helper.type_),
+        &ENTRY_TYPE,
+      ));
     }
 
-    // When statusSize is present, it must be a positive integer and the number of status messages must be equal to
-    // 2^statusSize.
-    if let Some(size) = helper.status_size {
-      if size == 0 {
-        return Err(serde::de::Error::invalid_value(
-          Unexpected::Unsigned(size as u64),
-          &"positive integer",
-        ));
-      }
+    // `statusSize` counts the bits of a status, so it must be a positive integer; the upper bound is
+    // ours, as a status is read into a `usize`. It defaults to 1 when absent.
+    let status_size = helper.status_size.unwrap_or(1);
+    if !(1..=MAXIMUM_STATUS_SIZE).contains(&status_size) {
+      return Err(serde::de::Error::invalid_value(
+        Unexpected::Unsigned(status_size as u64),
+        &format!("integer between 1 and {MAXIMUM_STATUS_SIZE}").as_str(),
+      ));
+    }
 
-      let expected_message_count = 2_usize.pow(size as u32);
-      if helper.status_message.len() != expected_message_count {
-        return Err(serde::de::Error::invalid_length(
-          helper.status_message.len(),
-          &format!("{} status messages for statusSize {}", expected_message_count, size).as_str(),
-        ));
-      }
-    } else {
-      // When statusSize is not present, the number of status messages must be equal to 2 or 0 (implicit "set" /
-      // "unset").
-      if !(helper.status_message.is_empty() || helper.status_message.len() == 2) {
-        return Err(serde::de::Error::invalid_length(
-          helper.status_message.len(),
-          &"2 status messages for statusSize 1",
-        ));
-      }
+    // `statusMessage` must name each of the `2^statusSize` values a status can take. It may be left
+    // out entirely for a single-bit status, which is then an implicit "set" / "unset".
+    let expected_message_count = 1usize << status_size;
+    let message_count = helper.status_message.len();
+    let omitted = message_count == 0 && status_size == 1;
+    if message_count != expected_message_count && !omitted {
+      return Err(serde::de::Error::invalid_length(
+        message_count,
+        &format!(
+          "{}{expected_message_count} status messages for statusSize {status_size}",
+          if status_size == 1 { "0 or " } else { "" },
+        )
+        .as_str(),
+      ));
     }
 
     let status_list_index = helper.status_list_index.parse().map_err(|_| {
       serde::de::Error::invalid_value(
-        Unexpected::Str(helper.status_list_index),
+        Unexpected::Str(&helper.status_list_index),
         &"base 10 integer, expressed as a string",
       )
     })?;
 
     Ok(Self {
       id: helper.id,
-      type_: TYPE,
+      type_: ENTRY_TYPE,
       status_purpose: helper.status_purpose,
       status_list_index,
       status_list_credential: helper.status_list_credential,
@@ -417,6 +316,34 @@ impl<'de> Deserialize<'de> for BitstringStatusListEntry {
       status_message: helper.status_message,
       status_reference: helper.status_reference,
     })
+  }
+}
+
+impl TryFrom<&Status> for BitstringStatusListEntry {
+  type Error = serde_json::Error;
+  fn try_from(status: &Status) -> Result<Self, Self::Error> {
+    serde_json::to_value(status).and_then(serde_json::from_value)
+  }
+}
+
+impl From<BitstringStatusListEntry> for Status {
+  fn from(entry: BitstringStatusListEntry) -> Self {
+    // A `Status` must be identified, whereas an entry's `id` is optional; the status list
+    // credential it points to identifies it well enough in that case. A `Status` converted to an
+    // entry and back therefore gains an `id`.
+    let id = entry.id.clone().unwrap_or_else(|| entry.status_list_credential.clone());
+    let type_ = entry.type_.to_owned();
+
+    let Value::Object(mut properties) =
+      serde_json::to_value(entry).expect("a status list entry serializes to a JSON object")
+    else {
+      unreachable!("a status list entry serializes to a JSON object")
+    };
+    // `id` and `type` are named fields of `Status` rather than part of its properties.
+    properties.remove("id");
+    properties.remove("type");
+
+    Status::new_with_properties(id, type_, properties.into_iter().collect())
   }
 }
 
@@ -436,6 +363,36 @@ mod tests {
       let deserialized_entry: BitstringStatusListEntry = serde_json::from_str(&serialized_entry).unwrap();
       assert_eq!(entry, deserialized_entry);
     }
+  }
+
+  #[test]
+  fn conversion_to_and_from_a_credential_status_works() {
+    for entry_json in [VALID_ENTRY_JSON_1, VALID_ENTRY_JSON_2, VALID_ENTRY_JSON_3] {
+      let entry: BitstringStatusListEntry = serde_json::from_str(entry_json).unwrap();
+
+      let status = Status::from(entry.clone());
+      assert_eq!(status.type_, ENTRY_TYPE);
+      assert_eq!(Some(&status.id), entry.id());
+      assert_eq!(BitstringStatusListEntry::try_from(&status).unwrap(), entry);
+    }
+  }
+
+  #[test]
+  fn an_entry_without_an_id_borrows_the_status_list_url_when_converted_to_a_status() {
+    let status_list = Url::parse("https://example.com/status/1").unwrap();
+    let entry = BitstringStatusListEntryBuilder::new()
+      .credential(status_list.clone())
+      .index(0)
+      .status_purpose(StatusPurpose::Revocation)
+      .build()
+      .unwrap();
+    assert_eq!(entry.id(), None);
+    // An id-less entry must not serialize `"id": null`, which is what would reach `Status`.
+    assert!(serde_json::to_value(&entry).unwrap().get("id").is_none());
+
+    let status = Status::from(entry);
+
+    assert_eq!(status.id, status_list);
   }
 
   #[test]
@@ -470,7 +427,7 @@ mod tests {
       .unwrap();
 
     assert_eq!(entry.status_purpose(), &StatusPurpose::Revocation);
-    assert_eq!(entry.status_message(), DEFAULT_STATUS_MESSAGE.as_slice());
+    assert_eq!(entry.status_message(), DEFAULT_STATUS_MESSAGES.as_slice());
     assert_eq!(entry.status_size(), 1)
   }
 

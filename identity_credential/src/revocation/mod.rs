@@ -8,7 +8,7 @@ mod error;
 mod revocation_bitmap_2022;
 #[cfg(feature = "status-list-2021")]
 pub mod status_list_2021;
-
+#[cfg(feature = "bitstring-status-list")]
 pub mod bitstring_status_list_v1;
 
 #[cfg(feature = "jpt-bbs-plus")]

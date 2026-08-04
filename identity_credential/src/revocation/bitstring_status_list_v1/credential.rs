@@ -655,8 +655,8 @@ impl BitstringStatusListCredentialBuilder {
   }
 
   /// Sets `issuer`.
-  pub fn issuer(mut self, issuer: Issuer) -> Self {
-    self.inner_builder.issuer = Some(issuer);
+  pub fn issuer(mut self, issuer: impl Into<Issuer>) -> Self {
+    self.inner_builder.issuer = Some(issuer.into());
     self
   }
 

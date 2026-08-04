@@ -58,6 +58,8 @@ revocation-bitmap = [
 
 # Enables revocation with `StatusList2021`.
 status-list-2021 = ["revocation-bitmap", "identity_credential/status-list-2021"]
+# Enables revocation with `BitstringStatusListV1`.
+bitstring-status-list = ["revocation-bitmap", "identity_credential/bitstring-status-list"]
 
 # Enables support for the `Resolver`.
 resolver = ["dep:identity_resolver"]

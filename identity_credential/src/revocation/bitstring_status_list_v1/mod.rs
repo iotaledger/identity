@@ -4,6 +4,9 @@
 //! Implementation of the [Bitstring Status List v1](https://www.w3.org/TR/vc-bitstring-status-list/) revocation method.
 
 use std::borrow::Cow;
+use std::convert::Infallible;
+use std::fmt::Display;
+use std::str::FromStr;
 
 use identity_core::common::Object;
 use serde::de::Error as _;
@@ -51,6 +54,25 @@ impl StatusPurpose {
       StatusPurpose::Message => "message",
       StatusPurpose::Custom(custom) => custom.as_str(),
     }
+  }
+}
+
+impl Display for StatusPurpose {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}", self.as_str())
+  }
+}
+
+impl FromStr for StatusPurpose {
+  type Err = Infallible;
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    Ok(match s {
+      "refresh" => Self::Refresh,
+      "revocation" => Self::Revocation,
+      "suspension" => Self::Suspension,
+      "message" => Self::Message,
+      s => Self::Custom(s.to_owned()),
+    })
   }
 }
 

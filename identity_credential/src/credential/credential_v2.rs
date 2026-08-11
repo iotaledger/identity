@@ -17,6 +17,7 @@ use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 
+use crate::credential::status::StatusV2;
 use crate::credential::CredentialBuilder;
 use crate::credential::CredentialSealed;
 use crate::credential::CredentialT;
@@ -26,7 +27,6 @@ use crate::credential::Policy;
 use crate::credential::Proof;
 use crate::credential::RefreshService;
 use crate::credential::Schema;
-use crate::credential::Status;
 use crate::credential::Subject;
 use crate::error::Error;
 use crate::error::Result;
@@ -71,7 +71,7 @@ pub struct Credential<T = Object> {
   pub valid_until: Option<Timestamp>,
   /// Information used to determine the current status of the `Credential`.
   #[serde(default, rename = "credentialStatus", skip_serializing_if = "Option::is_none")]
-  pub credential_status: Option<Status>,
+  pub credential_status: Option<StatusV2>,
   /// Information used to assist in the enforcement of a specific `Credential` structure.
   #[serde(default, rename = "credentialSchema", skip_serializing_if = "OneOrMany::is_empty")]
   pub credential_schema: OneOrMany<Schema>,
@@ -117,6 +117,8 @@ impl<T> Credential<T> {
       builder.types.insert(0, Self::base_type().to_owned());
     }
 
+    let status = builder.status.map(StatusV2::from).or(builder.status_v2);
+
     let this = Self {
       context: OneOrMany::Many(builder.context),
       id: builder.id,
@@ -125,7 +127,7 @@ impl<T> Credential<T> {
       issuer: builder.issuer.ok_or(Error::MissingIssuer)?,
       valid_from: builder.issuance_date.unwrap_or_default(),
       valid_until: builder.expiration_date,
-      credential_status: builder.status,
+      credential_status: status,
       credential_schema: builder.schema.into(),
       refresh_service: builder.refresh_service.into(),
       terms_of_use: builder.terms_of_use.into(),
@@ -185,6 +187,7 @@ where
   T: Clone + Serialize + DeserializeOwned,
 {
   type Properties = T;
+  type Status = StatusV2;
 
   fn base_context(&self) -> &'static Context {
     Self::base_context()
@@ -218,7 +221,7 @@ where
     &self.properties
   }
 
-  fn status(&self) -> Option<&Status> {
+  fn status(&self) -> Option<&StatusV2> {
     self.credential_status.as_ref()
   }
 

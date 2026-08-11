@@ -230,6 +230,7 @@ where
   T: ToOwned<Owned = T> + serde::Serialize + serde::de::DeserializeOwned,
 {
   type Properties = T;
+  type Status = Status;
 
   fn base_context(&self) -> &'static Context {
     Self::base_context()

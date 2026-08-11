@@ -15,7 +15,7 @@ use identity_iota::credential::Policy;
 use identity_iota::credential::Proof;
 use identity_iota::credential::RefreshService;
 use identity_iota::credential::Schema;
-use identity_iota::credential::Status;
+use identity_iota::credential::StatusV2;
 use identity_iota::credential::Subject;
 use proc_typescript::typescript;
 use serde_json::Value;
@@ -33,7 +33,6 @@ use crate::credential::ArrayEvidence;
 use crate::credential::ArrayPolicy;
 use crate::credential::ArrayRefreshService;
 use crate::credential::ArraySchema;
-use crate::credential::ArrayStatus;
 use crate::credential::ArraySubject;
 use crate::credential::UrlOrIssuer;
 use crate::credential::WasmProof;
@@ -141,16 +140,13 @@ impl WasmCredentialV2 {
   }
 
   /// Returns a copy of the information used to determine the current status of the {@link Credential}.
-  #[wasm_bindgen(js_name = "credentialStatus")]
-  pub fn credential_status(&self) -> Result<ArrayStatus> {
-    self
-      .0
-      .credential_status
-      .iter()
-      .map(JsValue::from_serde)
-      .collect::<std::result::Result<js_sys::Array, _>>()
-      .wasm_result()
-      .map(|value| value.unchecked_into::<ArrayStatus>())
+  #[wasm_bindgen(js_name = "credentialStatus", unchecked_return_type = "StatusV2 | undefined | null")]
+  pub fn credential_status(&self) -> Result<Option<JsValue>> {
+    if let Some(status) = &self.0.credential_status {
+      Ok(Some(serde_wasm_bindgen::to_value(status)?))
+    } else {
+      Ok(None)
+    }
   }
 
   /// Returns a copy of the information used to assist in the enforcement of a specific {@link Credential} structure.
@@ -288,8 +284,8 @@ pub(crate) struct ICredentialHelperV2 {
   #[typescript(name = "validUntil", type = "Timestamp")]
   valid_until: Option<Timestamp>,
   /// Information used to determine the current status of the {@link Credential}.
-  #[typescript(name = "credentialStatus", type = "Status")]
-  credential_status: Option<Status>,
+  #[typescript(name = "credentialStatus", type = "StatusV2")]
+  credential_status: Option<StatusV2>,
   /// Information used to assist in the enforcement of a specific {@link Credential} structure.
   #[typescript(name = "credentialSchema", type = "Schema | Array<Schema>")]
   credential_schema: Option<OneOrMany<Schema>>,
@@ -367,7 +363,7 @@ impl TryFrom<ICredentialV2> for CredentialBuilder {
       builder = builder.expiration_date(valid_until);
     }
     if let Some(credential_status) = credential_status {
-      builder = builder.status(credential_status);
+      builder = builder.status_v2(credential_status);
     }
     if let Some(credential_schema) = credential_schema {
       for schema in credential_schema.into_vec() {

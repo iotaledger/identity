@@ -25,6 +25,7 @@ use crate::credential::CredentialJwtClaims;
 use crate::credential::CredentialT;
 use crate::credential::Jwt;
 use crate::credential::JwtVcV2;
+use crate::credential::StatusV2;
 use crate::validator::DecodedJwtCredentialV2;
 use crate::validator::FailFast;
 
@@ -83,7 +84,7 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
         validation_errors: [err].into(),
       })?;
 
-    Self::validate_decoded_credential::<CoreDocument, T>(
+    Self::validate_decoded_credential::<CoreDocument, T, Credential<T>>(
       &credential_token.credential,
       std::slice::from_ref(issuer.as_ref()),
       options,
@@ -209,8 +210,8 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
   // This method takes a slice of issuer's instead of a single issuer in order to better accommodate presentation
   // validation. It also validates the relationship between a holder and the credential subjects when
   // `relationship_criterion` is Some.
-  pub(crate) fn validate_decoded_credential<DOC, T>(
-    credential: &dyn CredentialT<Properties = T>,
+  pub(crate) fn validate_decoded_credential<DOC, T, C>(
+    credential: &C,
     issuers: &[DOC],
     options: &JwtCredentialValidationOptions,
     fail_fast: FailFast,
@@ -218,6 +219,7 @@ impl<V: JwsVerifier> JwtCredentialValidator<V> {
   where
     T: Clone + serde::Serialize + serde::de::DeserializeOwned,
     DOC: AsRef<CoreDocument>,
+    C: CredentialT<Properties = T, Status: Clone + Into<StatusV2>>,
   {
     // Run all single concern Credential validations in turn and fail immediately if `fail_fast` is true.
 

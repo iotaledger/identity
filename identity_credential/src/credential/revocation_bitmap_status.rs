@@ -9,6 +9,7 @@ use identity_core::common::Value;
 use identity_did::DIDUrl;
 
 use crate::credential::Status;
+use crate::credential::StatusV2;
 use crate::error::Error;
 use crate::error::Result;
 
@@ -122,9 +123,23 @@ impl TryFrom<Status> for RevocationBitmapStatus {
   }
 }
 
+impl TryFrom<StatusV2> for RevocationBitmapStatus {
+  type Error = Error;
+  fn try_from(value: StatusV2) -> Result<Self, Self::Error> {
+    let status = Status::try_from(value).map_err(|e| Error::InvalidStatus(e.to_string()))?;
+    status.try_into()
+  }
+}
+
 impl From<RevocationBitmapStatus> for Status {
   fn from(status: RevocationBitmapStatus) -> Self {
     status.0
+  }
+}
+
+impl From<RevocationBitmapStatus> for StatusV2 {
+  fn from(value: RevocationBitmapStatus) -> Self {
+    value.0.into()
   }
 }
 

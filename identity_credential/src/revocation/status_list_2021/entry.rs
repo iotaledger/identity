@@ -8,6 +8,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::credential::Status;
+use crate::credential::StatusV2;
 
 use super::credential::StatusPurpose;
 
@@ -49,7 +50,7 @@ where
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct StatusList2021Entry {
-  id: Url,
+  id: Option<Url>,
   #[serde(rename = "type", deserialize_with = "deserialize_status_entry_type")]
   type_: String,
   status_purpose: StatusPurpose,
@@ -61,15 +62,34 @@ pub struct StatusList2021Entry {
   status_list_credential: Url,
 }
 
-impl TryFrom<&Status> for StatusList2021Entry {
-  type Error = serde_json::Error;
-  fn try_from(status: &Status) -> Result<Self, Self::Error> {
-    let json_status = serde_json::to_value(status)?;
-    serde_json::from_value(json_status)
+macro_rules! impl_try_from_status {
+  ($status_ty: ident) => {
+    impl TryFrom<$status_ty> for StatusList2021Entry {
+      type Error = serde_json::Error;
+      fn try_from(value: $status_ty) -> Result<Self, Self::Error> {
+        let json_status = serde_json::to_value(value)?;
+        serde_json::from_value(json_status)
+      }
+    }
+  };
+}
+
+impl_try_from_status!(Status);
+impl_try_from_status!(StatusV2);
+
+impl From<StatusList2021Entry> for Status {
+  fn from(mut entry: StatusList2021Entry) -> Self {
+    if entry.id.is_none() {
+      let mut id = entry.status_list_credential.clone();
+      id.set_fragment(None);
+      entry.id = Some(id);
+    }
+    let json_status = serde_json::to_value(entry).unwrap(); // Safety: shouldn't go out of memory
+    serde_json::from_value(json_status).unwrap() // Safety: `StatusList2021Entry` is a credential status
   }
 }
 
-impl From<StatusList2021Entry> for Status {
+impl From<StatusList2021Entry> for StatusV2 {
   fn from(entry: StatusList2021Entry) -> Self {
     let json_status = serde_json::to_value(entry).unwrap(); // Safety: shouldn't go out of memory
     serde_json::from_value(json_status).unwrap() // Safety: `StatusList2021Entry` is a credential status
@@ -79,12 +99,6 @@ impl From<StatusList2021Entry> for Status {
 impl StatusList2021Entry {
   /// Creates a new [`StatusList2021Entry`].
   pub fn new(status_list: Url, purpose: StatusPurpose, index: usize, id: Option<Url>) -> Self {
-    let id = id.unwrap_or_else(|| {
-      let mut id = status_list.clone();
-      id.set_fragment(None);
-      id
-    });
-
     Self {
       id,
       type_: CREDENTIAL_STATUS_TYPE.to_owned(),
@@ -95,8 +109,8 @@ impl StatusList2021Entry {
   }
 
   /// Returns this `credentialStatus`'s `id`.
-  pub const fn id(&self) -> &Url {
-    &self.id
+  pub fn id(&self) -> Option<&Url> {
+    self.id.as_ref()
   }
 
   /// Returns the purpose of this entry.

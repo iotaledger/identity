@@ -17,6 +17,7 @@ use crate::credential::jwt::WasmJwtVcV2;
 use crate::credential::options::WasmStatusCheck;
 use crate::credential::revocation::status_list_2021::WasmStatusList2021Credential;
 use crate::credential::CredentialAny;
+use crate::credential::WasmCredentialAny;
 use crate::credential::WasmDecodedJwtCredential;
 use crate::credential::WasmDecodedJwtCredentialV2;
 use crate::credential::WasmFailFast;
@@ -211,33 +212,58 @@ impl WasmJwtCredentialValidator {
 
   /// Validate that the credential expires on or after the specified timestamp.
   #[wasm_bindgen(js_name = checkExpiresOnOrAfter)]
-  pub fn check_expires_on_or_after(credential: &CredentialAny, timestamp: &WasmTimestamp) -> Result<()> {
-    JwtCredentialValidatorUtils::check_expires_on_or_after(&*credential.try_to_dyn_credential()?, timestamp.0)
-      .wasm_result()
+  pub fn check_expires_on_or_after(credential: &WasmCredentialAny, timestamp: &WasmTimestamp) -> Result<()> {
+    let credential = CredentialAny::try_from(credential.clone())?;
+    match credential {
+      CredentialAny::CredentialV1(c) => {
+        JwtCredentialValidatorUtils::check_expires_on_or_after(&c, timestamp.0).map_err(JsError::from)?
+      }
+      CredentialAny::CredentialV2(c) => {
+        JwtCredentialValidatorUtils::check_expires_on_or_after(&c, timestamp.0).map_err(JsError::from)?
+      }
+    }
+
+    Ok(())
   }
 
   /// Validate that the credential is issued on or before the specified timestamp.
   #[wasm_bindgen(js_name = checkIssuedOnOrBefore)]
-  pub fn check_issued_on_or_before(credential: &CredentialAny, timestamp: &WasmTimestamp) -> Result<()> {
-    JwtCredentialValidatorUtils::check_issued_on_or_before(&*credential.try_to_dyn_credential()?, timestamp.0)
-      .wasm_result()
+  pub fn check_issued_on_or_before(credential: &WasmCredentialAny, timestamp: &WasmTimestamp) -> Result<()> {
+    let credential = CredentialAny::try_from(credential.clone())?;
+    match credential {
+      CredentialAny::CredentialV1(c) => {
+        JwtCredentialValidatorUtils::check_issued_on_or_before(&c, timestamp.0).map_err(JsError::from)?
+      }
+      CredentialAny::CredentialV2(c) => {
+        JwtCredentialValidatorUtils::check_issued_on_or_before(&c, timestamp.0).map_err(JsError::from)?
+      }
+    }
+
+    Ok(())
   }
 
   /// Validate that the relationship between the `holder` and the credential subjects is in accordance with
   /// `relationship`. The `holder` parameter is expected to be the URL of the holder.
   #[wasm_bindgen(js_name = checkSubjectHolderRelationship)]
   pub fn check_subject_holder_relationship(
-    credential: &CredentialAny,
+    credential: &WasmCredentialAny,
     holder: &str,
     relationship: WasmSubjectHolderRelationship,
   ) -> Result<()> {
     let holder: Url = Url::parse(holder).wasm_result()?;
-    JwtCredentialValidatorUtils::check_subject_holder_relationship(
-      &*credential.try_to_dyn_credential()?,
-      &holder,
-      relationship.into(),
-    )
-    .wasm_result()
+    let credential = CredentialAny::try_from(credential.clone())?;
+    match credential {
+      CredentialAny::CredentialV1(c) => {
+        JwtCredentialValidatorUtils::check_subject_holder_relationship(&c, &holder, relationship.into())
+          .map_err(JsError::from)?
+      }
+      CredentialAny::CredentialV2(c) => {
+        JwtCredentialValidatorUtils::check_subject_holder_relationship(&c, &holder, relationship.into())
+          .map_err(JsError::from)?
+      }
+    }
+
+    Ok(())
   }
 
   /// Checks whether the credential status has been revoked.
@@ -246,7 +272,7 @@ impl WasmJwtCredentialValidator {
   #[wasm_bindgen(js_name = checkStatus)]
   #[allow(non_snake_case)]
   pub fn check_status(
-    credential: &CredentialAny,
+    credential: &WasmCredentialAny,
     trustedIssuers: &ArrayIToCoreDocument,
     statusCheck: WasmStatusCheck,
   ) -> Result<()> {
@@ -257,23 +283,41 @@ impl WasmJwtCredentialValidator {
       .collect::<Result<Vec<ImportedDocumentReadGuard<'_>>>>(
     )?;
     let status_check: StatusCheck = statusCheck.into();
-    JwtCredentialValidatorUtils::check_status(&*credential.try_to_dyn_credential()?, &trusted_issuers, status_check)
-      .wasm_result()
+    let credential = CredentialAny::try_from(credential.clone())?;
+    match credential {
+      CredentialAny::CredentialV1(c) => {
+        JwtCredentialValidatorUtils::check_status(&c, &trusted_issuers, status_check).map_err(JsError::from)?
+      }
+      CredentialAny::CredentialV2(c) => {
+        JwtCredentialValidatorUtils::check_status(&c, &trusted_issuers, status_check).map_err(JsError::from)?
+      }
+    }
+
+    Ok(())
   }
 
   /// Checks whether the credential status has been revoked using `StatusList2021`.
   #[wasm_bindgen(js_name = checkStatusWithStatusList2021)]
   pub fn check_status_with_status_list_2021(
-    credential: &CredentialAny,
+    credential: &WasmCredentialAny,
     status_list: &WasmStatusList2021Credential,
     status_check: WasmStatusCheck,
-  ) -> Result<()> {
-    JwtCredentialValidatorUtils::check_status_with_status_list_2021(
-      &*credential.try_to_dyn_credential()?,
-      &status_list.inner,
-      status_check.into(),
-    )
-    .wasm_result()
+  ) -> std::result::Result<(), JsError> {
+    let credential = CredentialAny::try_from(credential.clone())?;
+    match credential {
+      CredentialAny::CredentialV1(c) => JwtCredentialValidatorUtils::check_status_with_status_list_2021::<Object, _>(
+        &c,
+        &status_list.inner,
+        status_check.into(),
+      )?,
+      CredentialAny::CredentialV2(c) => JwtCredentialValidatorUtils::check_status_with_status_list_2021::<Object, _>(
+        &c,
+        &status_list.inner,
+        status_check.into(),
+      )?,
+    }
+
+    Ok(())
   }
 
   /// Utility for extracting the issuer field of a {@link Credential} as a DID.
@@ -282,10 +326,18 @@ impl WasmJwtCredentialValidator {
   ///
   /// Fails if the issuer field is not a valid DID.
   #[wasm_bindgen(js_name = extractIssuer)]
-  pub fn extract_issuer(credential: &CredentialAny) -> Result<WasmCoreDID> {
-    JwtCredentialValidatorUtils::extract_issuer::<CoreDID, Object>(&*credential.try_to_dyn_credential()?)
-      .map(WasmCoreDID::from)
-      .wasm_result()
+  pub fn extract_issuer(credential: &WasmCredentialAny) -> std::result::Result<WasmCoreDID, JsError> {
+    let credential = CredentialAny::try_from(credential.clone())?;
+    let did = match credential {
+      CredentialAny::CredentialV1(c) => {
+        JwtCredentialValidatorUtils::extract_issuer::<CoreDID, Object>(&c).map(WasmCoreDID)?
+      }
+      CredentialAny::CredentialV2(c) => {
+        JwtCredentialValidatorUtils::extract_issuer::<CoreDID, Object>(&c).map(WasmCoreDID)?
+      }
+    };
+
+    Ok(did)
   }
 
   /// Utility for extracting the issuer field of a credential in JWT representation as DID.

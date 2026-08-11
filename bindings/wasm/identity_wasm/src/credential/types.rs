@@ -46,6 +46,9 @@ extern "C" {
 
   #[wasm_bindgen(typescript_type = "Status")]
   pub type WasmStatus;
+
+  #[wasm_bindgen(typescript_type = "StatusV2")]
+  pub type WasmStatusV2;
 }
 
 #[wasm_bindgen(typescript_custom_section)]
@@ -128,7 +131,20 @@ interface Status {
   readonly type: string;
   /** Additional properties of the credential status. */
   readonly [properties: string]: unknown;
-}"#;
+}
+
+/** Information used to determine the current status of a {@link CredentialV2}.
+
+[More Info](https://www.w3.org/TR/vc-data-model-2.0/#status) */
+interface StatusV2 {
+  /** A URL identifying the credential status. */
+  readonly id?: string;
+  /** The type of the credential status. */
+  readonly type: string | string[];
+  /** Additional properties of the credential status. */
+  readonly [properties: string]: unknown;
+}
+"#;
 
 #[wasm_bindgen(typescript_custom_section)]
 const I_SUBJECT: &'static str = r#"

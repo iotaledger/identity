@@ -19,7 +19,8 @@ use crate::credential::WasmCredentialV2;
 
 #[wasm_bindgen(typescript_custom_section)]
 const ENTRY_INTERFACE: &str = r#"
-export type StatusPurpose = "refresh" | "revocation" | "suspension" | "message" | string;
+export type BitstringStatusPurpose = "refresh" | "revocation" | "suspension" | "message" | string;
+
 export type StatusMessage = {
   status: string;
   message: string;
@@ -27,15 +28,36 @@ export type StatusMessage = {
 
 export interface BitstringStatusListEntryParams {
   id?: string;
-  statusPurpose: StatusPurpose;
+  statusPurpose: BitstringStatusPurpose;
   statusListIndex: string | number;
   statusListCredential: string;
   statusMessage?: string[];
   statusReference?: string | string[];
 }
+
+export interface BitstringStatusListCredentialParams {
+  id?: string;
+  validFrom?: string;
+  validUntil?: string;
+  issuer: string;
+  context?: string[] | object[];
+  type?: string[];
+  proof?: object;
+  numberOfEntries?: number;
+  statusPurposes: BitstringStatusPurpose | BitstringStatusPurpose[];
+  statusMessages?: StatusMessage[];
+  ttl?: number;
+}
+
+export interface EntryStatus {
+  status: number;
+  valid: boolean;
+  purpose: BitstringStatusPurpose;
+  message?: StatusMessage;
+}
 "#;
 
-#[wasm_bindgen(js_name = BitstringStatusListEntry)]
+#[wasm_bindgen(js_name = BitstringStatusListEntry, inspectable)]
 pub struct WasmBitstringStatusListEntry(pub(crate) BitstringStatusListEntry);
 
 #[wasm_bindgen(js_class = BitstringStatusListEntry)]
@@ -61,7 +83,7 @@ impl WasmBitstringStatusListEntry {
     self.0.type_().to_string()
   }
 
-  #[wasm_bindgen(getter, js_name = statusPurpose, unchecked_return_type = "StatusPurpose")]
+  #[wasm_bindgen(getter, js_name = statusPurpose, unchecked_return_type = "BitstringStatusPurpose")]
   pub fn status_purpose(&self) -> String {
     self.0.status_purpose().to_string()
   }
@@ -90,12 +112,9 @@ impl WasmBitstringStatusListEntry {
   pub fn status_reference(&self) -> Vec<String> {
     self.0.status_reference().iter().map(|url| url.to_string()).collect()
   }
-
-  #[wasm_bindgen(js_name = toJSON)]
-  pub fn to_json(&self) -> Result<String, JsError> {
-    Ok(serde_json::to_string(&self.0)?)
-  }
 }
+
+impl_wasm_json!(WasmBitstringStatusListEntry, BitstringStatusListEntry);
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -151,29 +170,9 @@ impl WasmStatusMessage {
 
 #[wasm_bindgen(typescript_custom_section)]
 const CREDENTIAL_PARAMS: &str = r#"
-export interface BitstringStatusListCredentialParams {
-  id?: string;
-  validFrom?: string;
-  validUntil?: string;
-  issuer: string;
-  context?: string[] | object[];
-  type?: string[];
-  proof?: object;
-  numberOfEntries?: number;
-  statusPurposes: StatusPurpose | StatusPurposes[];
-  statusMessages?: StatusMessage[];
-  ttl?: number;
-}
-
-export interface EntryStatus {
-  status: number;
-  valid: boolean;
-  purpose: StatusPurpose;
-  message?: StatusMessage;
-}
 "#;
 
-#[wasm_bindgen(js_name = BitstringStatusListCredential)]
+#[wasm_bindgen(js_name = BitstringStatusListCredential, inspectable)]
 pub struct WasmBitstringStatusListCredential(pub(crate) BitstringStatusListCredential);
 
 #[wasm_bindgen(js_class = BitstringStatusListCredential)]
@@ -205,7 +204,7 @@ impl WasmBitstringStatusListCredential {
     WasmCredentialV2(self.0.as_ref().clone())
   }
 
-  #[wasm_bindgen(getter, js_name = statusPurpose, unchecked_return_type = "StatusPurpose[]")]
+  #[wasm_bindgen(getter, js_name = statusPurpose, unchecked_return_type = "BitstringStatusPurpose[]")]
   pub fn status_purpose(&self) -> Vec<String> {
     self.0.purposes().iter().map(|purpose| purpose.to_string()).collect()
   }
@@ -235,8 +234,8 @@ impl WasmBitstringStatusListCredential {
   #[wasm_bindgen(js_name = setEntryStatus)]
   pub fn set_entry_status(
     &mut self,
-    #[wasm_bindgen(unchecked_param_type = "bool | StatusMessage")] entry: &WasmBitstringStatusListEntry,
-    value: &JsValue,
+    entry: &WasmBitstringStatusListEntry,
+    #[wasm_bindgen(unchecked_param_type = "bool | StatusMessage")] value: &JsValue,
   ) -> Result<(), JsError> {
     let status_value = if let Some(flag) = value.as_bool() {
       StatusValue::Flag(flag)
@@ -248,12 +247,9 @@ impl WasmBitstringStatusListCredential {
 
     Ok(())
   }
-
-  #[wasm_bindgen(js_name = toJSON)]
-  pub fn to_json(&self) -> Result<String, JsError> {
-    Ok(serde_json::to_string(&self.0)?)
-  }
 }
+
+impl_wasm_json!(WasmBitstringStatusListCredential, BitstringStatusListCredential);
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -333,11 +329,15 @@ where
       v.parse::<usize>().map_err(E::custom)
     }
 
-    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
     where
       E: serde::de::Error,
     {
-      Ok(v as usize)
+      if v >= 0 {
+        Ok(v as usize)
+      } else {
+        Err(E::invalid_value(serde::de::Unexpected::Signed(v), &"unsigned integer"))
+      }
     }
   }
 

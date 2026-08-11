@@ -129,8 +129,8 @@ where
   let jwt_status_list_credential = issuer_document
     .create_credential_v2_jwt(
       &status_list_credential.clone().into(),
-      &issuer_storage,
-      &issuer_fragment,
+      issuer_storage,
+      issuer_fragment,
       &JwsSignatureOptions::default(),
     )
     .await?;
@@ -161,8 +161,8 @@ where
   let jwt = issuer_document
     .create_credential_v2_jwt(
       &status_list_credential.clone().into(),
-      &issuer_storage,
-      &issuer_fragment,
+      issuer_storage,
+      issuer_fragment,
       &JwsSignatureOptions::default(),
     )
     .await?;

@@ -40,7 +40,7 @@ use serde::Serialize;
 use serde::Serializer;
 use serde_json::Value;
 
-use crate::credential::Status;
+use crate::credential::StatusV2;
 use crate::revocation::bitstring_status_list_v1::StatusMessage;
 use crate::revocation::bitstring_status_list_v1::StatusPurpose;
 
@@ -319,20 +319,17 @@ impl<'de> Deserialize<'de> for BitstringStatusListEntry {
   }
 }
 
-impl TryFrom<&Status> for BitstringStatusListEntry {
+impl TryFrom<StatusV2> for BitstringStatusListEntry {
   type Error = serde_json::Error;
-  fn try_from(status: &Status) -> Result<Self, Self::Error> {
+  fn try_from(status: StatusV2) -> Result<Self, Self::Error> {
     serde_json::to_value(status).and_then(serde_json::from_value)
   }
 }
 
-impl From<BitstringStatusListEntry> for Status {
-  fn from(entry: BitstringStatusListEntry) -> Self {
-    // A `Status` must be identified, whereas an entry's `id` is optional; the status list
-    // credential it points to identifies it well enough in that case. A `Status` converted to an
-    // entry and back therefore gains an `id`.
-    let id = entry.id.clone().unwrap_or_else(|| entry.status_list_credential.clone());
-    let type_ = entry.type_.to_owned();
+impl From<BitstringStatusListEntry> for StatusV2 {
+  fn from(mut entry: BitstringStatusListEntry) -> Self {
+    let id = entry.id.take();
+    let type_ = OneOrMany::One(entry.type_.to_owned());
 
     let Value::Object(mut properties) =
       serde_json::to_value(entry).expect("a status list entry serializes to a JSON object")
@@ -343,7 +340,11 @@ impl From<BitstringStatusListEntry> for Status {
     properties.remove("id");
     properties.remove("type");
 
-    Status::new_with_properties(id, type_, properties.into_iter().collect())
+    StatusV2 {
+      id,
+      type_,
+      properties: properties.into_iter().collect(),
+    }
   }
 }
 
@@ -370,29 +371,11 @@ mod tests {
     for entry_json in [VALID_ENTRY_JSON_1, VALID_ENTRY_JSON_2, VALID_ENTRY_JSON_3] {
       let entry: BitstringStatusListEntry = serde_json::from_str(entry_json).unwrap();
 
-      let status = Status::from(entry.clone());
-      assert_eq!(status.type_, ENTRY_TYPE);
-      assert_eq!(Some(&status.id), entry.id());
-      assert_eq!(BitstringStatusListEntry::try_from(&status).unwrap(), entry);
+      let status = StatusV2::from(entry.clone());
+      assert_eq!(status.type_.first().unwrap(), ENTRY_TYPE);
+      assert_eq!(status.id.as_ref(), entry.id());
+      assert_eq!(BitstringStatusListEntry::try_from(status).unwrap(), entry);
     }
-  }
-
-  #[test]
-  fn an_entry_without_an_id_borrows_the_status_list_url_when_converted_to_a_status() {
-    let status_list = Url::parse("https://example.com/status/1").unwrap();
-    let entry = BitstringStatusListEntryBuilder::new()
-      .credential(status_list.clone())
-      .index(0)
-      .status_purpose(StatusPurpose::Revocation)
-      .build()
-      .unwrap();
-    assert_eq!(entry.id(), None);
-    // An id-less entry must not serialize `"id": null`, which is what would reach `Status`.
-    assert!(serde_json::to_value(&entry).unwrap().get("id").is_none());
-
-    let status = Status::from(entry);
-
-    assert_eq!(status.id, status_list);
   }
 
   #[test]

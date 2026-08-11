@@ -12,13 +12,13 @@ import {
     JwtCredentialValidationOptions,
     JwtCredentialValidator,
     JwtVcV2,
-    Status,
     StatusCheck,
     StatusV2,
 } from "@iota/identity-wasm/node";
 import { IotaClient } from "@iota/iota-sdk/client";
 import { OnChainNotarization, State } from "@iota/notarization/node";
-import { createDocumentForNetwork, getFundedClient, getMemstorage, getNotarizationClient, NETWORK_URL } from "../util";
+import { createDocumentForNetwork, getFundedClient, getMemstorage, NETWORK_URL } from "../util";
+import { getNotarizationClient } from "../notarization-utils";
 
 export async function bitstringStatusListRevocation() {
     // Create new client to connect to IOTA network.

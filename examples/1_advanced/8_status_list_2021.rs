@@ -120,7 +120,7 @@ async fn main() -> anyhow::Result<()> {
     FailFast::FirstError,
   )?;
   // Check manually for revocation
-  JwtCredentialValidatorUtils::check_status_with_status_list_2021(
+  JwtCredentialValidatorUtils::check_status_with_status_list_2021::<Object, _>(
     &credential,
     &status_list_credential,
     StatusCheck::Strict,

@@ -134,7 +134,7 @@ impl JwtCredentialValidatorUtils {
     status_check: crate::validator::StatusCheck,
   ) -> ValidationUnitResult
   where
-    C: CredentialT<Properties = Object>,
+    C: CredentialT<Properties = T>,
     C::Status: Clone,
     StatusList2021Entry: TryFrom<C::Status, Error: std::fmt::Display>,
   {

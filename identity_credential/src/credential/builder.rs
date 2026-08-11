@@ -7,6 +7,7 @@ use identity_core::common::Timestamp;
 use identity_core::common::Url;
 use identity_core::common::Value;
 
+use crate::credential::status::StatusV2;
 use crate::credential::Credential;
 use crate::credential::CredentialV2;
 use crate::credential::Evidence;
@@ -16,7 +17,6 @@ use crate::credential::RefreshService;
 use crate::credential::Schema;
 use crate::credential::Status;
 use crate::credential::Subject;
-use crate::credential::status::StatusV2;
 use crate::error::Result;
 
 use super::Proof;

@@ -194,7 +194,7 @@ async fn make_revocable_credential(
       },
       "GPA": "4.0",
     }))?)
-    .status(status_entry.clone())
+    .status_v2(status_entry.clone())
     .build_v2()?;
 
   println!("Issuing credential: {}", credential.to_json_pretty()?);
@@ -219,7 +219,7 @@ async fn check_credential_status(
   let Some(status) = &credential.credential_status else {
     return Ok(true);
   };
-  let status_entry = BitstringStatusListEntry::try_from(status)?;
+  let status_entry = BitstringStatusListEntry::try_from(status.clone())?;
   let custom_network = IotaNetwork::custom(network).expect("valid IOTA network");
   let iota_resource_resolver =
     IotaResourceResolver::new_with_custom_networks(vec![(custom_network, get_iota_endpoint())]);

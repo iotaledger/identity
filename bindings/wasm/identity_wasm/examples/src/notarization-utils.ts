@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { TransactionSigner } from "@iota/iota-interaction-ts/node/iota_interaction_ts";
+import { IotaClient } from "@iota/iota-sdk/client";
 import { NotarizationClient, NotarizationClientReadOnly } from "@iota/notarization/node";
 import { NETWORK_URL } from "./util";
-import { IotaClient } from "@iota/iota-sdk/client";
 
 export const IOTA_NOTARIZATION_PKG_ID = globalThis?.process?.env?.IOTA_NOTARIZATION_PKG_ID || "";
 

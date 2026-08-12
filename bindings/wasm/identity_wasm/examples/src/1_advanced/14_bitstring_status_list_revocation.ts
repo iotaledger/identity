@@ -17,8 +17,8 @@ import {
 } from "@iota/identity-wasm/node";
 import { IotaClient } from "@iota/iota-sdk/client";
 import { OnChainNotarization, State } from "@iota/notarization/node";
-import { createDocumentForNetwork, getFundedClient, getMemstorage, NETWORK_URL } from "../util";
 import { getNotarizationClient } from "../notarization-utils";
+import { createDocumentForNetwork, getFundedClient, getMemstorage, NETWORK_URL } from "../util";
 
 export async function bitstringStatusListRevocation() {
     // Create new client to connect to IOTA network.

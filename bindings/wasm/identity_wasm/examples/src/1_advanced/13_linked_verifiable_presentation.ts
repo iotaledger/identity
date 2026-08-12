@@ -20,6 +20,7 @@ import {
 } from "@iota/identity-wasm/node";
 import { IotaClient } from "@iota/iota-sdk/client";
 import { OnChainNotarization } from "@iota/notarization/node";
+import { getNotarizationClient } from "../notarization-utils";
 import {
     createDocumentForNetwork,
     getFundedClient,
@@ -28,7 +29,6 @@ import {
     NETWORK_URL,
     TEST_GAS_BUDGET,
 } from "../util";
-import { getNotarizationClient } from "../notarization-utils";
 
 /**
  * This example shows how to create a Verifiable Presentation and validate it.

@@ -11,8 +11,8 @@ use identity_iota::verification::jws::JwsAlgorithm;
 use identity_iota::verification::MethodScope;
 use identity_storage::JwkDocumentExt as _;
 use identity_storage::KeyType;
-use iota_sdk_types::SignatureScheme;
 use iota_sdk_types::Address;
+use iota_sdk_types::SignatureScheme;
 
 /// This examples showcases how the Identity library can leverage IOTA Keytool
 /// for all operations that require access to any key-material.

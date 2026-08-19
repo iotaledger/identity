@@ -5,11 +5,8 @@ use serde::Serialize;
 
 use crate::rebased::Error;
 use iota_interaction::ident_str;
-use iota_interaction::types::base_types::ObjectRef;
-use iota_interaction::types::base_types::SequenceNumber;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use iota_interaction::types::transaction::CallArg;
-use iota_interaction::types::transaction::SharedObjectRef;
 use iota_interaction::MoveType;
 use iota_interaction::ProgrammableTransactionBcs;
 use iota_interaction::TypedValue;
@@ -18,6 +15,9 @@ use iota_sdk_types::Argument;
 use iota_sdk_types::Command;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::TypeTag;
+use iota_sdk_types::ObjectReference;
+use iota_sdk_types::SharedObjectReference;
+use iota_sdk_types::Version;
 
 fn try_to_argument<T: MoveType + Serialize>(
   content: &T,
@@ -67,7 +67,7 @@ pub(crate) fn new_asset<T: Serialize + MoveType>(
   Ok(bcs::to_bytes(&ptb.finish())?)
 }
 
-pub(crate) fn delete<T>(asset: ObjectRef, package: ObjectId) -> Result<ProgrammableTransactionBcs, Error>
+pub(crate) fn delete<T>(asset: ObjectReference, package: ObjectId) -> Result<ProgrammableTransactionBcs, Error>
 where
   T: MoveType,
 {
@@ -89,7 +89,7 @@ where
 }
 
 pub(crate) fn transfer<T: MoveType>(
-  asset: ObjectRef,
+  asset: ObjectReference,
   recipient: Address,
   package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
@@ -111,16 +111,16 @@ pub(crate) fn transfer<T: MoveType>(
 }
 
 pub(crate) fn make_tx(
-  proposal: (ObjectId, SequenceNumber),
-  cap: ObjectRef,
-  asset: ObjectRef,
+  proposal: (ObjectId, Version),
+  cap: ObjectReference,
+  asset: ObjectReference,
   asset_type_param: TypeTag,
   package: ObjectId,
   function_name: &'static str,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = ProgrammableTransactionBuilder::new();
   let proposal = ptb
-    .obj(CallArg::Shared(SharedObjectRef {
+    .obj(CallArg::Shared(SharedObjectReference {
       object_id: proposal.0,
       initial_shared_version: proposal.1,
       mutable: true,
@@ -145,9 +145,9 @@ pub(crate) fn make_tx(
 }
 
 pub(crate) fn accept_proposal(
-  proposal: (ObjectId, SequenceNumber),
-  recipient_cap: ObjectRef,
-  asset: ObjectRef,
+  proposal: (ObjectId, Version),
+  recipient_cap: ObjectReference,
+  asset: ObjectReference,
   asset_type_param: TypeTag,
   package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
@@ -155,9 +155,9 @@ pub(crate) fn accept_proposal(
 }
 
 pub(crate) fn conclude_or_cancel(
-  proposal: (ObjectId, SequenceNumber),
-  sender_cap: ObjectRef,
-  asset: ObjectRef,
+  proposal: (ObjectId, Version),
+  sender_cap: ObjectReference,
+  asset: ObjectReference,
   asset_type_param: TypeTag,
   package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
@@ -172,7 +172,7 @@ pub(crate) fn conclude_or_cancel(
 }
 
 pub(crate) fn update<T>(
-  asset: ObjectRef,
+  asset: ObjectReference,
   new_content: &T,
   package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error>

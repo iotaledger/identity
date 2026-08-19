@@ -17,8 +17,6 @@ use iota_interaction::rpc_types::IotaExecutionStatus;
 use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
-use iota_interaction::types::base_types::ObjectRef;
-use iota_interaction::types::base_types::SequenceNumber;
 use iota_interaction::types::id::UID;
 use iota_interaction::IotaClientTrait;
 use iota_interaction::IotaTransactionBlockEffectsMutAPI as _;
@@ -30,6 +28,7 @@ use iota_sdk_types::Owner;
 use iota_sdk_types::ProgrammableTransaction;
 use iota_sdk_types::StructTag;
 use iota_sdk_types::TypeTag;
+use iota_sdk_types::{ObjectReference, Version};
 use product_common::core_client::CoreClientReadOnly;
 use product_common::transaction::transaction_builder::Transaction;
 use product_common::transaction::transaction_builder::TransactionBuilder;
@@ -96,7 +95,7 @@ where
 }
 
 impl<T: MoveType + Send + Sync> AuthenticatedAsset<T> {
-  async fn object_ref(&self, client: &impl CoreClientReadOnly) -> Result<ObjectRef, Error> {
+  async fn object_ref(&self, client: &impl CoreClientReadOnly) -> Result<ObjectReference, Error> {
     client
       .client_adapter()
       .read_api()
@@ -294,7 +293,7 @@ impl TransferProposal {
       .map_err(|e| Error::ObjectLookup(e.to_string()))
   }
 
-  async fn get_cap<C>(&self, cap_type: &str, client: &C) -> Result<ObjectRef, Error>
+  async fn get_cap<C>(&self, cap_type: &str, client: &C) -> Result<ObjectReference, Error>
   where
     C: CoreClientReadOnly + OptionalSync,
   {
@@ -319,7 +318,7 @@ impl TransferProposal {
       })
   }
 
-  async fn asset_metadata(&self, client: &impl CoreClientReadOnly) -> anyhow::Result<(ObjectRef, TypeTag)> {
+  async fn asset_metadata(&self, client: &impl CoreClientReadOnly) -> anyhow::Result<(ObjectReference, TypeTag)> {
     let res = client
       .client_adapter()
       .read_api()
@@ -344,7 +343,7 @@ impl TransferProposal {
     Ok((asset_ref, param_type))
   }
 
-  async fn initial_shared_version(&self, client: &impl CoreClientReadOnly) -> anyhow::Result<SequenceNumber> {
+  async fn initial_shared_version(&self, client: &impl CoreClientReadOnly) -> anyhow::Result<Version> {
     let owner = client
       .client_adapter()
       .read_api()

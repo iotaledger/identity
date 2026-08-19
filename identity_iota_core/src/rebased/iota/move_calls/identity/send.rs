@@ -3,7 +3,6 @@
 
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::MoveType as _;
@@ -11,6 +10,7 @@ use iota_interaction::ProgrammableTransactionBcs;
 use iota_sdk_types::Address;
 use iota_sdk_types::Argument;
 use iota_sdk_types::ObjectId;
+use iota_sdk_types::ObjectReference;
 use iota_sdk_types::TypeTag;
 
 use crate::rebased::iota::move_calls::utils;
@@ -41,7 +41,7 @@ pub(crate) fn execute_send(
   identity: OwnedObjectRef,
   capability: ControllerTokenRef,
   proposal_id: ObjectId,
-  objects: Vec<(ObjectRef, TypeTag)>,
+  objects: Vec<(ObjectReference, TypeTag)>,
   package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();
@@ -61,7 +61,7 @@ pub(crate) fn create_and_execute_send(
   capability: ControllerTokenRef,
   transfer_map: Vec<(ObjectId, Address)>,
   expiration: Option<u64>,
-  objects: Vec<(ObjectRef, TypeTag)>,
+  objects: Vec<(ObjectReference, TypeTag)>,
   package: ObjectId,
 ) -> anyhow::Result<ProgrammableTransactionBcs, Error> {
   let ProposalContext {
@@ -118,7 +118,7 @@ pub(crate) fn execute_send_impl(
   identity: Argument,
   delegation_token: Argument,
   proposal_id: Argument,
-  objects: Vec<(ObjectRef, TypeTag)>,
+  objects: Vec<(ObjectReference, TypeTag)>,
   package: ObjectId,
 ) -> anyhow::Result<()> {
   // Get the proposal's action as argument.

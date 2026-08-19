@@ -3,19 +3,19 @@
 
 use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
-use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::CallArg;
 use iota_interaction::ProgrammableTransactionBcs;
 use iota_sdk_types::Address;
 use iota_sdk_types::ObjectId;
+use iota_sdk_types::ObjectReference;
 
 use crate::rebased::iota::move_calls::utils;
 use crate::rebased::rebased_err;
 use crate::rebased::Error;
 
 pub(crate) async fn delegate_controller_cap(
-  controller_cap: ObjectRef,
+  controller_cap: ObjectReference,
   recipient: Address,
   permissions: u32,
   package: ObjectId,
@@ -41,7 +41,7 @@ pub(crate) async fn delegate_controller_cap(
 
 pub(crate) fn revoke_delegation_token(
   identity: OwnedObjectRef,
-  controller_cap: ObjectRef,
+  controller_cap: ObjectReference,
   delegation_token_id: ObjectId,
   package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
@@ -65,7 +65,7 @@ pub(crate) fn revoke_delegation_token(
 
 pub(crate) fn unrevoke_delegation_token(
   identity: OwnedObjectRef,
-  controller_cap: ObjectRef,
+  controller_cap: ObjectReference,
   delegation_token_id: ObjectId,
   package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
@@ -89,7 +89,7 @@ pub(crate) fn unrevoke_delegation_token(
 
 pub(crate) async fn destroy_delegation_token(
   identity: OwnedObjectRef,
-  delegation_token: ObjectRef,
+  delegation_token: ObjectReference,
   package: ObjectId,
 ) -> Result<ProgrammableTransactionBcs, Error> {
   let mut ptb = Ptb::new();

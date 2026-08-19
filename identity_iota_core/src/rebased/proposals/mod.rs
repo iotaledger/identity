@@ -25,7 +25,6 @@ use iota_interaction::rpc_types::IotaObjectData;
 use iota_interaction::rpc_types::IotaObjectDataOptions;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
 use iota_interaction::rpc_types::IotaTransactionBlockEffectsAPI as _;
-use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::base_types::ObjectType;
 use iota_interaction::IotaClientTrait;
 use iota_interaction::OptionalSend;
@@ -33,6 +32,7 @@ use iota_interaction::OptionalSync;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::ProgrammableTransaction;
 use iota_sdk_types::TypeTag;
+use iota_sdk_types::ObjectReference;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::transaction::transaction_builder::Transaction;
 use product_common::transaction::transaction_builder::TransactionBuilder;
@@ -419,7 +419,7 @@ async fn obj_data_for_id(client: &impl CoreClientReadOnly, obj_id: ObjectId) -> 
 async fn obj_ref_and_type_for_id(
   client: &impl CoreClientReadOnly,
   obj_id: ObjectId,
-) -> anyhow::Result<(ObjectRef, TypeTag)> {
+) -> anyhow::Result<(ObjectReference, TypeTag)> {
   let res = obj_data_for_id(client, obj_id).await?;
   let obj_ref = res.object_ref();
   let obj_type = match res.object_type().expect("object type is requested") {

@@ -4,7 +4,6 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
 use fastcrypto::hash::Blake2b256;
-use fastcrypto::traits::ToFromBytes;
 
 use identity_did::CoreDID;
 use identity_document::document::CoreDocument;

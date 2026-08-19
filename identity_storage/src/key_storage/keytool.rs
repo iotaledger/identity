@@ -7,9 +7,9 @@ use identity_verification::jwk::Jwk;
 use identity_verification::jwk::ToJwk as _;
 use identity_verification::jws::JwsAlgorithm;
 use iota_interaction::types::crypto::IotaKeyPair;
-use iota_interaction::types::crypto::SignatureScheme;
 use iota_interaction::KeytoolStorage;
 use iota_sdk_types::Address;
+use iota_sdk_types::SignatureScheme;
 
 use super::JwkGenOutput;
 use super::JwkStorage;
@@ -24,7 +24,7 @@ use super::KeyType;
 impl JwkStorage for KeytoolStorage {
   async fn generate(&self, key_type: KeyType, alg: JwsAlgorithm) -> KeyStorageResult<JwkGenOutput> {
     let key_scheme = match key_type.as_str() {
-      "ed25519" => SignatureScheme::ED25519,
+      "ed25519" => SignatureScheme::Ed25519,
       "secp256r1" => SignatureScheme::Secp256r1,
       "secp256k1" => SignatureScheme::Secp256k1,
       _ => return Err(KeyStorageError::new(KeyStorageErrorKind::UnsupportedKeyType)),

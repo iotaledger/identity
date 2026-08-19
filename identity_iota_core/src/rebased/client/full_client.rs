@@ -24,7 +24,6 @@ use iota_interaction::rpc_types::IotaObjectData;
 use iota_interaction::rpc_types::IotaObjectDataFilter;
 use iota_interaction::rpc_types::IotaObjectResponseQuery;
 use iota_interaction::rpc_types::IotaTransactionBlockEffects;
-use iota_interaction::types::base_types::ObjectRef;
 use iota_interaction::types::crypto::PublicKey;
 #[cfg(not(target_arch = "wasm32"))]
 use iota_interaction::IotaClient;
@@ -33,6 +32,7 @@ use iota_interaction_ts::bindings::WasmIotaClient as IotaClient;
 use iota_sdk_types::Address;
 use iota_sdk_types::ProgrammableTransaction;
 use iota_sdk_types::StructTag;
+use iota_sdk_types::ObjectReference;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;
@@ -384,7 +384,7 @@ where
 
   /// Query the objects owned by the address wrapped by this client to find the object of type `tag`
   /// and that satisfies `predicate`.
-  pub async fn find_owned_ref<P>(&self, tag: StructTag, predicate: P) -> Result<Option<ObjectRef>, Error>
+  pub async fn find_owned_ref<P>(&self, tag: StructTag, predicate: P) -> Result<Option<ObjectReference>, Error>
   where
     P: Fn(&IotaObjectData) -> bool,
   {

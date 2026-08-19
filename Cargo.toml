@@ -30,10 +30,12 @@ exclude = ["bindings/wasm/identity_wasm", "bindings/grpc"]
 
 [workspace.dependencies]
 bls12_381_plus = { version = "0.8.17" }
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.23", package = "iota_interaction" }
-iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.23", package = "iota_interaction_ts" }
-iota-sdk-types = { git = "https://github.com/iotaledger/iota-rust-sdk.git", rev = "ce81341ac3fdb7204df112182c68319f26d5896b", default-features = false }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.23", package = "product_common" }
+iota_interaction = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1.29.0-upstream-merge", package = "iota_interaction" }
+iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1.29.0-upstream-merge", package = "iota_interaction_ts" }
+iota-sdk-types = { git = "https://github.com/iotaledger/iota-rust-sdk.git", rev = "2f021d0556e47564e9b04bcd0b3e8347c41a0a26", default-features = false }
+iota-sdk-crypto = { git = "https://github.com/iotaledger/iota-rust-sdk.git", rev = "2f021d0556e47564e9b04bcd0b3e8347c41a0a26", default-features = false }
+product_common = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1.29.0-upstream-merge", package = "product_common" }
+fastcrypto = "0.1.11"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = { version = "1.0", default-features = false }
 oqs = { version = "0.10", default-features = false, features = ["sigs", "std", "vendored"] }
@@ -53,3 +55,6 @@ opt-level = 's'
 #       If not, remove the next line
 #       If yes, describe the helping effect in the comment above
 # debug = true
+
+[patch."https://github.com/MystenLabs/fastcrypto"]
+fastcrypto = "=0.1.11"

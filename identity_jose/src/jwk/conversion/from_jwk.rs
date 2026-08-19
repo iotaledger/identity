@@ -14,7 +14,10 @@ use fastcrypto::secp256k1::Secp256k1KeyPair;
 use fastcrypto::secp256r1::Secp256r1KeyPair;
 use iota_interaction::types::crypto::IotaKeyPair;
 use iota_interaction::types::crypto::PublicKey;
-use iota_interaction::types::crypto::SignatureScheme as IotaSignatureScheme;
+use iota_sdk_crypto::secp256k1::Secp256k1PrivateKey;
+use iota_sdk_crypto::secp256r1::Secp256r1PrivateKey;
+use iota_sdk_crypto::ToFromBytes;
+use iota_sdk_types::SignatureScheme as IotaSignatureScheme;
 
 use super::ed25519;
 use super::secp256k1;
@@ -34,8 +37,10 @@ impl FromJwk for IotaKeyPair {
 
   fn from_jwk(jwk: &Jwk) -> Result<Self, Self::Error> {
     let maybe_ed22519 = Ed25519KeyPair::from_jwk(jwk).map(IotaKeyPair::from);
-    let maybe_secp256r1 = Secp256r1KeyPair::from_jwk(jwk).map(IotaKeyPair::from);
-    let maybe_secp256k1 = Secp256k1KeyPair::from_jwk(jwk).map(IotaKeyPair::from);
+    let maybe_secp256r1 = Secp256r1KeyPair::from_jwk(jwk)
+      .map(|k| IotaKeyPair::Secp256r1(Secp256r1PrivateKey::from_bytes(k.secret).unwrap()));
+    let maybe_secp256k1 = Secp256k1KeyPair::from_jwk(jwk)
+      .map(|k| IotaKeyPair::Secp256k1(Secp256k1PrivateKey::from_bytes(k.secret).unwrap()));
 
     maybe_ed22519
       .or(maybe_secp256k1)
@@ -57,7 +62,7 @@ impl FromJwk for PublicKey {
         jwu::decode_b64(&params.x)
           .context("failed to base64 decode key")
           .and_then(|pk_bytes| {
-            PublicKey::try_from_bytes(IotaSignatureScheme::ED25519, &pk_bytes).map_err(|e| anyhow!("{e}"))
+            PublicKey::try_from_bytes(IotaSignatureScheme::Ed25519, &pk_bytes).map_err(|e| anyhow!("{e}"))
           })
           .map_err(|err| Error::KeyConversion(err.to_string()))
       }

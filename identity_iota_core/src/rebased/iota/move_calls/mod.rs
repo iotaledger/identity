@@ -1,7 +1,7 @@
 // Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use iota_interaction::types::base_types::ObjectRef;
+use iota_sdk_types::ObjectReference;
 
 pub(crate) mod asset;
 pub(crate) mod identity;
@@ -10,12 +10,12 @@ mod utils;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ControllerTokenRef {
-  Controller(ObjectRef),
-  Delegate(ObjectRef),
+  Controller(ObjectReference),
+  Delegate(ObjectReference),
 }
 
 impl ControllerTokenRef {
-  pub(crate) fn object_ref(&self) -> ObjectRef {
+  pub(crate) fn object_ref(&self) -> ObjectReference {
     match self {
       Self::Controller(obj_ref) => *obj_ref,
       Self::Delegate(obj_ref) => *obj_ref,

@@ -5,7 +5,6 @@ use iota_interaction::ident_str;
 use iota_interaction::rpc_types::OwnedObjectRef;
 use iota_interaction::types::programmable_transaction_builder::ProgrammableTransactionBuilder as Ptb;
 use iota_interaction::types::transaction::CallArg;
-use iota_interaction::types::transaction::SharedObjectRef;
 use iota_interaction::types::IOTA_CLOCK_OBJECT_ID;
 use iota_interaction::types::IOTA_CLOCK_OBJECT_SHARED_VERSION;
 use iota_interaction::types::MOVE_STDLIB_PACKAGE_ID;
@@ -13,6 +12,7 @@ use iota_interaction::MoveType;
 use iota_sdk_types::Argument;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::Owner;
+use iota_sdk_types::SharedObjectReference;
 use serde::Serialize;
 
 use crate::rebased::Error;
@@ -20,7 +20,7 @@ use crate::rebased::Error;
 /// Adds a reference to the on-chain clock to `ptb`'s arguments.
 pub(crate) fn get_clock_ref(ptb: &mut Ptb) -> Argument {
   ptb
-    .obj(CallArg::Shared(SharedObjectRef {
+    .obj(CallArg::Shared(SharedObjectReference {
       object_id: IOTA_CLOCK_OBJECT_ID,
       initial_shared_version: IOTA_CLOCK_OBJECT_SHARED_VERSION,
       mutable: false,
@@ -70,7 +70,7 @@ pub(crate) fn owned_ref_to_shared_object_arg(
   let Owner::Shared(initial_shared_version) = owned_ref.owner else {
     anyhow::bail!("Object \"{}\" is not a shared object", owned_ref.object_id());
   };
-  ptb.obj(CallArg::Shared(SharedObjectRef {
+  ptb.obj(CallArg::Shared(SharedObjectReference {
     object_id: owned_ref.object_id(),
     initial_shared_version,
     mutable,

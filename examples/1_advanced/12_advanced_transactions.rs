@@ -13,10 +13,10 @@ use identity_iota::iota_interaction::IotaKeySignature;
 use iota_sdk::rpc_types::IotaTransactionBlockResponseOptions;
 use iota_sdk::types::crypto::Signature;
 use iota_sdk::types::quorum_driver_types::ExecuteTransactionRequestType;
-use iota_sdk::types::transaction::GasData;
 use iota_sdk::types::transaction::Transaction;
 use iota_sdk::IotaClientBuilder;
 use iota_sdk::IOTA_COIN_TYPE;
+use iota_sdk_types::GasPayment;
 use product_common::core_client::CoreClient;
 use product_common::transaction::transaction_builder::MutGasDataRef;
 use product_common::transaction::transaction_builder::Transaction as _;
@@ -82,7 +82,7 @@ where
     .first()
     .expect("should have at least 1 coin")
     .object_ref();
-  let gas_data = GasData {
+  let gas_data = GasPayment {
     price: 1000,
     objects: vec![coin_ref],
     owner: client.sender_address(),

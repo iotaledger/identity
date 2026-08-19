@@ -10,7 +10,7 @@ use identity_jose::jws::JwsAlgorithm;
 use identity_storage::JwkDocumentExt;
 use identity_storage::JwkMemStore;
 use identity_verification::MethodScope;
-use iota_sdk::types::crypto::SignatureScheme;
+use iota_sdk_types::SignatureScheme;
 use product_common::core_client::CoreClient;
 
 #[tokio::test]
@@ -103,7 +103,7 @@ async fn client_with_keytool_signer_active_address_works() -> anyhow::Result<()>
 
 #[tokio::test]
 async fn client_with_new_ed25519_keytool_signer_works() -> anyhow::Result<()> {
-  let test_client = TestClient::new_with_key_type(SignatureScheme::ED25519).await?;
+  let test_client = TestClient::new_with_key_type(SignatureScheme::Ed25519).await?;
   let _identity = test_client
     .create_identity(IotaDocument::new(test_client.network()))
     .finish()

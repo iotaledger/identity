@@ -20,13 +20,13 @@ use identity_verification::MethodScope;
 use identity_verification::VerificationMethod;
 use iota_sdk::rpc_types::IotaObjectData;
 use iota_sdk::rpc_types::IotaTransactionBlockEffectsAPI;
-use iota_sdk::types::base_types::SequenceNumber;
 use iota_sdk::types::transaction::CallArg;
-use iota_sdk::types::transaction::SharedObjectRef;
 use iota_sdk::types::IOTA_FRAMEWORK_PACKAGE_ID;
 use iota_sdk_types::ObjectId;
 use iota_sdk_types::Owner;
+use iota_sdk_types::SharedObjectReference;
 use iota_sdk_types::TypeTag;
+use iota_sdk_types::Version;
 use move_core_types::ident_str;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
@@ -245,7 +245,7 @@ async fn can_get_historical_identity_data() -> anyhow::Result<()> {
     .collect::<Result<Vec<bool>, identity_iota_core::rebased::Error>>()?;
   assert_eq!(has_previous_version_responses, vec![true, false]);
 
-  let versions: Vec<SequenceNumber> = history.iter().map(|elem| elem.version).collect();
+  let versions: Vec<Version> = history.iter().map(|elem| elem.version).collect();
   let version_numbers: Vec<u64> = versions.iter().map(|v| v.as_u64()).collect();
 
   // Check that we have 2 versions (original and updated)
@@ -439,7 +439,7 @@ async fn controller_execution_works() -> anyhow::Result<()> {
     .controller_execution(controller_cap.object_id, &token)
     .with_intent(|ptb, controller_cap| {
       let identity2 = ptb
-        .obj(CallArg::Shared(SharedObjectRef {
+        .obj(CallArg::Shared(SharedObjectReference {
           object_id: identity2_ref.object_id(),
           initial_shared_version,
           mutable: true,

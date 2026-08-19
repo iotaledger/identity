@@ -16,6 +16,8 @@ bls12_381_plus.workspace = true
 fastcrypto = { workspace = true, optional = true }
 identity_core = { version = "=1.9.12-beta.1", path = "../identity_core" }
 iota-crypto = { version = "0.23.2", default-features = false, features = ["std", "sha", "ed25519"] }
+iota-sdk-crypto.workspace = true
+iota-sdk-types.workspace = true
 json-proof-token.workspace = true
 k256 = { version = "0.13.3", default-features = false, features = ["std", "ecdsa", "ecdsa-core", "jwk"], optional = true }
 p256 = { version = "0.13.2", default-features = false, features = ["std", "ecdsa", "ecdsa-core", "jwk"], optional = true }
@@ -23,8 +25,6 @@ serde.workspace = true
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
 thiserror.workspace = true
 zeroize = { version = "1.6", default-features = false, features = ["std", "zeroize_derive"] }
-iota-sdk-types.workspace = true
-iota-sdk-crypto.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 iota_interaction = { git = "https://github.com/iotaledger/product-core.git", branch = "feat/iota-v1.29.0-upstream-merge", package = "iota_interaction" }

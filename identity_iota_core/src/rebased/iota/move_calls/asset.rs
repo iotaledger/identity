@@ -14,9 +14,9 @@ use iota_sdk_types::Address;
 use iota_sdk_types::Argument;
 use iota_sdk_types::Command;
 use iota_sdk_types::ObjectId;
-use iota_sdk_types::TypeTag;
 use iota_sdk_types::ObjectReference;
 use iota_sdk_types::SharedObjectReference;
+use iota_sdk_types::TypeTag;
 use iota_sdk_types::Version;
 
 fn try_to_argument<T: MoveType + Serialize>(

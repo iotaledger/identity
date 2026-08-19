@@ -30,9 +30,9 @@ use iota_interaction::IotaClient;
 #[cfg(target_arch = "wasm32")]
 use iota_interaction_ts::bindings::WasmIotaClient as IotaClient;
 use iota_sdk_types::Address;
+use iota_sdk_types::ObjectReference;
 use iota_sdk_types::ProgrammableTransaction;
 use iota_sdk_types::StructTag;
-use iota_sdk_types::ObjectReference;
 use product_common::core_client::CoreClient;
 use product_common::core_client::CoreClientReadOnly;
 use product_common::network_name::NetworkName;

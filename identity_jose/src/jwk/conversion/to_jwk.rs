@@ -86,7 +86,7 @@ mod tests {
 
   #[test]
   fn can_convert_from_ed25519_keypair_to_jwk() {
-    let keypair = fastcrypto::ed25519::Ed25519KeyPair::generate(rand::thread_rng());
+    let keypair = fastcrypto::ed25519::Ed25519KeyPair::generate(&mut rand::thread_rng());
     let result = keypair.to_jwk();
 
     assert!(result.is_ok());

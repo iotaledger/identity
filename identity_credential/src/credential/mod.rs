@@ -34,6 +34,8 @@ use identity_core::common::Object;
 use identity_core::common::OneOrMany;
 use identity_core::common::Timestamp;
 
+pub use crate::credential::status::StatusT;
+
 pub use self::builder::CredentialBuilder;
 pub use self::credential::Credential;
 pub use self::evidence::Evidence;
@@ -56,6 +58,7 @@ pub use self::revocation_bitmap_status::try_index_to_u32;
 pub use self::revocation_bitmap_status::RevocationBitmapStatus;
 pub use self::schema::Schema;
 pub use self::status::Status;
+pub use self::status::StatusV2;
 pub use self::subject::Subject;
 pub use credential_v2::Credential as CredentialV2;
 pub use enveloped_credential::*;
@@ -73,6 +76,8 @@ trait CredentialSealed {}
 pub trait CredentialT: CredentialSealed {
   /// The type of the custom claims.
   type Properties;
+  /// The type of this credential status.
+  type Status: StatusT;
 
   /// The Credential's context.
   fn context(&self) -> &OneOrMany<Context>;
@@ -87,7 +92,7 @@ pub trait CredentialT: CredentialSealed {
   /// The Credential's expiration date, if any.
   fn valid_until(&self) -> Option<Timestamp>;
   /// The Credential's validity status, if any.
-  fn status(&self) -> Option<&Status>;
+  fn status(&self) -> Option<&Self::Status>;
   /// The Credential's custom properties.
   fn properties(&self) -> &Self::Properties;
   /// Whether the Credential's `nonTransferable` property is set.

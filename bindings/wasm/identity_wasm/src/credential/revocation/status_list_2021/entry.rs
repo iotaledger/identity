@@ -35,8 +35,8 @@ impl WasmStatusList2021Entry {
 
   /// Returns this `credentialStatus`'s `id`.
   #[wasm_bindgen]
-  pub fn id(&self) -> String {
-    self.0.id().to_string()
+  pub fn id(&self) -> Option<String> {
+    self.0.id().map(|url| url.to_string())
   }
 
   /// Returns the purpose of this entry.

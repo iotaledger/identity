@@ -1,0 +1,14 @@
+{
+    "id": "https://example.com/credentials/status/8#492847",
+    "type": "BitstringStatusListEntry",
+    "statusPurpose": "message",
+    "statusListIndex": "492847",
+    "statusSize": 2,
+    "statusListCredential": "https://example.com/credentials/status/8",
+    "statusMessage": [
+        {"status":"0x0", "message":"pending_review"},
+        {"status":"0x1", "message":"accepted"},
+        {"status":"0x2", "message":"rejected"}
+    ],
+    "statusReference": "https://example.org/status-dictionary/"
+}

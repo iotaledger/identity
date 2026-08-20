@@ -37,6 +37,7 @@ features = [
   "revocation-bitmap",
   "sd-jwt",
   "status-list-2021",
+  "bitstring-status-list",
   "keytool",
   "hybrid-liboqs",
   "gas-station",
@@ -142,3 +143,7 @@ name = "12_advanced_transactions"
 [[example]]
 path = "1_advanced/13_iota_keytool_integration.rs"
 name = "13_iota_keytool_integration"
+
+[[example]]
+path = "1_advanced/14_bitstring_status_list.rs"
+name = "14_bitstring_status_list"

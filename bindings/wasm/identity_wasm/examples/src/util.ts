@@ -19,7 +19,7 @@ import { getFaucetHost, requestIotaFromFaucetV0 } from "@iota/iota-sdk/faucet";
 import { IotaEvent } from "@iota/iota-sdk/src/client/types/generated";
 import { Transaction as SdkTransaction } from "@iota/iota-sdk/transactions";
 
-export const IOTA_IDENTITY_PKG_ID = globalThis?.process?.env?.IOTA_IDENTITY_PKG_ID;
+export const IOTA_IDENTITY_PKG_ID = globalThis?.process?.env?.IOTA_IDENTITY_PKG_ID || "";
 export const NETWORK_NAME_FAUCET = globalThis?.process?.env?.NETWORK_NAME_FAUCET || "localnet";
 export const NETWORK_URL = getFullnodeUrl(NETWORK_NAME_FAUCET);
 

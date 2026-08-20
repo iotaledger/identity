@@ -3,6 +3,7 @@
 
 use identity_iota::core::Object;
 use identity_iota::core::Url;
+use identity_iota::credential::Credential;
 use identity_iota::credential::JwtCredentialValidatorHybrid;
 use identity_iota::credential::JwtCredentialValidatorUtils;
 use identity_iota::credential::StatusCheck;
@@ -183,7 +184,7 @@ impl WasmJwtCredentialValidatorHybrid {
     status_list: &WasmStatusList2021Credential,
     status_check: WasmStatusCheck,
   ) -> Result<()> {
-    JwtCredentialValidatorUtils::check_status_with_status_list_2021(
+    JwtCredentialValidatorUtils::check_status_with_status_list_2021::<Object, Credential>(
       &credential.0,
       &status_list.inner,
       status_check.into(),

@@ -15,8 +15,15 @@ use crate::credential::Credential;
 use crate::credential::CredentialJwtClaims;
 use crate::credential::CredentialT;
 use crate::credential::CredentialV2;
+#[cfg(feature = "revocation-bitmap")]
+use crate::credential::RevocationBitmapStatus;
+use crate::credential::StatusT;
+#[cfg(feature = "revocation-bitmap")]
+use crate::credential::StatusV2;
 #[cfg(feature = "status-list-2021")]
 use crate::revocation::status_list_2021::StatusList2021Credential;
+#[cfg(feature = "status-list-2021")]
+use crate::revocation::status_list_2021::StatusList2021Entry;
 use crate::validator::SubjectHolderRelationship;
 
 /// Utility functions for verifying JWT credentials.
@@ -31,7 +38,7 @@ impl JwtCredentialValidatorUtils {
   ///
   /// # Warning
   /// This does not validate against the credential's schema nor the structure of the subject claims.
-  pub fn check_structure<T>(credential: &dyn CredentialT<Properties = T>) -> ValidationUnitResult {
+  pub fn check_structure<T>(credential: &impl CredentialT<Properties = T>) -> ValidationUnitResult {
     // Ensure the base context is present and in the correct location
     match credential.context().get(0) {
       Some(context) if context == credential.base_context() => {}
@@ -68,7 +75,7 @@ impl JwtCredentialValidatorUtils {
 
   /// Validate that the [`Credential`] expires after the specified [`Timestamp`].
   pub fn check_expires_on_or_after<T>(
-    credential: &dyn CredentialT<Properties = T>,
+    credential: &impl CredentialT<Properties = T>,
     timestamp: Timestamp,
   ) -> ValidationUnitResult {
     match credential.valid_until() {
@@ -79,7 +86,7 @@ impl JwtCredentialValidatorUtils {
 
   /// Validate that the [`Credential`] is issued on or before the specified [`Timestamp`].
   pub fn check_issued_on_or_before<T>(
-    credential: &dyn CredentialT<Properties = T>,
+    credential: &impl CredentialT<Properties = T>,
     timestamp: Timestamp,
   ) -> ValidationUnitResult {
     if credential.valid_from() <= timestamp {
@@ -92,7 +99,7 @@ impl JwtCredentialValidatorUtils {
   /// Validate that the relationship between the `holder` and the credential subjects is in accordance with
   /// `relationship`.
   pub fn check_subject_holder_relationship<T>(
-    credential: &dyn CredentialT<Properties = T>,
+    credential: &impl CredentialT<Properties = T>,
     holder: &Url,
     relationship: SubjectHolderRelationship,
   ) -> ValidationUnitResult {
@@ -121,13 +128,17 @@ impl JwtCredentialValidatorUtils {
   ///
   /// Only supports `StatusList2021`.
   #[cfg(feature = "status-list-2021")]
-  pub fn check_status_with_status_list_2021<T>(
-    credential: &dyn CredentialT<Properties = T>,
+  pub fn check_status_with_status_list_2021<T, C>(
+    credential: &C,
     status_list_credential: &StatusList2021Credential,
     status_check: crate::validator::StatusCheck,
-  ) -> ValidationUnitResult {
+  ) -> ValidationUnitResult
+  where
+    C: CredentialT<Properties = T>,
+    C::Status: Clone,
+    StatusList2021Entry: TryFrom<C::Status, Error: std::fmt::Display>,
+  {
     use crate::revocation::status_list_2021::CredentialStatus;
-    use crate::revocation::status_list_2021::StatusList2021Entry;
 
     if status_check == crate::validator::StatusCheck::SkipAll {
       return Ok(());
@@ -137,7 +148,7 @@ impl JwtCredentialValidatorUtils {
       return Ok(());
     };
 
-    let status = StatusList2021Entry::try_from(status)
+    let status = StatusList2021Entry::try_from(status.clone())
       .map_err(|e| JwtValidationError::InvalidStatus(crate::Error::InvalidStatus(e.to_string())))?;
     if Some(status.status_list_credential()) == status_list_credential.id.as_ref()
       && status.purpose() == status_list_credential.purpose()
@@ -161,11 +172,16 @@ impl JwtCredentialValidatorUtils {
   ///
   /// Only supports `RevocationBitmap2022`.
   #[cfg(feature = "revocation-bitmap")]
-  pub fn check_status<DOC: AsRef<identity_document::document::CoreDocument>, T>(
-    credential: &dyn CredentialT<Properties = T>,
+  pub fn check_status<DOC, T, C>(
+    credential: &C,
     trusted_issuers: &[DOC],
     status_check: crate::validator::StatusCheck,
-  ) -> ValidationUnitResult {
+  ) -> ValidationUnitResult
+  where
+    DOC: AsRef<identity_document::document::CoreDocument>,
+    C: CredentialT<Properties = T>,
+    C::Status: Clone + Into<StatusV2>,
+  {
     use identity_did::CoreDID;
     use identity_document::document::CoreDocument;
 
@@ -178,17 +194,21 @@ impl JwtCredentialValidatorUtils {
     };
 
     // Check status is supported.
-    if status.type_ != crate::revocation::RevocationBitmap::TYPE {
+    if !status
+      .type_()
+      .iter()
+      .any(|ty| ty.as_str() == crate::revocation::RevocationBitmap::TYPE)
+    {
       if status_check == crate::validator::StatusCheck::SkipUnsupported {
         return Ok(());
       }
       return Err(JwtValidationError::InvalidStatus(crate::Error::InvalidStatus(format!(
         "unsupported type '{}'",
-        status.type_
+        status.type_().first().expect("statuses always have at least one type")
       ))));
     }
-    let status: crate::credential::RevocationBitmapStatus =
-      crate::credential::RevocationBitmapStatus::try_from(status.clone()).map_err(JwtValidationError::InvalidStatus)?;
+    let status: RevocationBitmapStatus = RevocationBitmapStatus::try_from(status.clone().into())
+      .map_err(|e: crate::Error| JwtValidationError::InvalidStatus(crate::Error::InvalidStatus(e.to_string())))?;
 
     // Check the credential index against the issuer's DID Document.
     let issuer_did: CoreDID = Self::extract_issuer(credential)?;
@@ -229,7 +249,7 @@ impl JwtCredentialValidatorUtils {
   ///
   /// Fails if the issuer field is not a valid DID.
   pub fn extract_issuer<D, T>(
-    credential: &dyn CredentialT<Properties = T>,
+    credential: &impl CredentialT<Properties = T>,
   ) -> std::result::Result<D, JwtValidationError>
   where
     D: DID,

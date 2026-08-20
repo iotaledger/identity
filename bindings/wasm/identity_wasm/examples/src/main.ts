@@ -15,6 +15,7 @@ import { sdJwtVc } from "./1_advanced/10_sd_jwt_vc";
 import { advancedTransaction } from "./1_advanced/11_advanced_transactions";
 import { iotaKeytoolIntegration } from "./1_advanced/12_iota_keytool_integration";
 import { linkedVp } from "./1_advanced/13_linked_verifiable_presentation";
+import { bitstringStatusListRevocation } from "./1_advanced/14_bitstring_status_list_revocation";
 import { customResolution } from "./1_advanced/4_custom_resolution";
 import { domainLinkage } from "./1_advanced/5_domain_linkage";
 import { sdJwt } from "./1_advanced/6_sd_jwt";
@@ -79,6 +80,8 @@ export async function main(example?: string) {
             return await iotaKeytoolIntegration();
         case "13_linked_verifiable_presentation":
             return await linkedVp();
+        case "14_bitstring_status_list":
+            return await bitstringStatusListRevocation();
         default:
             throw "Unknown example name: '" + argument + "'";
     }

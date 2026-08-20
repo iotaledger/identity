@@ -3,11 +3,10 @@
 
 #![allow(clippy::module_inception)]
 
-use identity_iota::core::Object;
 use identity_iota::credential::Credential;
-use identity_iota::credential::CredentialT;
 use identity_iota::credential::CredentialV2;
 use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::JsError;
 use wasm_bindgen::JsValue;
 
 pub use self::credential::WasmCredential;
@@ -58,21 +57,23 @@ extern "C" {
   /// A VC Credential. Either {@link Credential} or {@link CredentialV2}.
   #[derive(Clone)]
   #[wasm_bindgen(typescript_type = "Credential | CredentialV2")]
-  pub type CredentialAny;
+  pub type WasmCredentialAny;
 
   #[wasm_bindgen(method, js_name = toJSON)]
-  pub fn to_json(this: &CredentialAny) -> JsValue;
+  pub fn to_json(this: &WasmCredentialAny) -> JsValue;
 }
 
-impl CredentialAny {
-  pub(crate) fn try_to_dyn_credential(&self) -> Result<Box<dyn CredentialT<Properties = Object> + Sync>, JsValue> {
-    let json_repr = self.to_json();
-    serde_wasm_bindgen::from_value::<Credential>(json_repr.clone())
-      .map(|c| Box::new(c) as Box<dyn CredentialT<Properties = Object> + Sync>)
-      .or_else(|_| {
-        serde_wasm_bindgen::from_value::<CredentialV2>(json_repr)
-          .map(|c| Box::new(c) as Box<dyn CredentialT<Properties = Object> + Sync>)
-      })
-      .map_err(|e| e.into())
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(untagged)]
+pub(crate) enum CredentialAny {
+  CredentialV1(Credential),
+  CredentialV2(CredentialV2),
+}
+
+impl TryFrom<WasmCredentialAny> for CredentialAny {
+  type Error = JsError;
+  fn try_from(value: WasmCredentialAny) -> Result<Self, Self::Error> {
+    let json_repr = value.to_json();
+    Ok(serde_wasm_bindgen::from_value(json_repr)?)
   }
 }

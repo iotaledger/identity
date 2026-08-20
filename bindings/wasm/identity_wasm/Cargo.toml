@@ -49,6 +49,7 @@ default-features = false
 features = [
   "iota-client",
   "revocation-bitmap",
+  "bitstring-status-list",
   "resolver",
   "domain-linkage",
   "sd-jwt",

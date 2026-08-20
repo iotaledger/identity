@@ -7,6 +7,7 @@ use identity_core::common::Timestamp;
 use identity_core::common::Url;
 use identity_core::common::Value;
 
+use crate::credential::status::StatusV2;
 use crate::credential::Credential;
 use crate::credential::CredentialV2;
 use crate::credential::Evidence;
@@ -31,6 +32,7 @@ pub struct CredentialBuilder<T = Object> {
   pub(crate) issuance_date: Option<Timestamp>,
   pub(crate) expiration_date: Option<Timestamp>,
   pub(crate) status: Option<Status>,
+  pub(crate) status_v2: Option<StatusV2>,
   pub(crate) schema: Vec<Schema>,
   pub(crate) refresh_service: Vec<RefreshService>,
   pub(crate) terms_of_use: Vec<Policy>,
@@ -52,6 +54,7 @@ impl<T> CredentialBuilder<T> {
       issuance_date: None,
       expiration_date: None,
       status: None,
+      status_v2: None,
       schema: Vec::new(),
       refresh_service: Vec::new(),
       terms_of_use: Vec::new(),
@@ -138,6 +141,15 @@ impl<T> CredentialBuilder<T> {
   #[must_use]
   pub fn status(mut self, value: impl Into<Status>) -> Self {
     self.status = Some(value.into());
+    self
+  }
+
+  /// Adds a value to the `credentialStatus` set.
+  /// ## Notes
+  /// Use this method only when constructing a VC using data model v2.0.
+  #[must_use]
+  pub fn status_v2(mut self, value: impl Into<StatusV2>) -> Self {
+    self.status_v2 = Some(value.into());
     self
   }
 

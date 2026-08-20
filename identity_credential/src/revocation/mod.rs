@@ -4,6 +4,8 @@
 //! Contains the implementations for all the credential revocation methods that can be used with IOTA's Identity
 //! framework.
 
+#[cfg(feature = "bitstring-status-list")]
+pub mod bitstring_status_list_v1;
 mod error;
 mod revocation_bitmap_2022;
 #[cfg(feature = "status-list-2021")]

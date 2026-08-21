@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use super::WasmCoreDID;
 use super::WasmJwsVerificationOptions;
+use super::WasmMethodRef;
 use crate::common::ArrayCoreMethodRef;
 use crate::common::ArrayService;
 use crate::common::ArrayString;
@@ -58,7 +59,6 @@ use identity_iota::storage::key_storage::KeyType;
 use identity_iota::storage::storage::JwkDocumentExt;
 use identity_iota::storage::storage::JwsSignatureOptions;
 use identity_iota::verification::jose::jws::JwsAlgorithm;
-use identity_iota::verification::MethodRef;
 use identity_iota::verification::MethodScope;
 use identity_iota::verification::VerificationMethod;
 
@@ -220,10 +220,7 @@ impl WasmCoreDocument {
         .authentication()
         .iter()
         .cloned()
-        .map(|method_ref| match method_ref {
-          MethodRef::Embed(verification_method) => JsValue::from(WasmVerificationMethod(verification_method)),
-          MethodRef::Refer(did_url) => JsValue::from(WasmDIDUrl(did_url)),
-        })
+        .map(|method_ref| JsValue::from(WasmMethodRef(method_ref)))
         .collect::<js_sys::Array>()
         .unchecked_into::<ArrayCoreMethodRef>(),
     )
@@ -239,10 +236,7 @@ impl WasmCoreDocument {
         .assertion_method()
         .iter()
         .cloned()
-        .map(|method_ref| match method_ref {
-          MethodRef::Embed(verification_method) => JsValue::from(WasmVerificationMethod(verification_method)),
-          MethodRef::Refer(did_url) => JsValue::from(WasmDIDUrl(did_url)),
-        })
+        .map(|method_ref| JsValue::from(WasmMethodRef(method_ref)))
         .collect::<js_sys::Array>()
         .unchecked_into::<ArrayCoreMethodRef>(),
     )
@@ -258,10 +252,7 @@ impl WasmCoreDocument {
         .key_agreement()
         .iter()
         .cloned()
-        .map(|method_ref| match method_ref {
-          MethodRef::Embed(verification_method) => JsValue::from(WasmVerificationMethod(verification_method)),
-          MethodRef::Refer(did_url) => JsValue::from(WasmDIDUrl(did_url)),
-        })
+        .map(|method_ref| JsValue::from(WasmMethodRef(method_ref)))
         .collect::<js_sys::Array>()
         .unchecked_into::<ArrayCoreMethodRef>(),
     )
@@ -277,10 +268,7 @@ impl WasmCoreDocument {
         .capability_delegation()
         .iter()
         .cloned()
-        .map(|method_ref| match method_ref {
-          MethodRef::Embed(verification_method) => JsValue::from(WasmVerificationMethod(verification_method)),
-          MethodRef::Refer(did_url) => JsValue::from(WasmDIDUrl(did_url)),
-        })
+        .map(|method_ref| JsValue::from(WasmMethodRef(method_ref)))
         .collect::<js_sys::Array>()
         .unchecked_into::<ArrayCoreMethodRef>(),
     )
@@ -296,10 +284,7 @@ impl WasmCoreDocument {
         .capability_invocation()
         .iter()
         .cloned()
-        .map(|method_ref| match method_ref {
-          MethodRef::Embed(verification_method) => JsValue::from(WasmVerificationMethod(verification_method)),
-          MethodRef::Refer(did_url) => JsValue::from(WasmDIDUrl(did_url)),
-        })
+        .map(|method_ref| JsValue::from(WasmMethodRef(method_ref)))
         .collect::<js_sys::Array>()
         .unchecked_into::<ArrayCoreMethodRef>(),
     )
@@ -417,10 +402,7 @@ impl WasmCoreDocument {
         .try_read()?
         .verification_relationships()
         .cloned()
-        .map(|method_ref| match method_ref {
-          MethodRef::Embed(verification_method) => JsValue::from(WasmVerificationMethod(verification_method)),
-          MethodRef::Refer(did_url) => JsValue::from(WasmDIDUrl(did_url)),
-        })
+        .map(|method_ref| JsValue::from(WasmMethodRef(method_ref)))
         .collect::<js_sys::Array>()
         .unchecked_into::<ArrayCoreMethodRef>(),
     )

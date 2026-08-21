@@ -42,7 +42,7 @@ extern "C" {
   #[wasm_bindgen(typescript_type = "VerificationMethod[]")]
   pub type ArrayVerificationMethod;
 
-  #[wasm_bindgen(typescript_type = "Array<DIDUrl | VerificationMethod>")]
+  #[wasm_bindgen(typescript_type = "Array<MethodRef>")]
   pub type ArrayCoreMethodRef;
 
   #[wasm_bindgen(typescript_type = "DIDUrl | string")]

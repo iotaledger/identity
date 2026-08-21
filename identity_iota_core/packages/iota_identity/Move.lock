@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "C2AC50C3DADC20A9BC9C4473015BF689654F2549655BBCE287C1EA2477294A4F"
+manifest_digest = "4F683992E583AF26EC3B6B905CAE1643F799A1B4F2D48E4BA5E48DA165952893"
 deps_digest = "F9B494B64F0615AED0E98FC12A85B85ECD2BC5185C22D30E7F67786BB52E507C"
 dependencies = [
   { id = "Iota", name = "Iota" },
@@ -13,7 +13,7 @@ dependencies = [
 
 [[move.package]]
 id = "Iota"
-source = { git = "https://github.com/iotaledger/iota.git", rev = "e3c45c9370f14b8137fd1bb9d109d3563d416223", subdir = "crates/iota-framework/packages/iota-framework" }
+source = { git = "https://github.com/iotaledger/iota.git", rev = "5b7be9f6824e2b7b8626b55fa5eb4853eb4dc102", subdir = "crates/iota-framework/packages/iota-framework" }
 
 dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
@@ -21,7 +21,7 @@ dependencies = [
 
 [[move.package]]
 id = "IotaSystem"
-source = { git = "https://github.com/iotaledger/iota.git", rev = "e3c45c9370f14b8137fd1bb9d109d3563d416223", subdir = "crates/iota-framework/packages/iota-system" }
+source = { git = "https://github.com/iotaledger/iota.git", rev = "5b7be9f6824e2b7b8626b55fa5eb4853eb4dc102", subdir = "crates/iota-framework/packages/iota-system" }
 
 dependencies = [
   { id = "Iota", name = "Iota" },
@@ -30,11 +30,11 @@ dependencies = [
 
 [[move.package]]
 id = "MoveStdlib"
-source = { git = "https://github.com/iotaledger/iota.git", rev = "e3c45c9370f14b8137fd1bb9d109d3563d416223", subdir = "crates/iota-framework/packages/move-stdlib" }
+source = { git = "https://github.com/iotaledger/iota.git", rev = "5b7be9f6824e2b7b8626b55fa5eb4853eb4dc102", subdir = "crates/iota-framework/packages/move-stdlib" }
 
 [[move.package]]
 id = "Stardust"
-source = { git = "https://github.com/iotaledger/iota.git", rev = "e3c45c9370f14b8137fd1bb9d109d3563d416223", subdir = "crates/iota-framework/packages/stardust" }
+source = { git = "https://github.com/iotaledger/iota.git", rev = "5b7be9f6824e2b7b8626b55fa5eb4853eb4dc102", subdir = "crates/iota-framework/packages/stardust" }
 
 dependencies = [
   { id = "Iota", name = "Iota" },
@@ -42,7 +42,7 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.18.0-beta"
+compiler-version = "1.22.1"
 edition = "2024"
 flavor = "iota"
 
@@ -61,9 +61,9 @@ latest-published-id = "0x8896ab04fe24c044c54925df3f8a7c383a8d1d6f6bbb95d1c57cfa9
 published-version = "1"
 
 [env.localnet]
-chain-id = "a6bad7ce"
-original-published-id = "0x057742ffe67851bc2f0d31affcd23925cfc78633bb2c11ae53cacfafb0236f96"
-latest-published-id = "0x057742ffe67851bc2f0d31affcd23925cfc78633bb2c11ae53cacfafb0236f96"
+chain-id = "64333340"
+original-published-id = "0x37233f30a3fd758a9146e19e39c750b9fa099313f9c87db663580a4fea40a392"
+latest-published-id = "0x37233f30a3fd758a9146e19e39c750b9fa099313f9c87db663580a4fea40a392"
 published-version = "1"
 
 [env.mainnet]

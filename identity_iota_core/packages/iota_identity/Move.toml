@@ -9,6 +9,7 @@ edition = "2024"
 
 [addresses]
 iota_identity = "0x0"
+identity_team = "0x1d3c717" # TODO: replace this with the actual address of the identity team.
 
 [dev-dependencies]
 

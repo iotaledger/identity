@@ -5,26 +5,24 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::error::Error as StdError;
 
+use crate::rebased::client::IdentityClient;
 use crate::rebased::iota::move_calls;
 
 use crate::rebased::iota::package::identity_package_id;
-use crate::rebased::iota::package::identity_package_id_blocking;
 use crate::rebased::proposals::AccessSubIdentityBuilder;
 use iota_sdk::graphql_client::Client;
+use iota_sdk::move_types::iota_framework::object::UID;
 use iota_sdk::transaction_builder::TransactionBuilder;
 use iota_sdk::types::Address;
 use iota_sdk::types::ObjectId;
-use iota_sdk::types::Owner;
+use iota_sdk::types::StructTag;
 use iota_sdk::types::TransactionEffects;
 use iota_sdk::types::TypeTag;
-use product_core::move_repr::Uid;
 use product_core::move_type::MoveType;
-use product_core::move_type::UnknownTypeForNetwork;
 use product_core::network::Network;
 use product_core::operation::Operation;
 use product_core::operation::OperationBuilder;
 use product_core::product_client::ProductClient;
-use secret_storage::Signer;
 
 use crate::rebased::iota::types::Number;
 use crate::rebased::proposals::Upgrade;
@@ -39,7 +37,6 @@ use serde::Serialize;
 
 use crate::rebased::proposals::BorrowAction;
 use crate::rebased::proposals::ConfigChange;
-use crate::rebased::proposals::ControllerExecution;
 use crate::rebased::proposals::ProposalBuilder;
 use crate::rebased::proposals::SendAction;
 use crate::rebased::proposals::UpdateDidDocument;
@@ -53,13 +50,9 @@ use super::DeleteDelegationToken;
 use super::Multicontroller;
 use super::UnmigratedAlias;
 
-const MODULE: &str = "identity";
-const NAME: &str = "Identity";
-const HISTORY_DEFAULT_PAGE_SIZE: usize = 10;
-
 /// The data stored in an on-chain identity.
 pub(crate) struct IdentityData {
-  pub(crate) id: Uid,
+  pub(crate) id: UID,
   pub(crate) multicontroller: Multicontroller<Option<Vec<u8>>>,
   pub(crate) legacy_id: Option<ObjectId>,
   pub(crate) created: Timestamp,
@@ -99,7 +92,7 @@ impl Identity {
 /// An on-chain entity that wraps an optional DID Document.
 #[derive(Debug, Clone, Serialize)]
 pub struct OnChainIdentity {
-  id: Uid,
+  id: UID,
   multi_controller: Multicontroller<Option<Vec<u8>>>,
   pub(crate) did_doc: IotaDocument,
   version: u64,
@@ -165,8 +158,9 @@ impl OnChainIdentity {
     client: &impl ProductClient,
   ) -> Result<Option<ControllerToken>, Error> {
     let maybe_controller_cap = client
-      .find_object_for_address::<ControllerCap, _>(address, |token| token.controller_of() == self.id())
-      .await;
+      .find_object_for_address::<ControllerCap, _>(address, |cap| cap.controller_of() == self.id())
+      .await
+      .map_err(|e| Error::RpcError(format!("{e:#}")));
 
     if let Ok(Some(controller_cap)) = maybe_controller_cap {
       return Ok(Some(controller_cap.into()));
@@ -251,19 +245,6 @@ impl OnChainIdentity {
     ProposalBuilder::new(self, controller_token, BorrowAction::default())
   }
 
-  /// Borrows a `ControllerCap` with ID `controller_cap` owned by this identity in a transaction.
-  /// This proposal is used to perform operation on a sub-identity controlled
-  /// by this one.
-  #[deprecated = "use `OnChainIdentity::access_sub_identity` instead."]
-  pub fn controller_execution<'i, 'c>(
-    &'i mut self,
-    controller_cap: ObjectId,
-    controller_token: &'c ControllerToken,
-  ) -> ProposalBuilder<'i, 'c, ControllerExecution> {
-    let action = ControllerExecution::new(controller_cap, self);
-    ProposalBuilder::new(self, controller_token, action)
-  }
-
   /// Perform an action on an Identity that is controlled by this Identity.
   pub fn access_sub_identity<'i, 'sub>(
     &'i mut self,
@@ -320,13 +301,13 @@ impl OnChainIdentity {
   //   Ok(history)
   // }
 
-  /// Returns a [Transaction] to revoke a [DelegationToken].
+  /// Returns an [Operation] to revoke a [DelegationToken].
   pub fn revoke_delegation_token(
     &self,
     controller_capability: &ControllerCap,
     delegation_token: &DelegationToken,
-  ) -> Result<TransactionBuilder<DelegationTokenRevocation>, Error> {
-    DelegationTokenRevocation::revoke(self, controller_capability, delegation_token).map(TransactionBuilder::new)
+  ) -> Result<OperationBuilder<DelegationTokenRevocation>, Error> {
+    DelegationTokenRevocation::revoke(self, controller_capability, delegation_token).map(OperationBuilder::new)
   }
 
   /// Returns a [Transaction] to *un*revoke a [DelegationToken].
@@ -334,31 +315,30 @@ impl OnChainIdentity {
     &self,
     controller_capability: &ControllerCap,
     delegation_token: &DelegationToken,
-  ) -> Result<TransactionBuilder<DelegationTokenRevocation>, Error> {
-    DelegationTokenRevocation::unrevoke(self, controller_capability, delegation_token).map(TransactionBuilder::new)
+  ) -> Result<OperationBuilder<DelegationTokenRevocation>, Error> {
+    DelegationTokenRevocation::unrevoke(self, controller_capability, delegation_token).map(OperationBuilder::new)
   }
 
   /// Returns a [Transaction] to delete a [DelegationToken].
   pub fn delete_delegation_token(
     &self,
     delegation_token: DelegationToken,
-  ) -> Result<TransactionBuilder<DeleteDelegationToken>, Error> {
-    DeleteDelegationToken::new(self, delegation_token).map(TransactionBuilder::new)
+  ) -> Result<OperationBuilder<DeleteDelegationToken>, Error> {
+    DeleteDelegationToken::new(self, delegation_token).map(OperationBuilder::new)
   }
 }
 
 /// Returns the [`OnChainIdentity`] having ID `object_id`, if it exists.
-pub async fn get_identity(client: &impl ProductClient, object_id: ObjectId) -> Result<Option<OnChainIdentity>, Error> {
+pub async fn get_identity(
+  client: &impl ProductClient,
+  object_id: ObjectId,
+) -> Result<Option<OnChainIdentity>, IdentityResolutionError> {
   use IdentityResolutionErrorKind::NotFound;
 
   match get_identity_impl(client, object_id).await {
     Ok(identity) => Ok(Some(identity)),
     Err(IdentityResolutionError { kind: NotFound, .. }) => Ok(None),
-    Err(e) => {
-      // Use anyhow to format the error in such a way that all its causes are displayed too.
-      let formatted_err_msg = format!("{:#}", anyhow::Error::new(e));
-      Err(Error::ObjectLookup(formatted_err_msg))
-    }
+    Err(e) => Err(e),
   }
 }
 
@@ -373,6 +353,7 @@ pub(crate) async fn get_identity_impl(
   };
 
   let json_object = client
+    .as_ref()
     .move_object_contents(object_id, None)
     .await
     .map_err(|e| resolution_error(ErrorKind::RpcError(e.into())))?
@@ -464,7 +445,7 @@ pub(crate) fn unpack_identity_json_value(
 ) -> Result<IdentityData, IdentityResolutionError> {
   #[derive(Deserialize)]
   struct TempOnChainIdentity {
-    id: Uid,
+    id: UID,
     did_doc: Multicontroller<Option<Vec<u8>>>,
     legacy_id: Option<ObjectId>,
     created: Number<u64>,
@@ -483,11 +464,9 @@ pub(crate) fn unpack_identity_json_value(
     version,
     deleted,
     deleted_did,
-  } = serde_json::from_value::<TempOnChainIdentity>(value.fields.to_json_value()).map_err(|err| {
-    IdentityResolutionError {
-      resolving,
-      kind: IdentityResolutionErrorKind::Malformed(err.into()),
-    }
+  } = serde_json::from_value::<TempOnChainIdentity>(value).map_err(|err| IdentityResolutionError {
+    resolving,
+    kind: IdentityResolutionErrorKind::Malformed(err.into()),
   })?;
 
   // Parse DID document timestamps
@@ -595,18 +574,11 @@ impl IdentityBuilder {
 }
 
 impl MoveType for OnChainIdentity {
-  fn move_type(network: Network) -> Result<TypeTag, UnknownTypeForNetwork> {
-    let package = match network {
-      Network::Mainnet => "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08",
-      Network::Testnet => "0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555",
-      Network::Devnet => "0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103",
-      _ => identity_package_id_blocking(network)
-        .map_err(|_| UnknownTypeForNetwork::new("Identity", network))?
-        .to_string()
-        .as_str(),
-    };
+  fn move_type(client: &impl ProductClient) -> TypeTag {
+    let mut type_tag = StructTag::new(Address::ZERO, "identity", "Identity", vec![]).into();
+    client.type_origin_table().canonicalize_type(&mut type_tag);
 
-    format!("{package}::identity::Identity").parse().expect("valid TypeTag")
+    type_tag
   }
 }
 
@@ -624,13 +596,14 @@ impl CreateIdentity {
 }
 
 impl Operation for CreateIdentity {
+  type Client = IdentityClient;
   type Output = OnChainIdentity;
   type Error = Error;
 
   async fn to_transaction(
     &self,
-    client: &impl ProductClient,
-    ptb: TransactionBuilder<Client>,
+    client: &IdentityClient,
+    mut ptb: TransactionBuilder<Client>,
   ) -> Result<TransactionBuilder<Client>, Self::Error> {
     let IdentityBuilder {
       did_doc,
@@ -641,7 +614,6 @@ impl Operation for CreateIdentity {
     let did_doc = StateMetadataDocument::from(did_doc.clone())
       .pack(StateMetadataEncoding::default())
       .map_err(|e| Error::DidDocSerialization(e.to_string()))?;
-    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client((*client).clone());
     if controllers.is_empty() {
       move_calls::identity::new_identity(&mut ptb, Some(&did_doc), package);
     } else {
@@ -671,14 +643,14 @@ impl Operation for CreateIdentity {
 
   async fn apply_effects(
     self,
-    client: &impl ProductClient,
+    client: &IdentityClient,
     tx_effects: &mut TransactionEffects,
   ) -> Result<Self::Output, Self::Error> {
-    if let Some(tx_error) = tx_effects.status().error() {
-      return Err(tx_error.into());
+    if tx_effects.as_v1().status.is_failure() {
+      return Err(tx_effects.as_v1().status.clone().unwrap_err().0.into());
     }
 
-    let target_did_bytes = StateMetadataDocument::from(self.did_document)
+    let target_did_bytes = StateMetadataDocument::from(self.builder.did_doc)
       .pack(StateMetadataEncoding::Json)
       .map_err(|e| Error::DidDocSerialization(e.to_string()))?;
 
@@ -695,12 +667,21 @@ impl Operation for CreateIdentity {
       .as_v1()
       .changed_objects
       .iter()
-      .filter(|obj| obj.id_operation.is_created() && obj.output_state.object_owner_opt().is_some_and(Owner::is_shared))
+      .filter(|obj| {
+        obj.id_operation.is_created()
+          && obj
+            .output_state
+            .object_owner_opt()
+            .is_some_and(|owner| owner.is_shared())
+      })
       .map(|obj| obj.object_id);
 
     let mut target_identity = None;
     for id in create_identity_candidates {
-      let Some(identity) = get_identity(client, id).await? else {
+      let Some(identity) = get_identity(client, id)
+        .await
+        .map_err(|e| Error::Identity(e.to_string()))?
+      else {
         continue;
       };
 
@@ -710,11 +691,11 @@ impl Operation for CreateIdentity {
     }
 
     if let Some(identity) = target_identity {
-      tx_effects
-        .as_mut_v1()
-        .changed_objects
-        .retain(|obj| obj.object_id != identity.id().to_object_id());
-      Ok(identity.did_doc)
+      // tx_effects
+      //   .as_mut_v1()
+      //   .changed_objects
+      //   .retain(|obj| obj.object_id != identity.id().to_object_id());
+      Ok(identity)
     } else {
       Err(Error::TransactionUnexpectedResponse(
         "failed to find the correct identity in this transaction's effects".to_owned(),

@@ -8,7 +8,6 @@ use std::sync::LazyLock;
 
 use iota_sdk::types::ObjectId;
 use product_core::network::Network;
-use product_core::product_client::ProductClient;
 use serde::Deserialize;
 use serde::Serialize;
 use tokio::sync::RwLock;
@@ -19,7 +18,7 @@ use crate::rebased::Error;
 
 macro_rules! object_id {
   ($id:literal) => {
-    ObjectId::from_hex_literal($id).unwrap()
+    ObjectId::from_hex($id).unwrap()
   };
 }
 

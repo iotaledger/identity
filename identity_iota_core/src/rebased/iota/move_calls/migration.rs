@@ -7,7 +7,6 @@ use iota_sdk::transaction_builder::SharedMut;
 use iota_sdk::transaction_builder::TransactionBuilder;
 use iota_sdk::types::Address;
 use iota_sdk::types::ObjectId;
-use product_core::CLOCK_ADDRESS;
 
 pub(crate) fn migrate_did_output(
   ptb: &mut TransactionBuilder<Client>,
@@ -18,15 +17,15 @@ pub(crate) fn migrate_did_output(
 ) {
   let did_output = ptb.apply_argument(did_output);
   let migration_registry = ptb.apply_argument(SharedMut(migration_registry));
-  let clock = ptb.apply_argument(Shared(CLOCK_ADDRESS));
+  let clock = ptb.apply_argument(Shared(ObjectId::CLOCK));
 
   let creation_timestamp = if let Some(timestamp) = creation_timestamp {
     ptb.pure(timestamp)
   } else {
     ptb
       .move_call(Address::FRAMEWORK, "clock", "timestamp_ms")
-      .arguments(clock)
-      .arg()
+      .arguments([clock])
+      .result()
   };
 
   ptb.move_call(package, "migration", "migrate_alias_output").arguments([

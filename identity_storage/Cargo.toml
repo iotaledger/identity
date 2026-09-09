@@ -24,7 +24,6 @@ identity_document = { version = "=1.8.0-beta.3", path = "../identity_document", 
 identity_iota_core = { version = "=1.8.0-beta.3", path = "../identity_iota_core", default-features = false, optional = true }
 identity_verification = { version = "=1.8.0-beta.3", path = "../identity_verification", default-features = false, features = ["jwk-conversion"] }
 iota-crypto = { version = "0.23.2", default-features = false, features = ["ed25519", "random"], optional = true }
-iota-sdk-types = { workspace = true, features = ["serde"] }
 json-proof-token = { workspace = true, optional = true }
 k256 = { version = "0.13.3", default-features = false, features = ["std", "ecdsa", "ecdsa-core", "jwk"], optional = true }
 oqs = { workspace = true, optional = true }
@@ -38,18 +37,11 @@ thiserror.workspace = true
 tokio = { version = "1.46.1", default-features = false, features = ["macros", "sync"], optional = true }
 zkryptium = { workspace = true, optional = true }
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.10", package = "iota_interaction", optional = true }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.10", package = "iota_interaction", default-features = false, optional = true }
-
 [dev-dependencies]
 identity_credential = { version = "=1.8.0-beta.3", path = "../identity_credential", features = ["revocation-bitmap"] }
 identity_ecdsa_verifier = { version = "=1.8.0-beta.3", path = "../identity_ecdsa_verifier", default-features = false, features = ["es256"] }
 identity_eddsa_verifier = { version = "=1.8.0-beta.3", path = "../identity_eddsa_verifier", default-features = false, features = ["ed25519"] }
 once_cell = { version = "1.18", default-features = false }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.10", package = "product_common", default-features = false }
 tokio = { version = "1.46.1", default-features = false, features = ["macros", "sync", "rt"] }
 
 [features]
@@ -65,7 +57,6 @@ storage-signer = [
   "identity_iota_core?/iota-client",
   "identity_verification/jwk-conversion",
   "dep:secret-storage",
-  "dep:iota_interaction",
   "dep:fastcrypto",
   "dep:bcs",
 ]
@@ -78,8 +69,6 @@ jpt-bbs-plus = [
 ]
 # Enables integration with IOTA Keytool
 keytool = [
-  "dep:iota_interaction",
-  "iota_interaction/keytool",
   "identity_verification/jwk-conversion",
   "k256",
   "p256",

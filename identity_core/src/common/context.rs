@@ -9,7 +9,7 @@ use serde;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::common::Object;
+use product_core::object::Object;
 use crate::common::Url;
 
 /// A reference to a JSON-LD context

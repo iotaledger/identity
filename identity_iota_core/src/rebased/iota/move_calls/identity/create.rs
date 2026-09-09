@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use iota_sdk::graphql_client::Client;
+use iota_sdk::transaction_builder::Shared;
 use iota_sdk::transaction_builder::unresolved::Argument;
 use iota_sdk::transaction_builder::TransactionBuilder;
 use iota_sdk::types::Address;
@@ -10,7 +11,7 @@ use iota_sdk::types::TypeTag;
 
 pub(crate) fn new_identity(ptb: &mut TransactionBuilder<Client>, did_doc: Option<&[u8]>, package_id: ObjectId) {
   let doc_arg = ptb.pure(did_doc);
-  let clock = ptb.apply_argument(ObjectId::CLOCK);
+  let clock = ptb.apply_argument(Shared(ObjectId::CLOCK));
 
   // Create a new identity, sending its capability to the tx's sender.
   ptb.move_call(package_id, "identity", "new").arguments([doc_arg, clock]);
@@ -44,14 +45,14 @@ pub(crate) fn new_with_controllers(
       .move_call(package_id, "utils", "vec_map_from_keys_values")
       .type_tags([TypeTag::Address, TypeTag::U64])
       .arguments([ids, vps])
-      .arg()
+      .result()
   };
 
   let controllers = make_vec_map(controllers);
   let controllers_that_can_delegate = make_vec_map(controllers_that_can_delegate);
   let doc_arg = ptb.pure(did_doc);
   let threshold_arg = ptb.pure(threshold);
-  let clock = ptb.apply_argument(ObjectId::CLOCK);
+  let clock = ptb.apply_argument(Shared(ObjectId::CLOCK));
 
   // Create a new identity, sending its capabilities to the specified controllers.
   ptb

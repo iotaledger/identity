@@ -4,7 +4,6 @@
 mod borrow;
 mod config_change;
 mod create;
-mod exec;
 mod send;
 pub(crate) mod sub_identity;
 mod update;
@@ -13,18 +12,17 @@ mod upgrade;
 pub(crate) use borrow::*;
 pub(crate) use config_change::*;
 pub(crate) use create::*;
-pub(crate) use exec::*;
 use iota_sdk::graphql_client::Client;
 use iota_sdk::transaction_builder::unresolved::Argument;
 use iota_sdk::transaction_builder::SharedMut;
 use iota_sdk::transaction_builder::TransactionBuilder;
 use iota_sdk::types::ObjectId;
 use product_core::move_type::MoveType;
-use product_core::network::Network;
 pub(crate) use send::*;
 pub(crate) use update::*;
 pub(crate) use upgrade::*;
 
+use crate::rebased::client::IdentityClient;
 use crate::rebased::migration::ControllerToken;
 
 pub(crate) enum ControllerTokenArg {
@@ -72,7 +70,7 @@ pub(crate) fn get_controller_delegation(
   let Argument::Result(idx) = ptb
     .move_call(package, "controller", "borrow")
     .arguments([controller_cap])
-    .arg()
+    .result()
   else {
     unreachable!()
   };
@@ -105,7 +103,7 @@ pub(crate) fn approve_proposal<T: MoveType>(
   controller_cap: &ControllerToken,
   proposal_id: ObjectId,
   package: ObjectId,
-  network: Network,
+  client: &IdentityClient,
 ) {
   let identity = ptb.apply_argument(SharedMut(identity));
   let capability = ControllerTokenArg::from_token(controller_cap, ptb, package);
@@ -114,7 +112,7 @@ pub(crate) fn approve_proposal<T: MoveType>(
   ptb
     .move_call(package, "identity", "approve_proposal")
     .arguments([identity, capability.arg(), proposal_id])
-    .type_tags(T::move_type(network));
+    .type_tags([T::move_type(client)]);
 
   capability.put_back(ptb, package);
 }

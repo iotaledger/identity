@@ -1,8 +1,6 @@
 // Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-/// Module for handling assets.
-pub mod assets;
 /// Module for handling client operations.
 pub mod client;
 mod error;
@@ -15,5 +13,4 @@ pub mod proposals;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod utils;
 
-pub use assets::*;
 pub use error::*;

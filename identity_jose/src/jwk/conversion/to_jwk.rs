@@ -3,11 +3,11 @@
 
 use std::convert::Infallible;
 
+use iota_sdk::crypto::ed25519::Ed25519PrivateKey;
+use iota_sdk::types::PublicKey;
+
 use crate::error::Error;
 use crate::jwk::Jwk;
-use fastcrypto::ed25519::Ed25519KeyPair;
-use fastcrypto::traits::KeyPair;
-use iota_interaction::types::crypto::PublicKey;
 
 use super::ed25519;
 use super::secp256k1;
@@ -37,29 +37,31 @@ impl ToJwk for PublicKey {
   }
 }
 
-impl ToJwk for Ed25519KeyPair {
+impl ToJwk for Ed25519PrivateKey {
   type Error = Infallible;
 
   fn to_jwk(&self) -> Result<Jwk, Self::Error> {
-    Ok(ed25519::encode_jwk(self.copy()))
+    Ok(ed25519::encode_jwk(self.clone()))
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use super::ToJwk;
+  use iota_sdk::crypto::ed25519::Ed25519PrivateKey;
 
-  use fastcrypto::traits::KeyPair as _;
+use super::ToJwk;
 
   mod iota_public_key {
-    use super::*;
+    use iota_sdk::{
+      crypto::{ed25519::Ed25519PrivateKey, secp256k1::Secp256k1PrivateKey, secp256r1::Secp256r1PrivateKey},
+      types::PublicKey,
+    };
 
-    use iota_interaction::types::crypto::IotaKeyPair;
+    use super::*;
 
     #[test]
     fn can_convert_from_ed25519_public_key_to_jwk() {
-      let public_key =
-        IotaKeyPair::Ed25519(fastcrypto::ed25519::Ed25519KeyPair::generate(&mut rand::thread_rng())).public();
+      let public_key = PublicKey::Ed25519(Ed25519PrivateKey::random().public_key());
       let result = public_key.to_jwk();
 
       assert!(result.is_ok());
@@ -67,10 +69,7 @@ mod tests {
 
     #[test]
     fn can_convert_from_secp256r1_public_key_to_jwk() {
-      let public_key = IotaKeyPair::Secp256r1(fastcrypto::secp256r1::Secp256r1KeyPair::generate(
-        &mut rand::thread_rng(),
-      ))
-      .public();
+      let public_key = PublicKey::Secp256r1(Secp256r1PrivateKey::random().public_key());
       let result = public_key.to_jwk();
 
       assert!(result.is_ok());
@@ -78,10 +77,7 @@ mod tests {
 
     #[test]
     fn can_convert_from_secp256k1_public_key_to_jwk() {
-      let public_key = IotaKeyPair::Secp256k1(fastcrypto::secp256k1::Secp256k1KeyPair::generate(
-        &mut rand::thread_rng(),
-      ))
-      .public();
+      let public_key = PublicKey::Secp256k1(Secp256k1PrivateKey::random().public_key());
       let result = public_key.to_jwk();
 
       assert!(result.is_ok());
@@ -90,8 +86,8 @@ mod tests {
 
   #[test]
   fn can_convert_from_ed25519_keypair_to_jwk() {
-    let keypair = fastcrypto::ed25519::Ed25519KeyPair::generate(&mut rand::thread_rng());
-    let result = keypair.to_jwk();
+    let sk = Ed25519PrivateKey::random();
+    let result = sk.to_jwk();
 
     assert!(result.is_ok());
   }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::HashSet;
+use std::str::FromStr as _;
 
 use iota_sdk::graphql_client::Client;
 use iota_sdk::transaction_builder::SharedMut;
@@ -25,7 +26,11 @@ pub(crate) fn propose_config_change<I1, I2>(
   controllers_to_remove: HashSet<ObjectId>,
   controllers_to_update: I2,
   package: ObjectId,
-) {
+)
+where
+  I1: IntoIterator<Item = (Address, u64)>,
+  I2: IntoIterator<Item = (ObjectId, u64)>,
+{
   let controllers_to_add = {
     let (addresses, vps): (Vec<Address>, Vec<u64>) = controllers_to_add.into_iter().unzip();
     let addresses = ptb.pure(addresses);
@@ -35,7 +40,7 @@ pub(crate) fn propose_config_change<I1, I2>(
       .move_call(package, "utils", "vec_map_from_keys_values")
       .arguments([addresses, vps])
       .type_tags([TypeTag::Address, TypeTag::U64])
-      .arg()
+      .result()
   };
   let controllers_to_update = {
     let (ids, vps): (Vec<ObjectId>, Vec<u64>) = controllers_to_update.into_iter().unzip();
@@ -46,7 +51,7 @@ pub(crate) fn propose_config_change<I1, I2>(
       .move_call(package, "utils", "vec_map_from_keys_values")
       .arguments([ids, vps])
       .type_tags([TypeTag::from_str("0x2::object::ID").expect("valid utf8"), TypeTag::U64])
-      .arg()
+      .result()
   };
   let identity = ptb.apply_argument(SharedMut(identity));
   let capability = ControllerTokenArg::from_token(controller_cap, ptb, package);

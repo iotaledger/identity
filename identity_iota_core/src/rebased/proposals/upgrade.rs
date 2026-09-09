@@ -3,9 +3,9 @@
 
 use std::marker::PhantomData;
 
+use crate::rebased::client::IdentityClient;
 use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
-use crate::rebased::iota::package::identity_package_id_blocking;
 use crate::rebased::migration::ControllerToken;
 use async_trait::async_trait;
 use iota_sdk::transaction_builder::TransactionBuilder;
@@ -13,8 +13,6 @@ use iota_sdk::types::Address;
 use iota_sdk::types::TransactionEffects;
 use iota_sdk::types::TypeTag;
 use product_core::move_type::MoveType;
-use product_core::move_type::UnknownTypeForNetwork;
-use product_core::network::Network;
 use product_core::operation::OperationBuilder;
 use product_core::product_client::ProductClient;
 use serde::Deserialize;
@@ -40,22 +38,14 @@ impl Upgrade {
 }
 
 impl MoveType for Upgrade {
-  fn move_type(network: Network) -> Result<TypeTag, UnknownTypeForNetwork> {
-    let package = match network {
-      Network::Mainnet => "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08",
-      Network::Testnet => "0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555",
-      Network::Devnet => "0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103",
-      _ => identity_package_id_blocking(network)
-        .map_err(|_| UnknownTypeForNetwork::new("Upgrade", network))?
-        .to_string()
-        .as_str(),
-    };
+  fn move_type(client: &impl ProductClient) -> TypeTag {
+    let package = client.package_id();
+    let mut tag = format!("{package}::upgrade_proposal::Upgrade")
+      .parse()
+      .expect("valid TypeTag");
 
-    Ok(
-      format!("{package}::upgrade_proposal::Upgrade")
-        .parse()
-        .expect("valid TypeTag"),
-    )
+    client.type_origin_table().canonicalize_type(&mut tag);
+    tag
   }
 }
 
@@ -70,7 +60,7 @@ impl ProposalT for Proposal<Upgrade> {
     expiration: Option<u64>,
     identity: &'i mut OnChainIdentity,
     controller_token: &ControllerToken,
-    client: &impl ProductClient,
+    client: &IdentityClient,
   ) -> Result<OperationBuilder<CreateProposal<'i, Self::Action>>, Error> {
     if identity.id() != controller_token.controller_of() {
       return Err(Error::Identity(format!(
@@ -85,7 +75,7 @@ impl ProposalT for Proposal<Upgrade> {
       .expect("controller exists");
     let chained_execution = sender_vp >= identity.threshold();
     let package = identity_package_id(client.network()).await?;
-    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client((*client).clone());
+    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client(client.as_ref().clone());
 
     move_calls::identity::propose_upgrade(&mut ptb, identity.id(), controller_token, expiration, package);
 
@@ -101,7 +91,7 @@ impl ProposalT for Proposal<Upgrade> {
     self,
     identity: &'i mut OnChainIdentity,
     controller_token: &ControllerToken,
-    client: &impl ProductClient,
+    client: &IdentityClient,
   ) -> Result<OperationBuilder<ExecuteProposal<'i, Self::Action>>, Error> {
     if identity.id() != controller_token.controller_of() {
       return Err(Error::Identity(format!(
@@ -113,7 +103,7 @@ impl ProposalT for Proposal<Upgrade> {
 
     let proposal_id = self.id();
     let package = identity_package_id(client.network()).await?;
-    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client((*client).clone());
+    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client(client.as_ref().clone());
 
     move_calls::identity::execute_upgrade(&mut ptb, identity.id(), controller_token, proposal_id, package);
 

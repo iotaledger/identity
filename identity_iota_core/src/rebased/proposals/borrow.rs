@@ -4,26 +4,27 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
+use crate::rebased::client::IdentityClient;
 use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
-use crate::rebased::iota::package::identity_package_id_blocking;
 use crate::rebased::migration::ControllerToken;
 use crate::rebased::proposals::ProtoOperation;
 
 use async_trait::async_trait;
+use futures::TryStreamExt as _;
 use iota_sdk::graphql_client::query_types::ObjectFilter;
 use iota_sdk::graphql_client::Client;
 use iota_sdk::graphql_client::Direction;
 use iota_sdk::transaction_builder::unresolved::Argument;
 use iota_sdk::transaction_builder::TransactionBuilder;
 use iota_sdk::types::Address;
+use iota_sdk::types::ExecutionStatus;
 use iota_sdk::types::Object;
 use iota_sdk::types::ObjectId;
+use iota_sdk::types::StructTag;
 use iota_sdk::types::TransactionEffects;
 use iota_sdk::types::TypeTag;
 use product_core::move_type::MoveType;
-use product_core::move_type::UnknownTypeForNetwork;
-use product_core::network::Network;
 use product_core::operation::Operation;
 use product_core::operation::OperationBuilder;
 use product_core::product_client::ProductClient;
@@ -44,6 +45,7 @@ use super::UserDrivenTx;
 /// a borrowed assets shall be used.
 pub trait BorrowIntentFnT: FnOnce(&mut TransactionBuilder<Client>, &HashMap<ObjectId, (Argument, Object)>) {}
 impl<T> BorrowIntentFnT for T where T: FnOnce(&mut TransactionBuilder<Client>, &HashMap<ObjectId, (Argument, Object)>) {}
+/// Type alias for a boxed [`BorrowIntentFnT`].
 pub type BorrowIntentFn = Box<dyn BorrowIntentFnT + Send>;
 
 /// Action used to borrow in transaction [OnChainIdentity]'s assets.
@@ -70,20 +72,10 @@ where
   F: BorrowIntentFnT;
 
 impl MoveType for BorrowAction {
-  fn move_type(network: Network) -> Result<TypeTag, UnknownTypeForNetwork> {
-    let package = match network {
-      Network::Mainnet => "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08",
-      Network::Testnet => "0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555",
-      Network::Devnet => "0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103",
-      _ => identity_package_id_blocking(network)
-        .map_err(|_| UnknownTypeForNetwork::new("Borrow", network))?
-        .to_string()
-        .as_str(),
-    };
-
-    format!("{package}::borrow_proposal::Borrow")
-      .parse()
-      .expect("valid TypeTag")
+  fn move_type(client: &impl ProductClient) -> TypeTag {
+    let mut tag = StructTag::new(client.package_id(), "borrow_proposal", "Borrow", vec![]).into();
+    client.type_origin_table().canonicalize_type(&mut tag);
+    tag
   }
 }
 
@@ -185,7 +177,7 @@ impl<'i, 'c, F> ProposalBuilder<'i, 'c, BorrowAction<F>> {
 #[cfg_attr(feature = "send-sync", async_trait)]
 impl<F> ProposalT for Proposal<BorrowAction<F>>
 where
-  F: BorrowIntentFnT,
+  F: BorrowIntentFnT + Send,
 {
   type Action = BorrowAction<F>;
   type Output = ();
@@ -195,7 +187,7 @@ where
     expiration: Option<u64>,
     identity: &'i mut OnChainIdentity,
     controller_token: &ControllerToken,
-    client: &impl ProductClient,
+    client: &IdentityClient,
   ) -> Result<OperationBuilder<CreateProposal<'i, Self::Action>>, Error> {
     if identity.id() != controller_token.controller_of() {
       return Err(Error::Identity(format!(
@@ -205,7 +197,7 @@ where
       )));
     }
 
-    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client((*client).clone());
+    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client(client.as_ref().clone());
     let package = identity_package_id(client.network()).await?;
     let can_execute = identity
       .controller_voting_power(controller_token.controller_id())
@@ -215,18 +207,15 @@ where
     let chained_execution = can_execute && maybe_intent_fn.is_some();
     if chained_execution {
       // Construct a list of `(ObjectId, TypeTag)` from the list of objects to send.
-      let object_data_list = client
+      let objects = client
+        .as_ref()
         .objects_stream(
-          ObjectFilter {
-            object_ids: Some(action.objects.clone()),
-            ..Default::default()
-          },
+          ObjectFilter::default().with_object_ids(action.objects.clone()),
           Direction::Forward,
         )
-        .collect()
-        .await;
-
-      let objects = action.objects.clone().into_iter().zip(object_data_list).collect();
+        .try_collect()
+        .await
+        .map_err(|e| Error::RpcError(e.to_string()))?;
 
       move_calls::identity::create_and_execute_borrow(
         &mut ptb,
@@ -236,7 +225,7 @@ where
         maybe_intent_fn.unwrap(),
         expiration,
         package,
-        client.network(),
+        client,
       )
     } else {
       move_calls::identity::propose_borrow(
@@ -261,7 +250,7 @@ where
     self,
     identity: &'i mut OnChainIdentity,
     controller_token: &ControllerToken,
-    _client: &impl ProductClient,
+    _client: &IdentityClient,
   ) -> Result<UserDrivenTx<'i, Self::Action>, Error> {
     if identity.id() != controller_token.controller_of() {
       return Err(Error::Identity(format!(
@@ -283,8 +272,8 @@ where
   }
 
   fn parse_tx_effects(effects: &TransactionEffects) -> Result<Self::Output, Error> {
-    if let Some(tx_error) = effects.status().error() {
-      return Err(Error::TransactionExecutionFailed(tx_error.clone()));
+    if let ExecutionStatus::Failure { error, .. } = &effects.as_v1().status {
+      return Err(Error::TransactionExecutionFailed(error.clone()));
     }
 
     Ok(())
@@ -332,21 +321,22 @@ where
       ..
     } = self;
     let controller_token = client
+      .as_ref()
       .move_object_contents(*controller_token, None)
-      .await?
+      .await
+      .map_err(|e| Error::RpcError(e.to_string()))?
       .and_then(|obj| serde_json::from_value(obj).ok())
       .expect("controller token exists and is valid");
 
     let objects = client
+      .as_ref()
       .objects_stream(
-        ObjectFilter {
-          object_ids: Some(borrow_action.0.objects().to_vec()),
-          ..Default::default()
-        },
+        ObjectFilter::default().with_object_ids(borrow_action.0.objects().to_vec()),
         Direction::Forward,
       )
-      .collect()
-      .await?;
+      .try_collect()
+      .await
+      .map_err(|e| Error::RpcError(e.to_string()))?;
     let package = identity_package_id(client.network()).await?;
     move_calls::identity::execute_borrow(
       &mut ptb,
@@ -360,7 +350,7 @@ where
         .await
         .expect("BorrowActionWithIntent makes sure intent_fn is there"),
       package,
-      client.network(),
+      client,
     );
 
     Ok(ptb)
@@ -368,12 +358,13 @@ where
 }
 
 impl Operation for UserDrivenTx<'_, BorrowActionWithIntent<BorrowIntentFn>> {
+  type Client = IdentityClient;
   type Output = ();
   type Error = Error;
 
   async fn to_transaction(
     &self,
-    client: &impl ProductClient,
+    client: &IdentityClient,
     ptb: TransactionBuilder<Client>,
   ) -> Result<TransactionBuilder<Client>, Self::Error> {
     self.make_ptb(client, ptb).await
@@ -381,11 +372,11 @@ impl Operation for UserDrivenTx<'_, BorrowActionWithIntent<BorrowIntentFn>> {
 
   async fn apply_effects(
     self,
-    client: &impl ProductClient,
+    _client: &IdentityClient,
     effects: &mut TransactionEffects,
   ) -> Result<Self::Output, Self::Error> {
-    if let Some(tx_error) = effects.status().error() {
-      return Err(Error::TransactionExecutionFailed(tx_error.clone()));
+    if let ExecutionStatus::Failure { error, .. } = &effects.as_v1().status {
+      return Err(Error::TransactionExecutionFailed(error.clone()));
     }
 
     Ok(())

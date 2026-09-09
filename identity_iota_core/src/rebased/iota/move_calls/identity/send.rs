@@ -9,8 +9,9 @@ use iota_sdk::transaction_builder::TransactionBuilder;
 use iota_sdk::types::Address;
 use iota_sdk::types::ObjectId;
 use iota_sdk::types::TypeTag;
-use product_core::network::Network;
+use product_core::move_type::MoveType as _;
 
+use crate::rebased::client::IdentityClient;
 use crate::rebased::migration::ControllerToken;
 use crate::rebased::proposals::SendAction;
 
@@ -24,11 +25,10 @@ pub(crate) fn propose_send(
   transfer_map: Vec<(ObjectId, Address)>,
   expiration: Option<u64>,
   package_id: ObjectId,
-  network: Network,
 ) {
   let ProposalContext {
     mut ptb, capability, ..
-  } = send_proposal_impl(ptb, identity, capability, transfer_map, expiration, package_id)?;
+  } = send_proposal_impl(ptb, identity, capability, transfer_map, expiration, package_id);
 
   capability.put_back(&mut ptb, package_id);
 }
@@ -40,23 +40,23 @@ pub(crate) fn execute_send(
   proposal_id: ObjectId,
   objects: Vec<(ObjectId, TypeTag)>,
   package: ObjectId,
-  network: Network,
+  client: &IdentityClient,
 ) {
   let identity = ptb.apply_argument(SharedMut(identity));
-  let capability = ControllerTokenArg::from_token(capability, &mut ptb, package)?;
-  let proposal_id = ptb.pure(proposal_id)?;
+  let capability = ControllerTokenArg::from_token(capability, ptb, package);
+  let proposal_id = ptb.pure(proposal_id);
 
   execute_send_impl(
-    &mut ptb,
+    ptb,
     identity,
     capability.arg(),
     proposal_id,
     objects,
     package,
-    network,
-  )?;
+    client,
+  );
 
-  capability.put_back(&mut ptb, package);
+  capability.put_back(ptb, package);
 }
 
 pub(crate) fn create_and_execute_send(
@@ -67,14 +67,14 @@ pub(crate) fn create_and_execute_send(
   expiration: Option<u64>,
   objects: Vec<(ObjectId, TypeTag)>,
   package: ObjectId,
-  network: Network,
+  client: &IdentityClient,
 ) {
   let ProposalContext {
     mut ptb,
     identity,
     capability,
     proposal_id,
-  } = send_proposal_impl(ptb, identity, capability, transfer_map, expiration, package)?;
+  } = send_proposal_impl(ptb, identity, capability, transfer_map, expiration, package);
 
   execute_send_impl(
     &mut ptb,
@@ -83,8 +83,8 @@ pub(crate) fn create_and_execute_send(
     proposal_id,
     objects,
     package,
-    network,
-  )?;
+    client,
+  );
 
   capability.put_back(&mut ptb, package);
 }
@@ -97,13 +97,13 @@ fn send_proposal_impl<'a>(
   expiration: Option<u64>,
   package_id: ObjectId,
 ) -> ProposalContext<'a> {
-  let capability = ControllerTokenArg::from_token(capability, &mut ptb, package_id)?;
+  let capability = ControllerTokenArg::from_token(capability, ptb, package_id);
   let identity_arg = ptb.apply_argument(SharedMut(identity));
   let exp_arg = ptb.pure(expiration);
   let (objects, recipients) = {
     let (objects, recipients): (Vec<_>, Vec<_>) = transfer_map.into_iter().unzip();
-    let objects = ptb.pure(objects)?;
-    let recipients = ptb.pure(recipients)?;
+    let objects = ptb.pure(objects);
+    let recipients = ptb.pure(recipients);
 
     (objects, recipients)
   };
@@ -111,7 +111,7 @@ fn send_proposal_impl<'a>(
   let proposal_id = ptb
     .move_call(package_id, "identity", "propose_send")
     .arguments([identity_arg, capability.arg(), exp_arg, objects, recipients])
-    .arg();
+    .result();
 
   ProposalContext {
     ptb,
@@ -128,14 +128,14 @@ pub(crate) fn execute_send_impl(
   proposal_id: Argument,
   objects: Vec<(ObjectId, TypeTag)>,
   package: ObjectId,
-  network: Network,
+  client: &IdentityClient,
 ) {
   // Get the proposal's action as argument.
   let send_action = ptb
     .move_call(package, "identity", "execute_proposal")
-    .type_tags(SendAction::move_type(network).expect("Failed to get SendAction type tag")?)
+    .type_tags([SendAction::move_type(client)])
     .arguments([identity, delegation_token, proposal_id])
-    .arg();
+    .result();
 
   // Send each object in this send action.
   // Traversing the map in reverse reduces the number of operations on the move side.
@@ -144,12 +144,12 @@ pub(crate) fn execute_send_impl(
 
     ptb
       .move_call(package, "identity", "execute_send")
-      .type_tags(obj_type)
+      .type_tags([obj_type])
       .arguments([identity, send_action, recv_obj]);
   }
 
   // Consume the now empty send_action
   ptb
     .move_call(package, "transfer_proposal", "complete_send")
-    .arguments(send_action);
+    .arguments([send_action]);
 }

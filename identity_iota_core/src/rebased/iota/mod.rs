@@ -12,6 +12,7 @@ use iota_sdk::graphql_client::Client;
 use iota_sdk::transaction_builder::unresolved::Argument;
 use iota_sdk::transaction_builder::unresolved::Command;
 use iota_sdk::transaction_builder::unresolved::Input;
+use iota_sdk::transaction_builder::unresolved::InputKind;
 use iota_sdk::transaction_builder::TransactionBuilder;
 use iota_sdk::types::ProgrammableTransaction;
 
@@ -27,8 +28,10 @@ pub(crate) fn ptb_merge_tx_with_inputs_replacement(
   for (idx, input) in other.inputs.into_iter().enumerate() {
     let argument = replacements
       .iter()
-      .find_map(|(to_replace, replacement)| (*to_replace == input.clone().into()).then_some(*replacement))
-      .unwrap_or_else(|| ptb.input(input).expect("an input in other is a valid input"));
+      .find_map(|(to_replace, replacement)| {
+        resolved_and_unresolved_inputs_comparison(to_replace, &input).then_some(*replacement)
+      })
+      .unwrap_or_else(|| ptb.input(input));
 
     inputs_map.insert(idx as u16, argument);
   }
@@ -74,7 +77,7 @@ fn update_input_and_result(arg: &mut Argument, inputs_map: &HashMap<u16, Argumen
     Argument::Input(_) => update_input_arg(arg, inputs_map),
     Argument::Result(idx) => *idx += result_offset,
     Argument::NestedResult(idx, _) => *idx += result_offset,
-    Argument::GasCoin => {}
+    _ => {}
   }
 }
 
@@ -103,6 +106,15 @@ where
   };
 
   arguments.for_each(update_fn);
+}
+
+fn resolved_and_unresolved_inputs_comparison(a: &Input, b: &iota_sdk::types::Input) -> bool {
+  // This compares pure values too!
+  if let InputKind::Input(a) = &a.kind {
+    a == b
+  } else {
+    a.object_id() == b.object_id_opt()
+  }
 }
 
 #[cfg(test)]

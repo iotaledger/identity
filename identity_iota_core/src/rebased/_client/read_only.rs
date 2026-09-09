@@ -4,7 +4,7 @@
 use std::future::Future;
 use std::ops::Deref;
 use std::pin::Pin;
-use std::str::FromStr;
+use std::sync::Arc;
 
 use futures::stream::FuturesUnordered;
 use futures::Stream;
@@ -13,19 +13,22 @@ use futures::TryStreamExt as _;
 use identity_core::common::Url;
 use identity_did::DID;
 use iota_sdk::graphql_client::error::Error as IotaClientError;
+use iota_sdk::graphql_client::query_types::ObjectFilter;
 use iota_sdk::graphql_client::Client as IotaClient;
 use iota_sdk::types::Address;
 use iota_sdk::types::ObjectId;
 use product_core::move_type::MoveType;
 use product_core::network::Network;
-use product_core::operation::Operation;
 use product_core::product_client::ProductClient;
+use product_core::type_origin_table::TypeOriginTable;
+use product_core::type_origin_table::TypeOriginTableCreationError;
 
 use crate::rebased::iota::package::identity_package_registry;
 use crate::rebased::migration::get_alias;
 use crate::rebased::migration::get_identity;
 use crate::rebased::migration::lookup;
-use crate::rebased::migration::ControllerToken;
+use crate::rebased::migration::ControllerCap;
+use crate::rebased::migration::DelegationToken;
 use crate::rebased::migration::Identity;
 use crate::rebased::Error;
 use crate::IotaDID;
@@ -37,6 +40,7 @@ pub struct IdentityClientReadOnly {
   iota_client: IotaClient,
   package_id: ObjectId,
   network: Network,
+  type_origin_table: Arc<TypeOriginTable>,
 }
 
 impl Deref for IdentityClientReadOnly {
@@ -46,12 +50,21 @@ impl Deref for IdentityClientReadOnly {
   }
 }
 
+impl AsRef<IotaClient> for IdentityClientReadOnly {
+  fn as_ref(&self) -> &IotaClient {
+    self
+  }
+}
+
 impl ProductClient for IdentityClientReadOnly {
   fn network(&self) -> Network {
     self.network
   }
   fn package_id(&self) -> ObjectId {
     self.package_id
+  }
+  fn type_origin_table(&self) -> &TypeOriginTable {
+    &self.type_origin_table
   }
 }
 
@@ -83,24 +96,30 @@ impl IdentityClientReadOnly {
     iota_client: IotaClient,
     custom_package_id: impl Into<Option<ObjectId>>,
   ) -> Result<Self, FromIotaClientError> {
+    let make_err = |kind| FromIotaClientError { kind };
     let network = get_network(&iota_client)
       .await
-      .map_err(|e| FromIotaClientErrorKind::NetworkResolution(e.into()))?;
+      .map_err(|e| make_err(FromIotaClientErrorKind::NetworkResolution(e.into())))?;
     let package_id = if network.is_custom() {
       custom_package_id
         .into()
-        .ok_or(FromIotaClientErrorKind::MissingPackageId)?
+        .ok_or(make_err(FromIotaClientErrorKind::MissingPackageId))?
     } else {
       identity_package_registry()
         .await
         .package_id(network.as_str())
         .expect("package id for official networks is tracked by this library")
     };
+    let type_origin_table = TypeOriginTable::new(package_id, &iota_client)
+      .await
+      .map(Arc::new)
+      .map_err(|e| make_err(e.into()))?;
 
     Ok(Self {
       iota_client,
       package_id,
       network,
+      type_origin_table,
     })
   }
 
@@ -117,7 +136,7 @@ impl IdentityClientReadOnly {
     // this client is connected to.
     let did_network = did.network_str();
     let client_network = self.network.as_ref();
-    if did_network != client_network && did_network != self.chain_id() {
+    if did_network != client_network && did_network != self.network.as_chain_id() {
       return Err(Error::DIDResolutionError(format!(
         "provided DID `{did}` \
         references a DID Document on network `{did_network}`, \
@@ -194,14 +213,25 @@ impl IdentityClientReadOnly {
     &self,
     address: Address,
   ) -> impl Stream<Item = Result<IotaDID, QueryControlledDidsError>> + use<'_> {
-    self.objects_for_address::<ControllerToken>(address, None).map(|res| {
-      res
-        .map(|token| IotaDID::from_object_id(token.controller_of(), self.network))
-        .map_err(|e| QueryControlledDidsError {
-          address,
-          source: e.into(),
-        })
-    })
+    macro_rules! make_stream {
+      ($cap_type: ident) => {
+        self
+          .objects_content_stream::<$cap_type>(ObjectFilter {
+            type_: Some($cap_type::move_type(self).to_string()),
+            owner: Some(address),
+            ..Default::default()
+          })
+          .map_ok(|cap| cap.controller_of())
+      };
+    }
+
+    make_stream!(ControllerCap)
+      .chain(make_stream!(DelegationToken))
+      .map_ok(|id| IotaDID::from_object_id(id, self.network))
+      .map_err(move |e| QueryControlledDidsError {
+        address,
+        source: e.into(),
+      })
   }
 
   /// Returns the list of **all** unique DIDs the given address has access to as a controller.
@@ -320,6 +350,8 @@ pub enum FromIotaClientErrorKind {
   /// Network ID resolution through an RPC call failed.
   #[error("failed to resolve the network the given client is connected to")]
   NetworkResolution(#[source] Box<dyn std::error::Error + Send + Sync>),
+  #[error(transparent)]
+  TypeOriginTable(#[from] TypeOriginTableCreationError),
 }
 
 #[cfg(test)]

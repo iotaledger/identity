@@ -35,7 +35,7 @@ pub(crate) fn execute_upgrade(
   proposal_id: ObjectId,
   package_id: ObjectId,
 ) {
-  let capability = ControllerTokenArg::from_token(capability, ptb, package_id)?;
+  let capability = ControllerTokenArg::from_token(capability, ptb, package_id);
   let proposal_id = ptb.pure(proposal_id);
   let identity_arg = ptb.apply_argument(SharedMut(identity));
 
@@ -43,5 +43,5 @@ pub(crate) fn execute_upgrade(
     .move_call(package_id, "identity", "execute_upgrade")
     .arguments([identity_arg, capability.arg(), proposal_id]);
 
-  capability.put_back(&mut ptb, package_id);
+  capability.put_back(ptb, package_id);
 }

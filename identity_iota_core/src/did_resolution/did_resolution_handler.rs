@@ -1,11 +1,11 @@
 // Copyright 2020-2023 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::rebased::client::IdentityClientReadOnly;
 use crate::Error;
 use crate::IotaDID;
 use crate::IotaDocument;
 use crate::Result;
+use crate::rebased::client::IdentityClient;
 
 /// An extension trait that provides helper functions for publication
 /// and resolution of DID documents in identities.
@@ -26,7 +26,7 @@ pub trait DidResolutionHandler {
 
 #[cfg_attr(feature = "send-sync-client-ext", async_trait::async_trait)]
 #[cfg_attr(not(feature = "send-sync-client-ext"), async_trait::async_trait(?Send))]
-impl DidResolutionHandler for IdentityClientReadOnly {
+impl DidResolutionHandler for IdentityClient {
   async fn resolve_did(&self, did: &IotaDID) -> Result<IotaDocument> {
     self
       .resolve_did(did)

@@ -1,13 +1,10 @@
 // Copyright 2020-2023 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use fastcrypto::ed25519::Ed25519KeyPair;
-use fastcrypto::ed25519::Ed25519PrivateKey;
-use fastcrypto::ed25519::Ed25519PublicKey;
-use fastcrypto::ed25519::Ed25519PublicKeyAsBytes;
-use fastcrypto::traits::KeyPair as _;
-use fastcrypto::traits::SigningKey;
-use fastcrypto::traits::ToFromBytes;
+use iota_sdk::crypto::ed25519::Ed25519PrivateKey;
+use iota_sdk::crypto::ToFromBytes as _;
+use iota_sdk::types::Ed25519PublicKey;
+use iota_sdk::types::PublicKeyExt as _;
 
 use crate::error::Error;
 use crate::jwk::EdCurve;
@@ -22,7 +19,7 @@ pub(crate) fn from_public_jwk(jwk: &Jwk) -> anyhow::Result<Ed25519PublicKey> {
   Ok(Ed25519PublicKey::from_bytes(&bytes)?)
 }
 
-pub(crate) fn jwk_to_keypair(jwk: &Jwk) -> Result<Ed25519KeyPair, Error> {
+pub(crate) fn jwk_to_keypair(jwk: &Jwk) -> Result<Ed25519PrivateKey, Error> {
   let params: &JwkParamsOkp = jwk.try_okp_params()?;
 
   if params
@@ -45,13 +42,13 @@ pub(crate) fn jwk_to_keypair(jwk: &Jwk) -> Result<Ed25519KeyPair, Error> {
     .try_into()
     .map_err(|_| Error::KeyConversion(format!("expected key of length {}", Ed25519PrivateKey::LENGTH)))?;
 
-  Ed25519KeyPair::from_bytes(&sk).map_err(|_| Error::KeyConversion("invalid key".to_string()))
+  Ed25519PrivateKey::from_bytes(&sk).map_err(|_| Error::KeyConversion("invalid key".to_string()))
 }
 
 #[allow(dead_code)]
-pub(crate) fn encode_jwk(key_pair: Ed25519KeyPair) -> Jwk {
-  let x = jwu::encode_b64(key_pair.public().as_ref());
-  let d = jwu::encode_b64(key_pair.private().as_ref());
+pub(crate) fn encode_jwk(sk: Ed25519PrivateKey) -> Jwk {
+  let x = jwu::encode_b64(sk.public_key().as_bytes());
+  let d = jwu::encode_b64(sk.to_bytes());
   let mut params = JwkParamsOkp::new();
   params.x = x;
   params.d = Some(d);
@@ -60,12 +57,12 @@ pub(crate) fn encode_jwk(key_pair: Ed25519KeyPair) -> Jwk {
 }
 
 #[allow(dead_code)]
-pub(crate) fn pk_to_jwk(pk: &Ed25519PublicKeyAsBytes) -> Jwk {
+pub(crate) fn pk_to_jwk(pk: &Ed25519PublicKey) -> Jwk {
   use crate::jws::JwsAlgorithm;
 
   let params = JwkParamsOkp {
     crv: EdCurve::Ed25519.to_string(),
-    x: encode_b64(pk.0),
+    x: encode_b64(pk.as_bytes()),
     d: None,
   };
 

@@ -12,7 +12,7 @@ use iota_sdk::types::Object;
 use iota_sdk::types::ObjectId;
 use itertools::Itertools as _;
 use product_core::move_type::MoveType;
-use product_core::network::Network;
+use product_core::product_client::ProductClient;
 
 use crate::rebased::migration::ControllerToken;
 use crate::rebased::proposals::BorrowAction;
@@ -36,7 +36,7 @@ fn borrow_proposal_impl<'a>(
   let proposal_id = ptb
     .move_call(package_id, "identity", "propose_borrow")
     .arguments([identity_arg, capability.arg(), exp_arg, objects_arg])
-    .arg();
+    .result();
 
   ProposalContext {
     ptb,
@@ -54,29 +54,29 @@ pub(crate) fn execute_borrow_impl<F>(
   objects: Vec<Object>,
   intent_fn: F,
   package: ObjectId,
-  network: Network,
+  client: &impl ProductClient,
 ) where
   F: FnOnce(&mut TransactionBuilder<Client>, &HashMap<ObjectId, (Argument, Object)>),
 {
   // Get the proposal's action as argument.
   let borrow_action = ptb
     .move_call(package, "identity", "execute_proposal")
-    .type_tags(BorrowAction::move_type(network))
+    .type_tags([BorrowAction::move_type(client)])
     .arguments([identity, delegation_token, proposal_id])
-    .arg();
+    .result();
 
   // Borrow all the objects specified in the action.
   let mut obj_arg_map = HashMap::new();
   for obj in objects {
     let type_ = obj.object_type().into_struct();
-    let recv_obj = ptb.apply_argument(Receiving(obj.object_id()));
+    let recv_obj = ptb.apply_argument(Receiving(obj.id()));
     let obj_arg = ptb
       .move_call(package, "identity", "execute_borrow")
-      .type_tags(type_.into())
+      .type_tags([type_.into()])
       .arguments([identity, borrow_action, recv_obj])
-      .arg();
+      .result();
 
-    obj_arg_map.insert(obj.object_id(), (obj_arg, obj));
+    obj_arg_map.insert(obj.id(), (obj_arg, obj));
   }
 
   // Apply the user-defined operation.
@@ -87,7 +87,7 @@ pub(crate) fn execute_borrow_impl<F>(
     let obj_type = obj_data.object_type().into_struct();
     ptb
       .move_call(package, "identity", "put_back")
-      .type_tags(obj_type.into())
+      .type_tags([obj_type.into()])
       .arguments([borrow_action, obj_arg]);
   }
 
@@ -106,7 +106,7 @@ pub(crate) fn propose_borrow(
   package_id: ObjectId,
 ) {
   let ProposalContext { ptb, capability, .. } =
-    borrow_proposal_impl(ptb, identity, capability, objects, expiration, package_id)?;
+    borrow_proposal_impl(ptb, identity, capability, objects, expiration, package_id);
 
   capability.put_back(ptb, package_id);
 }
@@ -119,23 +119,23 @@ pub(crate) fn execute_borrow<F>(
   objects: Vec<Object>,
   intent_fn: F,
   package: ObjectId,
-  network: Network,
+  client: &impl ProductClient,
 ) where
   F: FnOnce(&mut TransactionBuilder<Client>, &HashMap<ObjectId, (Argument, Object)>),
 {
   let identity = ptb.apply_argument(SharedMut(identity));
-  let capability = ControllerTokenArg::from_token(capability, ptb, package)?;
-  let proposal_id = ptb.pure(proposal_id)?;
+  let capability = ControllerTokenArg::from_token(capability, ptb, package);
+  let proposal_id = ptb.pure(proposal_id);
 
   execute_borrow_impl(
-    &mut ptb,
+    ptb,
     identity,
     capability.arg(),
     proposal_id,
     objects,
     intent_fn,
     package,
-    network,
+    client,
   );
 
   capability.put_back(ptb, package);
@@ -149,7 +149,7 @@ pub(crate) fn create_and_execute_borrow<F>(
   intent_fn: F,
   expiration: Option<u64>,
   package_id: ObjectId,
-  network: Network,
+  client: &impl ProductClient,
 ) where
   F: FnOnce(&mut TransactionBuilder<Client>, &HashMap<ObjectId, (Argument, Object)>),
 {
@@ -162,10 +162,10 @@ pub(crate) fn create_and_execute_borrow<F>(
     ptb,
     identity,
     capability,
-    objects.iter().map(|obj_data| obj_data.object_id).collect_vec(),
+    objects.iter().map(|obj_data| obj_data.id()).collect_vec(),
     expiration,
     package_id,
-  )?;
+  );
 
   execute_borrow_impl(
     &mut ptb,
@@ -175,7 +175,7 @@ pub(crate) fn create_and_execute_borrow<F>(
     objects,
     intent_fn,
     package_id,
-    network,
+    client,
   );
 
   capability.put_back(&mut ptb, package_id);

@@ -4,7 +4,6 @@
 mod access_sub_identity;
 mod borrow;
 mod config_change;
-mod controller;
 mod send;
 mod update_did_doc;
 mod upgrade;
@@ -13,14 +12,14 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
-use crate::rebased::iota::move_calls::identity::ControllerTokenArg;
+use crate::rebased::client::IdentityClient;
+use crate::rebased::iota::move_calls;
 use crate::rebased::migration::get_identity;
 pub use access_sub_identity::*;
 use async_trait::async_trait;
 pub use borrow::*;
 pub use config_change::*;
-pub use controller::*;
-use futures::StreamExt;
+use futures::TryStreamExt;
 use iota_sdk::graphql_client::query_types::ObjectFilter;
 use iota_sdk::graphql_client::Client as IotaClient;
 use iota_sdk::graphql_client::Direction;
@@ -28,6 +27,7 @@ use iota_sdk::transaction_builder::TransactionBuilder;
 use iota_sdk::types::ObjectId;
 use iota_sdk::types::TransactionEffects;
 use iota_sdk::types::TypeTag;
+use itertools::Itertools;
 use product_core::move_type::MoveType;
 use product_core::operation::Operation;
 use product_core::operation::OperationBuilder;
@@ -39,17 +39,20 @@ use serde::de::DeserializeOwned;
 pub use update_did_doc::*;
 pub use upgrade::*;
 
-use super::iota::package::identity_package_id;
 use crate::rebased::migration::OnChainIdentity;
 use crate::rebased::migration::Proposal;
 use crate::rebased::Error;
 
 use super::migration::ControllerToken;
 
+/// Something that can be turned into an [`Operation`] given some input.
 pub trait ProtoOperation {
+  /// The type of input required.
   type Input;
+  /// The type of operation that can be created.
   type Operation: Operation;
 
+  /// Turns this into an [`Operation`] from the provided input.
   fn with(self, input: Self::Input) -> Self::Operation;
 }
 
@@ -61,7 +64,7 @@ where
   type Operation = O;
 
   fn with(self, _input: Self::Input) -> Self::Operation {
-    self.into()
+    self.into_inner()
   }
 }
 
@@ -80,7 +83,7 @@ pub trait ProposalT: Sized {
     expiration: Option<u64>,
     identity: &'i mut OnChainIdentity,
     controller_token: &ControllerToken,
-    client: &impl ProductClient,
+    client: &IdentityClient,
   ) -> Result<OperationBuilder<CreateProposal<'i, Self::Action>>, Error>;
 
   /// Converts the [`Proposal`] into a transaction that can be executed.
@@ -88,7 +91,7 @@ pub trait ProposalT: Sized {
     self,
     identity: &'i mut OnChainIdentity,
     controller_token: &ControllerToken,
-    client: &impl ProductClient,
+    client: &IdentityClient,
   ) -> Result<impl ProtoOperation, Error>;
 
   /// Parses the transaction's effects and returns the output of the [`Proposal`].
@@ -151,7 +154,7 @@ where
 {
   /// Creates a [`Proposal`] with the provided arguments. If `forbid_chained_execution` is set to `true`,
   /// the [`Proposal`] won't be executed even if creator alone has enough voting power.
-  pub async fn finish(self, client: &impl ProductClient) -> Result<OperationBuilder<CreateProposal<'i, A>>, Error> {
+  pub async fn finish(self, client: &IdentityClient) -> Result<OperationBuilder<CreateProposal<'i, A>>, Error> {
     let Self {
       action,
       expiration,
@@ -195,30 +198,32 @@ where
   Proposal<A>: ProposalT<Action = A> + DeserializeOwned,
   A: Send + Sync,
 {
+  type Client = IdentityClient;
   type Output = ProposalResult<Proposal<A>>;
   type Error = Error;
 
   async fn to_transaction(
     &self,
-    client: &impl ProductClient,
-    tx_builder: TransactionBuilder<IotaClient>,
+    _client: &IdentityClient,
+    _tx_builder: TransactionBuilder<IotaClient>,
   ) -> Result<TransactionBuilder<IotaClient>, Self::Error> {
     Ok(self.tx.clone())
   }
 
   async fn apply_effects(
     self,
-    client: &impl ProductClient,
+    client: &IdentityClient,
     effects: &mut TransactionEffects,
   ) -> Result<Self::Output, Self::Error> {
-    if let Some(tx_error) = effects.status().error() {
-      return Err(tx_error.into());
+    if let Some(tx_error) = effects.as_v1().status.error() {
+      return Err(tx_error.clone().into());
     }
 
     // Identity has been changed regardless of whether the proposal has been executed
     // or simply created. Refetch it, to sync it with its on-chain state.
     *self.identity = get_identity(client, self.identity.id())
-      .await?
+      .await
+      .map_err(|e| Error::Identity(e.to_string()))?
       .ok_or_else(|| Error::Identity(format!("identity {} cannot be found", self.identity.id())))?;
 
     if self.chained_execution {
@@ -232,7 +237,7 @@ where
         .as_v1()
         .changed_objects
         .iter()
-        .find(|obj_ref| obj_ref.output_state.object_owner().as_object_opt() != Some(proposals_bag_id))
+        .find(|obj_ref| obj_ref.output_state.object_owner().as_opt_object() != Some(&proposals_bag_id))
         .expect("tx was successful")
         .object_id;
 
@@ -262,30 +267,32 @@ where
   Proposal<A>: ProposalT<Action = A>,
   A: Send + Sync,
 {
+  type Client = IdentityClient;
   type Output = <Proposal<A> as ProposalT>::Output;
   type Error = Error;
 
   async fn to_transaction(
     &self,
-    client: &impl ProductClient,
-    tx_builder: TransactionBuilder<IotaClient>,
+    _client: &IdentityClient,
+    _tx_builder: TransactionBuilder<IotaClient>,
   ) -> Result<TransactionBuilder<IotaClient>, Self::Error> {
     Ok(self.tx.clone())
   }
 
   async fn apply_effects(
     self,
-    client: &impl ProductClient,
+    client: &IdentityClient,
     tx_effects: &mut TransactionEffects,
   ) -> Result<Self::Output, Self::Error> {
     let Self { identity, .. } = self;
 
-    if let Some(tx_error) = tx_effects.status().error() {
-      return Err(tx_error.into());
+    if let Some(tx_error) = tx_effects.as_v1().status.error() {
+      return Err(tx_error.clone().into());
     }
 
     *identity = get_identity(client, identity.id())
-      .await?
+      .await
+      .map_err(|e| Error::Identity(e.to_string()))?
       .ok_or_else(|| Error::Identity(format!("identity {} cannot be found", identity.id())))?;
 
     Proposal::<A>::parse_tx_effects(tx_effects)
@@ -327,37 +334,34 @@ impl<A> Operation for ApproveProposal<'_, '_, A>
 where
   A: MoveType + Send + Sync,
 {
+  type Client = IdentityClient;
   type Output = ();
   type Error = Error;
 
   async fn to_transaction(
     &self,
-    client: &impl ProductClient,
+    client: &IdentityClient,
     mut ptb: TransactionBuilder<IotaClient>,
   ) -> Result<TransactionBuilder<IotaClient>, Self::Error> {
-    let package = identity_package_id(client.network()).await?;
-    let identity = ptb.apply_argument(self.identity.id());
-    let cap = ControllerTokenArg::from_token(&self.controller_token, &mut ptb, package);
-    let proposal_id = ptb.apply_argument(self.proposal.id());
-    let proposal_type = A::move_type(client.network())?;
+    move_calls::identity::approve_proposal::<A>(
+      &mut ptb,
+      self.identity.id(),
+      &self.controller_token,
+      self.proposal.id(),
+      client.package_id(),
+      client,
+    );
 
-    ptb
-      .move_call(package, "identity", "approve_proposal")
-      .type_tags(proposal_type)
-      .arguments([identity, cap.arg(), proposal_id]);
-
-    cap.put_back(&mut ptb, package);
-
-    ptb
+    Ok(ptb)
   }
 
   async fn apply_effects(
     self,
-    client: &impl ProductClient,
+    _client: &IdentityClient,
     tx_effects: &mut TransactionEffects,
   ) -> Result<Self::Output, Self::Error> {
-    if let Some(tx_error) = tx_effects.status().error() {
-      return Err(tx_error.into());
+    if let Some(tx_error) = tx_effects.as_v1().status.error() {
+      return Err(tx_error.clone().into());
     }
 
     let vp = self
@@ -399,20 +403,14 @@ struct ProposalEvent {
 }
 
 pub(self) async fn object_type_for_ids(
-  client: &impl ProductClient,
+  client: &IdentityClient,
   ids: impl IntoIterator<Item = ObjectId>,
 ) -> Result<Vec<(ObjectId, TypeTag)>, Error> {
-  let filter = ObjectFilter {
-    object_ids: Some(ids.collect()),
-    ..Default::default()
-  };
+  let filter = ObjectFilter::default().with_object_ids(ids.into_iter().collect_vec());
   client
     .objects_stream(filter, Direction::Forward)
-    .filter_map(|res| {
-      res
-        .ok()
-        .map(|obj| (obj.object_id(), obj.object_type().into_struct().into()))
-    })
-    .collect()
+    .try_filter_map(|res| async move { Ok(Some((res.id(), res.object_type().into_struct().into()))) })
+    .try_collect()
     .await
+    .map_err(|e| Error::RpcError(e.to_string()))
 }

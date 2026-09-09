@@ -23,17 +23,15 @@ members = [
   "identity_ecdsa_verifier",
   "identity_eddsa_verifier",
   "identity_pqc_verifier",
-  "examples",
+  # "examples",
 ]
 
 exclude = ["bindings/wasm/identity_wasm", "bindings/grpc"]
 
 [workspace.dependencies]
 bls12_381_plus = { version = "0.8.17" }
-iota_interaction = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.10", package = "iota_interaction" }
-iota_interaction_ts = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.10", package = "iota_interaction_ts" }
-iota-sdk-types = { git = "https://github.com/iotaledger/iota-rust-sdk.git", rev = "05608b7e4a5b96d85f84e1970a517f6f174beb8b", features = ["hash", "serde", "schemars"] }
-product_common = { git = "https://github.com/iotaledger/product-core.git", tag = "v0.8.10", package = "product_common" }
+iota-sdk = { git = "https://github.com/iotaledger/iota-rust-sdk.git", rev = "25907f345ed0deb33a56fe40677d1d128209ffea" }
+product-core = { git = "https://github.com/iotaledger/product-core.git", package = "product-core", branch = "prototype/iota-rust-sdk-integration" }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = { version = "1.0", default-features = false }
 oqs = { version = "0.10", default-features = false, features = ["sigs", "std", "vendored"] }
@@ -45,17 +43,3 @@ zkryptium = { version = "0.2.2", default-features = false, features = ["bbsplus"
 [workspace.lints.clippy]
 result_large_err = "allow"
 large_enum_variant = "allow"
-
-[profile.release.package.iota_interaction_ts]
-opt-level = 's'
-# Enabling debug for profile.release may lead to more helpful logged call stacks.
-# TODO: Clarify if 'debug = true' facilitates error analysis via console logs.
-#       If not, remove the next line
-#       If yes, describe the helping effect in the comment above
-# debug = true
-
-[patch."https://github.com/iotaledger/product-core.git"]
-product-core = { path = "../product-core/product-core" }
-
-[patch."https://github.com/iotaledger/iota-rust-sdk.git"]
-iota-sdk = { path = "../iota-rust-sdk/crates/iota-sdk"}

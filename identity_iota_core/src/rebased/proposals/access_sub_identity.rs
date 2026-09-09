@@ -5,29 +5,27 @@ use std::convert::Infallible;
 use std::future::Future;
 use std::marker::PhantomData;
 
-use futures::StreamExt;
+use identity_jose::jwu::decode_b64;
+use iota_sdk::graphql_client::query_types::Event;
 use iota_sdk::graphql_client::query_types::EventFilter;
 use iota_sdk::graphql_client::Client;
-use iota_sdk::graphql_client::Direction;
+use iota_sdk::graphql_client::PaginationFilter;
 use iota_sdk::transaction_builder::TransactionBuilder;
 use iota_sdk::types::Address;
-use iota_sdk::types::Event;
 use iota_sdk::types::ObjectId;
 use iota_sdk::types::ProgrammableTransaction;
 use iota_sdk::types::TransactionEffects;
 use iota_sdk::types::TypeTag;
 use product_core::move_type::MoveType;
-use product_core::move_type::UnknownTypeForNetwork;
-use product_core::network::Network;
 use product_core::operation::Operation;
 use product_core::operation::OperationBuilder;
 use product_core::product_client::ProductClient;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::rebased::client::IdentityClient;
 use crate::rebased::iota::move_calls;
 use crate::rebased::iota::package::identity_package_id;
-use crate::rebased::iota::package::identity_package_id_blocking;
 use crate::rebased::migration::ControllerToken;
 use crate::rebased::migration::InvalidControllerTokenForIdentity;
 use crate::rebased::migration::OnChainIdentity;
@@ -38,9 +36,12 @@ use super::ProposedTxResult;
 
 type BoxedStdError = Box<dyn std::error::Error + Send + Sync>;
 
+/// A trait that allows a type to be converted into an [Operation].
 pub trait IntoOperation {
+  /// The [Operation] type that this type can be converted into.
   type Op: Operation;
 
+  /// Converts this type into an [Operation].
   fn into_operation(self) -> Self::Op;
 }
 
@@ -77,12 +78,13 @@ where
 pub struct EmptyOp;
 
 impl Operation for EmptyOp {
+  type Client = IdentityClient;
   type Output = ();
   type Error = Infallible;
 
   async fn to_transaction(
     &self,
-    client: &impl ProductClient,
+    _client: &IdentityClient,
     tx_builder: TransactionBuilder<Client>,
   ) -> Result<TransactionBuilder<Client>, Self::Error> {
     Ok(tx_builder)
@@ -90,8 +92,8 @@ impl Operation for EmptyOp {
 
   async fn apply_effects(
     self,
-    client: &impl ProductClient,
-    tx_effects: &mut iota_sdk::types::TransactionEffects,
+    _client: &IdentityClient,
+    _tx_effects: &mut iota_sdk::types::TransactionEffects,
   ) -> Result<Self::Output, Self::Error> {
     Ok(())
   }
@@ -168,9 +170,9 @@ impl<'i, 'sub, F> AccessSubIdentityBuilder<'i, 'sub, F> {
     }
   }
 
-  async fn get_identity_token<C>(
+  async fn get_identity_token(
     &self,
-    client: &impl ProductClient,
+    client: &IdentityClient,
   ) -> Result<ControllerToken, AccessSubIdentityBuilderErrorKind> {
     // Make sure `identity_token` grants access to `identity`.
     if self.identity.id() != self.identity_token.controller_of() {
@@ -203,7 +205,7 @@ impl<'i, 'sub> AccessSubIdentityBuilder<'i, 'sub, ()> {
   /// with the supplied data.
   pub async fn finish(
     self,
-    client: &impl ProductClient,
+    client: &IdentityClient,
   ) -> Result<OperationBuilder<AccessSubIdentityTx<'i, 'sub, EmptyOp>>, AccessSubIdentityBuilderError> {
     let _ = self.get_identity_token(client).await?;
     let tx_kind = TxKind::Create {
@@ -229,7 +231,7 @@ where
   /// with the supplied data.
   pub async fn finish(
     self,
-    client: &impl ProductClient,
+    client: &IdentityClient,
   ) -> Result<OperationBuilder<AccessSubIdentityTx<'i, 'sub, F::Op>>, AccessSubIdentityBuilderError> {
     let sub_identity_token = self.get_identity_token(client).await?;
 
@@ -246,7 +248,7 @@ where
     let maybe_sub_tx = if let Some(fetch_sub_tx) = self.sub_action.filter(|_| can_execute) {
       fetch_sub_tx(self.sub_identity, sub_identity_token.clone())
         .await
-        .map(|into_tx| Some(into_tx.into_transaction()))
+        .map(|into_tx| Some(into_tx.into_operation()))
         .map_err(|e| AccessSubIdentityBuilderErrorKind::SubIdentityOperation {
           sub_identity: sub_identity_id,
           source: e.into(),
@@ -283,7 +285,7 @@ impl Proposal<AccessSubIdentity> {
     sub_identity: &'sub mut OnChainIdentity,
     identity_token: &ControllerToken,
     sub_action: F,
-    client: &impl ProductClient,
+    client: &IdentityClient,
   ) -> Result<OperationBuilder<AccessSubIdentityTx<'i, 'sub, F::Op>>, AccessSubIdentityBuilderError>
   where
     F: SubAccessFnT<'sub>,
@@ -391,17 +393,17 @@ pub struct AccessSubIdentityTx<'i, 'sub, Op = EmptyOp> {
 
 impl<'i, 'sub, Op> AccessSubIdentityTx<'i, 'sub, Op>
 where
-  Op: Operation,
+  Op: Operation<Client = IdentityClient>,
 {
   async fn build_tx_impl(
     &self,
-    client: &impl ProductClient,
+    client: &IdentityClient,
   ) -> Result<TransactionBuilder<Client>, AccessSubIdentityErrorKind> {
     let package_id = identity_package_id(client.network())
       .await
       .map_err(|e| AccessSubIdentityErrorKind::RpcError(e.into()))?;
 
-    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client((*client).clone());
+    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client(client.as_ref().clone());
 
     match &self.tx_kind {
       TxKind::Create { expiration } => move_calls::identity::sub_identity::propose_identity_sub_access(
@@ -427,7 +429,7 @@ where
           sub_pt,
           None, // We are gonna execute it right away no need for expiration.
           package_id,
-          client.network(),
+          client,
         )
       }
       TxKind::Execute {
@@ -445,7 +447,7 @@ where
           sub_identity_token,
           sub_pt,
           package_id,
-          client.network(),
+          client,
         )
       }
     }
@@ -456,33 +458,36 @@ where
 
 async fn sub_op_to_pt<Op: Operation>(
   sub_op: &Op,
-  client: &impl ProductClient,
+  client: &Op::Client,
 ) -> Result<ProgrammableTransaction, AccessSubIdentityErrorKind> {
-  sub_op
-    .to_transaction(
-      client,
-      TransactionBuilder::new(Address::ZERO).with_client((*client).clone()),
-    )
-    .await
-    .map_err(|e| AccessSubIdentityErrorKind::InnerTransactionBuilding(e.into()))?
-    .finish()
-    .await
-    .map_err(|e| AccessSubIdentityErrorKind::InnerTransactionBuilding(e.into()))?
-    .into_v1()
-    .kind
-    .into_programmable_transaction()
+  Ok(
+    sub_op
+      .to_transaction(
+        client,
+        TransactionBuilder::new(Address::ZERO).with_client(client.as_ref().clone()),
+      )
+      .await
+      .map_err(|e| AccessSubIdentityErrorKind::InnerTransactionBuilding(e.into()))?
+      .finish()
+      .await
+      .map_err(|e| AccessSubIdentityErrorKind::InnerTransactionBuilding(e.into()))?
+      .into_v1()
+      .kind
+      .into_programmable(),
+  )
 }
 
 impl<'i, 'sub, Op> Operation for AccessSubIdentityTx<'i, 'sub, Op>
 where
-  Op: Operation,
+  Op: Operation<Client = IdentityClient>,
 {
+  type Client = IdentityClient;
   type Error = AccessSubIdentityError;
   type Output = ProposedTxResult<Proposal<AccessSubIdentity>, Op::Output>;
 
   async fn to_transaction(
     &self,
-    client: &impl ProductClient,
+    client: &IdentityClient,
     _tx_builder: TransactionBuilder<Client>,
   ) -> Result<TransactionBuilder<Client>, Self::Error> {
     self.build_tx_impl(client).await.map_err(|kind| AccessSubIdentityError {
@@ -494,49 +499,52 @@ where
 
   async fn apply_effects(
     self,
-    client: &impl ProductClient,
+    client: &IdentityClient,
     effects: &mut TransactionEffects,
   ) -> Result<Self::Output, Self::Error> {
+    let make_err = |kind| AccessSubIdentityError {
+      identity: self.identity.id(),
+      sub_identity: self.sub_identity,
+      kind,
+    };
+
     let events = client
-      .events_stream(
-        EventFilter {
-          transaction_digest: Some(effects.digest().to_string()),
-          ..Default::default()
-        },
-        Direction::Forward,
+      .events(
+        EventFilter::default().with_transaction_digest(effects.digest().to_string()),
+        PaginationFilter::default(),
       )
-      .collect()
-      .await;
+      .await
+      .map_err(|e| make_err(AccessSubIdentityErrorKind::RpcError(e.into())))?
+      .data;
 
     // Extract the event for the proposal we are expecting.
     let extract_proposal_id = |event: &Event| -> Option<ProposalEvent> {
-      if event.type_.module().as_str() == "identity" && event.type_.name().as_str() == "ProposalEvent" {
-        serde_json::from_value::<ProposalEvent>(event.parsed_json.clone())
+      if event.type_.repr.contains("identity::ProposalEvent") {
+        bcs::from_bytes(&decode_b64(event.bcs.0.as_str()).unwrap())
           .ok()
-          .filter(|event| event.identity == self.identity.id() && event.controller == self.identity_token.id())
+          .filter(|event: &ProposalEvent| {
+            event.identity == self.identity.id() && event.controller == self.identity_token.id()
+          })
       } else {
         None
       }
     };
 
-    if let Some(tx_error) = effects.status().error() {
+    if let Some(tx_error) = effects.as_v1().status.error() {
       return Err(AccessSubIdentityError {
         identity: self.identity.id(),
         sub_identity: self.sub_identity,
-        kind: AccessSubIdentityErrorKind::TransactionExecution(tx_error.into()),
+        kind: AccessSubIdentityErrorKind::TransactionExecution(tx_error.clone().into()),
       });
     }
 
     let maybe_proposal_id = {
       let maybe_proposal_event = events
-        .data
         .iter()
         .enumerate()
         .find_map(|(i, event)| extract_proposal_id(event).map(|event| (i, event)));
 
-      if let Some((i, event)) = maybe_proposal_event {
-        // We handled this event, therefore we remove it so that other TXs can avoid going through it.
-        events.data.swap_remove(i);
+      if let Some((_, event)) = maybe_proposal_event {
         Some(event.proposal)
       } else {
         None
@@ -545,12 +553,14 @@ where
 
     match self.tx_kind {
       TxKind::Create { .. } => client
-        .get_object_by_id(maybe_proposal_id.expect("tx was successful"))
+        .move_object_contents(maybe_proposal_id.expect("tx was successful"), None)
         .await
-        .map(ProposedTxResult::Pending)
+        .map(|value| {
+          ProposedTxResult::Pending(serde_json::from_value(value.expect("proposal exists")).expect("proposal is valid"))
+        })
         .map_err(|e| AccessSubIdentityErrorKind::RpcError(e.into())),
       TxKind::CreateAndExecute { sub_tx, .. } | TxKind::Execute { sub_tx, .. } => sub_tx
-        .apply_with_events(effects, events, client)
+        .apply_effects(client, effects)
         .await
         .map(ProposedTxResult::Executed)
         .map_err(|e| AccessSubIdentityErrorKind::EffectsApplication(e.into())),
@@ -564,20 +574,15 @@ where
 }
 
 impl MoveType for AccessSubIdentity {
-  fn move_type(network: Network) -> Result<TypeTag, UnknownTypeForNetwork> {
-    let package = match network {
-      Network::Mainnet => "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08",
-      Network::Testnet => "0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555",
-      Network::Devnet => "0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103",
-      _ => identity_package_id_blocking(network)
-        .map_err(|_| UnknownTypeForNetwork::new("Send", network))?
-        .to_string()
-        .as_str(),
-    };
+  fn move_type(client: &impl ProductClient) -> TypeTag {
+    let package = client.package_id();
 
-    format!("{package}::access_sub_entity_proposal::AccessSubEntity")
+    let mut tag = format!("{package}::access_sub_entity_proposal::AccessSubEntity")
       .parse()
-      .expect("valid TypeTag")
+      .expect("valid TypeTag");
+
+    client.type_origin_table().canonicalize_type(&mut tag);
+    tag
   }
 }
 
@@ -592,9 +597,6 @@ enum AccessSubIdentityErrorKind {
   /// Building the user-provided transaction failed.
   #[error("failed to build user-provided Transaction")]
   InnerTransactionBuilding(#[source] Box<dyn std::error::Error + Send + Sync>),
-  /// Building the whole transaction failed.
-  #[error("failed to build transaction")]
-  TransactionBuilding(#[source] Box<dyn std::error::Error + Send + Sync>),
   /// Executing the transaction failed.
   #[error("transaction execution failed")]
   TransactionExecution(#[source] Box<dyn std::error::Error + Send + Sync>),

@@ -91,7 +91,7 @@ impl IotaDID {
   /// Converts this [IotaDID] into an [ObjectId].
   pub fn to_object_id(&self) -> ObjectId {
     let object_id_hex = self.as_str().rsplit_once(':').expect("valid IOTA DID").1;
-    ObjectId::from_hex_literal(object_id_hex).expect("valid object ID")
+    ObjectId::from_hex(object_id_hex).expect("valid object ID")
   }
 
   /// Creates a new placeholder [`IotaDID`] with the given network name.
@@ -181,7 +181,6 @@ impl IotaDID {
   pub fn check_validity<D: DID>(did: &D) -> Result<()> {
     Self::check_method(did)
       .and_then(|_| Self::check_tag(did))
-      .and_then(|_| Self::check_network(did))
   }
 
   /// Returns a `bool` indicating if the given `DID` is valid according to the

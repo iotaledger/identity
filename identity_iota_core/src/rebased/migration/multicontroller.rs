@@ -6,11 +6,11 @@ use std::collections::HashSet;
 
 use crate::rebased::iota::types::Bag;
 use crate::rebased::iota::types::Number;
-use iota_interaction::types::base_types::ObjectId;
-use iota_interaction::types::collection_types::Entry;
-use iota_interaction::types::collection_types::VecMap;
-use iota_interaction::types::collection_types::VecSet;
-use iota_interaction::types::id::UID;
+use iota_sdk::move_types::iota_framework::object::UID;
+use iota_sdk::move_types::iota_framework::vec_map::Entry;
+use iota_sdk::move_types::iota_framework::vec_map::VecMap;
+use iota_sdk::move_types::iota_framework::vec_set::VecSet;
+use iota_sdk::types::ObjectId;
 use serde::Deserialize;
 use serde::Serialize;
 

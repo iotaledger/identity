@@ -4,7 +4,6 @@
 use std::ops::Deref;
 
 use crate::rebased::client::FromIotaClientError;
-use crate::rebased::client::FromIotaClientErrorKind;
 use crate::rebased::client::QueryControlledDidsError;
 use crate::rebased::iota::package::identity_package_id;
 use crate::rebased::migration::get_identity;
@@ -19,22 +18,19 @@ use crate::IotaDocument;
 use crate::StateMetadataDocument;
 use crate::StateMetadataEncoding;
 use iota_sdk::graphql_client::Client as IotaClient;
+use iota_sdk::transaction_builder::Shared;
 use iota_sdk::transaction_builder::TransactionBuilder;
 use iota_sdk::types::Address;
 use iota_sdk::types::ObjectId;
-use iota_sdk::types::Owner;
 use iota_sdk::types::TransactionEffects;
-use product_core::move_type::MoveType;
+use product_core::network::Network;
 use product_core::operation::Operation;
 use product_core::operation::OperationBuilder;
 use product_core::product_client::ProductClient;
-use product_core::CLOCK_ADDRESS;
+use product_core::type_origin_table::TypeOriginTable;
 use secret_storage::iota::TransactionSigner;
-use secret_storage::Signer;
-use serde::de::DeserializeOwned;
 use tokio::sync::RwLock;
 
-use crate::rebased::assets::AuthenticatedAssetBuilder;
 use crate::rebased::migration::Identity;
 use crate::rebased::migration::IdentityBuilder;
 use crate::rebased::Error;
@@ -89,6 +85,24 @@ impl<S> Deref for IdentityClient<S> {
   }
 }
 
+impl<S> AsRef<IotaClient> for IdentityClient<S> {
+  fn as_ref(&self) -> &IotaClient {
+    &self.read_client
+  }
+}
+
+impl<S> ProductClient for IdentityClient<S> {
+  fn network(&self) -> Network {
+    self.read_client.network()
+  }
+  fn package_id(&self) -> ObjectId {
+    self.read_client.package_id()
+  }
+  fn type_origin_table(&self) -> &TypeOriginTable {
+    self.read_client.type_origin_table()
+  }
+}
+
 impl IdentityClient<NoSigner> {
   /// Creates a new [IdentityClient], with **no** signing capabilities, from the given [IotaClient].
   ///
@@ -117,17 +131,7 @@ impl IdentityClient<NoSigner> {
     iota_client: IotaClient,
     custom_package_id: impl Into<Option<ObjectId>>,
   ) -> Result<Self, FromIotaClientError> {
-    let read_only_client = if let Some(custom_package_id) = custom_package_id.into() {
-      IdentityClientReadOnly::new_with_pkg_id(iota_client, custom_package_id).await
-    } else {
-      IdentityClientReadOnly::new(iota_client).await
-    }
-    .map_err(|e| match e {
-      Error::InvalidConfig(_) => FromIotaClientErrorKind::MissingPackageId,
-      Error::RpcError(msg) => FromIotaClientErrorKind::NetworkResolution(msg.into()),
-      _ => unreachable!("'IdentityClientReadOnly::new' has been changed without updating error handling in 'IdentityClient::from_iota_client'"),
-    })
-    .map_err(|kind| FromIotaClientError { kind })?;
+    let read_only_client = IdentityClientReadOnly::from_iota_client(iota_client, custom_package_id).await?;
 
     Ok(Self {
       read_client: read_only_client,
@@ -143,11 +147,6 @@ where
   /// Creates a new [`IdentityClient`].
   #[deprecated(since = "1.9.0", note = "Use `IdentityClient::from_iota_client` instead")]
   pub async fn new(client: IdentityClientReadOnly, signer: S) -> Result<Self, Error> {
-    let public_key = signer
-      .public_key()
-      .await
-      .map_err(|e| Error::InvalidKey(e.to_string()))?;
-
     Ok(Self {
       read_client: client,
       signer,
@@ -166,7 +165,7 @@ where
   }
 }
 
-impl<S> IdentityClient<S> {
+impl<S: TransactionSigner> IdentityClient<S> {
   /// Returns a new [`IdentityBuilder`] in order to build a new [`crate::rebased::migration::OnChainIdentity`].
   pub fn create_identity(&self, iota_document: IotaDocument) -> IdentityBuilder {
     IdentityBuilder::new(iota_document)
@@ -174,15 +173,7 @@ impl<S> IdentityClient<S> {
 
   /// Returns an [Operation] to publish the given DID Document on-chain.
   pub fn publish_did_document(&self, document: IotaDocument) -> OperationBuilder<PublishDidDocument> {
-    OperationBuilder::new(PublishDidDocument::new(document, self.sender_address()))
-  }
-
-  /// Returns a new [`IdentityBuilder`] in order to build a new [`crate::rebased::migration::OnChainIdentity`].
-  pub fn create_authenticated_asset<T>(&self, content: T) -> AuthenticatedAssetBuilder<T>
-  where
-    T: MoveType + DeserializeOwned + Send + Sync + PartialEq,
-  {
-    AuthenticatedAssetBuilder::new(content)
+    OperationBuilder::new(PublishDidDocument::new(document, self.signer.address()))
   }
 
   /// Sets a new signer for this client.
@@ -204,10 +195,10 @@ impl<S> IdentityClient<S> {
       return Err(Error::Identity("only new identities can be deactivated".to_string()));
     };
 
-    let controller_token = oci.get_controller_token(self).await?.ok_or_else(|| {
+    let controller_token = oci.get_controller_token(self.address(), self).await?.ok_or_else(|| {
       Error::Identity(format!(
         "address {} has no control over Identity {}",
-        self.sender_address(),
+        self.address(),
         oci.id()
       ))
     })?;
@@ -216,8 +207,8 @@ impl<S> IdentityClient<S> {
       .deactivate_did(&controller_token)
       .finish(self)
       .await?
-      .with_gas_budget(gas_budget)
-      .build_and_execute(self)
+      .gas_budget(gas_budget)
+      .execute(&self.signer, self)
       .await
       .map_err(|e| Error::TransactionUnexpectedResponse(e.to_string()))?;
 
@@ -242,10 +233,10 @@ where
       return Err(Error::Identity("only new identities can be updated".to_string()));
     };
 
-    let controller_token = oci.get_controller_token(self).await?.ok_or_else(|| {
+    let controller_token = oci.get_controller_token(self.address(), self).await?.ok_or_else(|| {
       Error::Identity(format!(
         "address {} has no control over Identity {}",
-        self.sender_address(),
+        self.address(),
         oci.id()
       ))
     })?;
@@ -254,8 +245,8 @@ where
       .update_did_document(document.clone(), &controller_token)
       .finish(self)
       .await?
-      .with_gas_budget(gas_budget)
-      .build_and_execute(self)
+      .gas_budget(gas_budget)
+      .execute(&self.signer, self)
       .await
       .map_err(|e| Error::TransactionUnexpectedResponse(e.to_string()))?;
 
@@ -273,7 +264,7 @@ where
   pub async fn publish_did_update(
     &self,
     did_document: IotaDocument,
-  ) -> Result<TransactionBuilder<ShorthandDidUpdate>, MakeUpdateDidDocTxError> {
+  ) -> Result<OperationBuilder<ShorthandDidUpdate>, MakeUpdateDidDocTxError> {
     use MakeUpdateDidDocTxError as Error;
     use MakeUpdateDidDocTxErrorKind as ErrorKind;
 
@@ -292,7 +283,7 @@ where
     }
 
     let controller_token = identity
-      .get_controller_token(self)
+      .get_controller_token(self.address(), self)
       .await
       .map_err(|e| make_err(ErrorKind::RpcError(e.into())))?
       .ok_or_else(|| {
@@ -357,7 +348,7 @@ impl Operation for PublishDidDocument {
   ) -> Result<TransactionBuilder<IotaClient>, Self::Error> {
     let package = identity_package_id(client.network()).await?;
 
-    let clock = ptb.apply_argument(CLOCK_ADDRESS);
+    let clock = ptb.apply_argument(Shared(ObjectId::CLOCK));
     let serialized_did_doc = StateMetadataDocument::from(self.did_document.clone())
       .pack(StateMetadataEncoding::Json)
       .map_err(|e| Error::DidDocSerialization(e.to_string()))?;
@@ -373,8 +364,8 @@ impl Operation for PublishDidDocument {
     client: &impl ProductClient,
     tx_effects: &mut TransactionEffects,
   ) -> Result<Self::Output, Self::Error> {
-    if let Some(tx_error) = tx_effects.status().error() {
-      return Err(tx_error.into());
+    if tx_effects.as_v1().status.is_failure() {
+      return Err(tx_effects.as_v1().status.clone().unwrap_err().0.into());
     }
 
     let target_did_bytes = StateMetadataDocument::from(self.did_document)
@@ -394,7 +385,13 @@ impl Operation for PublishDidDocument {
       .as_v1()
       .changed_objects
       .iter()
-      .filter(|obj| obj.id_operation.is_created() && obj.output_state.object_owner_opt().is_some_and(Owner::is_shared))
+      .filter(|obj| {
+        obj.id_operation.is_created()
+          && obj
+            .output_state
+            .object_owner_opt()
+            .is_some_and(|owner| owner.is_shared())
+      })
       .map(|obj| obj.object_id);
 
     let mut target_identity = None;
@@ -409,10 +406,10 @@ impl Operation for PublishDidDocument {
     }
 
     if let Some(identity) = target_identity {
-      tx_effects
-        .as_mut_v1()
-        .changed_objects
-        .retain(|obj| obj.object_id != identity.id().to_object_id());
+      // tx_effects
+      //   .as_mut_v1()
+      //   .changed_objects
+      //   .retain(|obj| obj.object_id != identity.id().to_object_id());
       Ok(identity.did_doc)
     } else {
       Err(Error::TransactionUnexpectedResponse(
@@ -437,7 +434,7 @@ impl Operation for ShorthandDidUpdate {
   async fn to_transaction(
     &self,
     client: &impl ProductClient,
-    tx_builder: TransactionBuilder<IotaClient>,
+    mut tx_builder: TransactionBuilder<IotaClient>,
   ) -> Result<TransactionBuilder<IotaClient>, Self::Error> {
     todo!()
   }

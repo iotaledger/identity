@@ -3,8 +3,8 @@
 
 use std::marker::PhantomData;
 
+use crate::rebased::client::IdentityClient;
 use crate::rebased::iota::package::identity_package_id;
-use crate::rebased::iota::package::identity_package_id_blocking;
 use async_trait::async_trait;
 use iota_sdk::transaction_builder::TransactionBuilder;
 use iota_sdk::types::Address;
@@ -12,8 +12,6 @@ use iota_sdk::types::ObjectId;
 use iota_sdk::types::TransactionEffects;
 use iota_sdk::types::TypeTag;
 use product_core::move_type::MoveType;
-use product_core::move_type::UnknownTypeForNetwork;
-use product_core::network::Network;
 use product_core::operation::OperationBuilder;
 use product_core::product_client::ProductClient;
 use serde::Deserialize;
@@ -36,20 +34,14 @@ use super::ProposalT;
 pub struct SendAction(Vec<(ObjectId, Address)>);
 
 impl MoveType for SendAction {
-  fn move_type(network: Network) -> Result<TypeTag, UnknownTypeForNetwork> {
-    let package = match network {
-      Network::Mainnet => "0x84cf5d12de2f9731a89bb519bc0c982a941b319a33abefdd5ed2054ad931de08",
-      Network::Testnet => "0x222741bbdff74b42df48a7b4733185e9b24becb8ccfbafe8eac864ab4e4cc555",
-      Network::Devnet => "0xe6fa03d273131066036f1d2d4c3d919b9abbca93910769f26a924c7a01811103",
-      _ => identity_package_id_blocking(network)
-        .map_err(|_| UnknownTypeForNetwork::new("Send", network))?
-        .to_string()
-        .as_str(),
-    };
-
-    format!("{package}::transfer_proposal::Send")
+  fn move_type(client: &impl ProductClient) -> TypeTag {
+    let package = client.package_id();
+    let mut type_tag = format!("{package}::transfer_proposal::Send")
       .parse()
-      .expect("valid TypeTag")
+      .expect("valid TypeTag");
+
+    client.type_origin_table().canonicalize_type(&mut type_tag);
+    type_tag
   }
 }
 
@@ -104,7 +96,7 @@ impl ProposalT for Proposal<SendAction> {
     expiration: Option<u64>,
     identity: &'i mut OnChainIdentity,
     controller_token: &ControllerToken,
-    client: &impl ProductClient,
+    client: &IdentityClient,
   ) -> Result<OperationBuilder<CreateProposal<'i, Self::Action>>, Error> {
     if identity.id() != controller_token.controller_of() {
       return Err(Error::Identity(format!(
@@ -118,7 +110,7 @@ impl ProposalT for Proposal<SendAction> {
       .controller_voting_power(controller_token.controller_id())
       .expect("controller_cap is for this identity")
       >= identity.threshold();
-    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client((*client).clone());
+    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client(client.as_ref().clone());
     if can_execute {
       // Construct a list of `(ObjectId, TypeTag)` from the list of objects to send.
       let object_type_list = super::object_type_for_ids(client, action.0.iter().map(|(id, _)| *id)).await?;
@@ -130,7 +122,7 @@ impl ProposalT for Proposal<SendAction> {
         expiration,
         object_type_list,
         package,
-        client.network(),
+        client,
       )
     } else {
       move_calls::identity::propose_send(
@@ -140,7 +132,6 @@ impl ProposalT for Proposal<SendAction> {
         action.0,
         expiration,
         package,
-        client.network(),
       )
     }
 
@@ -156,7 +147,7 @@ impl ProposalT for Proposal<SendAction> {
     self,
     identity: &'i mut OnChainIdentity,
     controller_token: &ControllerToken,
-    client: &impl ProductClient,
+    client: &IdentityClient,
   ) -> Result<OperationBuilder<ExecuteProposal<'i, Self::Action>>, Error> {
     if identity.id() != controller_token.controller_of() {
       return Err(Error::Identity(format!(
@@ -166,13 +157,13 @@ impl ProposalT for Proposal<SendAction> {
       )));
     }
 
-    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client((*client).clone());
+    let mut ptb = TransactionBuilder::new(Address::ZERO).with_client(client.as_ref().clone());
     let proposal_id = self.id();
 
     // Construct a list of `(ObjectRef, TypeTag)` from the list of objects to send.
     let object_type_list =
-      super::object_type_for_ids(client, self.into_action().0.into_iter().map(|(id, _)| *id)).await?;
-    let package = identity_package_id(client.network()).await?;
+      super::object_type_for_ids(client, self.into_action().0.into_iter().map(|(id, _)| id)).await?;
+    let package = client.package_id();
 
     move_calls::identity::execute_send(
       &mut ptb,
@@ -181,7 +172,7 @@ impl ProposalT for Proposal<SendAction> {
       proposal_id,
       object_type_list,
       package,
-      client.network(),
+      client,
     );
 
     Ok(OperationBuilder::new(ExecuteProposal {

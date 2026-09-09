@@ -113,7 +113,7 @@ fn resolved_and_unresolved_inputs_comparison(a: &Input, b: &iota_sdk::types::Inp
   if let InputKind::Input(a) = &a.kind {
     a == b
   } else {
-    a.object_id() == b.object_id_opt()
+    a.object_id() == b.opt_object_id()
   }
 }
 

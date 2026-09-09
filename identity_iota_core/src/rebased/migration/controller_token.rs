@@ -408,7 +408,7 @@ impl Operation for DelegateToken {
         (obj.id_operation.is_created()
           && obj
             .output_state
-            .object_owner_opt()
+            .opt_object_owner()
             .and_then(|owner| owner.address_or_object().copied())
             == Some(self.recipient))
         .then_some(obj.object_id)

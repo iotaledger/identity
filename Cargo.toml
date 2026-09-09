@@ -30,7 +30,7 @@ exclude = ["bindings/wasm/identity_wasm", "bindings/grpc"]
 
 [workspace.dependencies]
 bls12_381_plus = { version = "0.8.17" }
-iota-sdk = { git = "https://github.com/iotaledger/iota-rust-sdk.git", rev = "25907f345ed0deb33a56fe40677d1d128209ffea" }
+iota-sdk = "3.0.0-beta.1"
 product-core = { git = "https://github.com/iotaledger/product-core.git", package = "product-core", branch = "prototype/iota-rust-sdk-integration" }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = { version = "1.0", default-features = false }

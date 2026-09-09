@@ -519,7 +519,7 @@ where
 
     // Extract the event for the proposal we are expecting.
     let extract_proposal_id = |event: &Event| -> Option<ProposalEvent> {
-      if event.type_.repr.contains("identity::ProposalEvent") {
+      if event.move_type.repr.contains("identity::ProposalEvent") {
         bcs::from_bytes(&decode_b64(event.bcs.0.as_str()).unwrap())
           .ok()
           .filter(|event: &ProposalEvent| {

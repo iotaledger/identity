@@ -671,7 +671,7 @@ impl Operation for CreateIdentity {
         obj.id_operation.is_created()
           && obj
             .output_state
-            .object_owner_opt()
+            .opt_object_owner()
             .is_some_and(|owner| owner.is_shared())
       })
       .map(|obj| obj.object_id);
